@@ -141,7 +141,7 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
     ?>
     <div class="warehouse-layout" style="padding: 50px 10px;width: 1800px;border:#ffc107 solid 3px;border-radius:15px">
         <!-- 上方库位区域 -->
-        <div class="top-storage-area">
+        <div id="stockarea2" class="top-storage-area">
             <div class="storage-row" style="display: flex; gap: 8px; margin-bottom: 20px; justify-content: center;">
                 <!-- 左侧区域：24A24B 到 12A12B -->
                 <div style="display: flex; gap: 3px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
@@ -161,7 +161,7 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
                 </div>
                 
                 <!-- 右侧区域：11A11B 到 8A8B -->
-                <div style="display: flex; gap: 3px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                <div id="stockarea3" style="display: flex; gap: 3px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
                     <?php
                     for ($num = 11; $num >= 8; $num--) {
                         echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
@@ -186,7 +186,7 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
         <!-- 下方区域 -->
         <div class="bottom-area">
             <div style="display: flex; gap: 30px; justify-content: flex-end; align-items: flex-start;">
-                <div style="width: 600px;"></div> 
+                <div style="width: 500px;"></div> 
                 <!-- 左侧加工区：A -->
                 <div class="processing-left" style="display: flex; flex-direction: column; gap: 10px;">
                     <div style="margin-right: 30px;margin-top: -30px;transform: rotate(90deg);">
@@ -194,16 +194,23 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
                         echo renderRack('A', $rackInventory, $highlightRacks, 'processing');
                         ?>
                     </div>
-                
                     <div style="transform: rotate(90deg);margin-right: 30px;margin-top: -50px;">
                         <?php
                         echo renderRack('B', $rackInventory, $highlightRacks, 'processing');
                         ?>
                     </div>
                 </div>
-                
+                <div id="stockarea4" class="middle-storage" style="width: 120px;display: flex; gap: 10px; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
+                    <div class="rack-pair">
+                        <?php
+                            echo renderRack('25B', $rackInventory, $highlightRacks);
+                            echo renderRack('25A', $rackInventory, $highlightRacks);
+                        ?>
+                    </div>
+                </div>  
+                    
                 <!-- 中间库存区：7B7A 到 5B5A -->
-                <div class="middle-storage" style="display: flex; gap: 10px; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
+                <div id="stockarea1" class="middle-storage" style="display: flex; gap: 10px; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
                     <?php
                     for ($num = 7; $num >= 5; $num--) {
                         echo '<div class="rack-pair">';
