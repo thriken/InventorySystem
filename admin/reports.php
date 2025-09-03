@@ -110,7 +110,10 @@ $summaryParams = [$startTime, $endTime];
 
 $summaryResult = fetchAll($summarySql, $summaryParams);
 $summaryData = !empty($summaryResult) ? $summaryResult[0] : [];
+// 添加专用CSS文件
+$additionalCSS = ['../assets/css/admin/report.css'];
 ob_start();
+
 ?>
 <div class="content-card">  
     <div class="search-container">
@@ -187,7 +190,7 @@ ob_start();
     <!-- 详细数据表格 -->
     <div class="table-container">
         <div class="table-responsive">
-            <table class="table table-striped">
+            <table class="table table-striped data-table" data-table="reports">
                 <thead>
                     <tr>
                         <th>原片名称</th>
@@ -257,6 +260,6 @@ updateTime();
 <?php
 $content = ob_get_clean();
 // 渲染页面
-echo renderAdminLayout('每日领用总表', $content, $currentUser, 'reports.php', [], [], $message ?? '', $messageType ?? 'info');
+echo renderAdminLayout('每日领用总表', $content, $currentUser, 'reports.php',$additionalCSS, [], $message ?? '', $messageType ?? 'info');
 
 ?>

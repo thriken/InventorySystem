@@ -17,7 +17,7 @@ function getAdminNavConfig($userRole) {
             'url' => 'index.php',
             'icon' => 'icon-dashboard',
             'roles' => ['admin', 'manager', 'operator'], // 所有角色都可访问
-            'order' => 1
+            'order' => 0
         ],
         [
             'id' => 'bases',
@@ -42,6 +42,14 @@ function getAdminNavConfig($userRole) {
             'icon' => 'icon-glass',
             'roles' => ['admin', 'manager'],
             'order' => 4
+        ],
+        [
+            'id' => 'dictionary',
+            'title' => '字典管理',
+            'url' => 'dictionary.php',
+            'icon' => 'icon-dictionary',
+            'roles' => ['admin', 'manager'], // 仅管理员可访问
+            'order' => 1
         ],
         [
             'id' => 'packages',
@@ -134,6 +142,7 @@ function getCurrentNavId($currentPage) {
         'bases.php' => 'bases',
         'racks.php' => 'racks',
         'glass_types.php' => 'glass_types',
+        'dictionary.php' => 'dictionary',
         'packages.php' => 'packages',
         'transactions.php' => 'transactions',
         'reports.php' => 'reports',

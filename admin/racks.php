@@ -446,7 +446,7 @@ ob_start();
 
 <!-- 库位架数据表格 -->
 <div class="table-container">
-    <table class="table">
+    <table class="table" data-table="racks">
         <thead>
             <tr>
                 <th><a href="<?php echo getSortUrl('id', $sortBy, $sortOrder); ?>" class="sortable-header">
@@ -499,7 +499,7 @@ ob_start();
     </table>
 </div>
 <!-- 表单模态框 -->
-<div id="formContainer" class="modal-overlay" style="display: none;">
+<div id="formContainer" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="formTitle">新增库位架</h3>

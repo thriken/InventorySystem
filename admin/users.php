@@ -228,6 +228,7 @@ $managerCount = count(array_filter($users, function ($user) {
     return $user['role'] == 'manager';
 }));
 
+
 ob_start();
 ?>
 <div class="stats-grid">
@@ -248,10 +249,76 @@ ob_start();
         <div class="stat-label">操作员</div>
     </div>
 </div>
-<div class="users-container">
-    <h3>
-        <button onclick="openAddModal()" class="btn btn-primary">添加用户</button>
-    </h3>
+
+<div class="admin-page">
+    <div class="action-section">
+        <button onclick="openAddModal()" class="btn btn-primary btn-lg">
+            <i class="fas fa-plus"></i> 添加用户
+        </button>&nbsp;&nbsp;
+        <button onclick="exportToExcel('usersTable', '用户列表')" class="btn btn-info btn-secondary">
+                <i class="fas fa-file-excel"></i> 导出Excel
+        </button>
+        <button onclick="exportToPDF('usersTable', '用户列表')" class="btn btn-warning btn-secondary">
+                <i class="fas fa-file-pdf"></i> 导出PDF
+        </button>
+    </div>
+
+    <div class="table-section">
+        <table id="usersTable" data-table="users" class="admin-table display" style="width:100%">
+            <thead>
+                <tr>
+                    <th>用户名</th>
+                    <th>真实姓名</th>
+                    <th>角色</th>
+                    <th>基地</th>
+                    <th>联系电话</th>
+                    <th>邮箱</th>
+                    <th>状态</th>
+                    <th>最后登录</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($users as $user): ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($user['username']); ?></td>
+                    <td><?php echo htmlspecialchars($user['real_name']); ?></td>
+                    <td>
+                        <span class="role-badge role-<?php echo $user['role']; ?>">
+                            <?php echo $roleOptions[$user['role']] ?? $user['role']; ?>
+                        </span>
+                    </td>
+                    <td><?php echo htmlspecialchars($user['base_name'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($user['phone'] ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($user['email'] ?? '-'); ?></td>
+                    <td>
+                        <?php if ($user['status'] == 1): ?>
+                            <span class="status-badge status-active">正常</span>
+                        <?php else: ?>
+                            <span class="status-badge status-inactive">禁用</span>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo $user['last_login'] ? formatDateTime($user['last_login']) : '从未登录'; ?></td>
+                    <td><?php echo formatDateTime($user['created_at']); ?></td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="?edit=<?php echo $user['id']; ?>" class="btn btn-sm btn-info">
+                                <i class="fas fa-edit"></i> 编辑
+                            </a>
+                            <?php if ($user['id'] != $currentUser['id']): ?>
+                                <button onclick="deleteUser(<?php echo $user['id']; ?>)" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
     <!-- 添加用户模态框 -->
     <div class="modal-overlay" id="addModal">
         <div class="modal-content">
@@ -264,21 +331,21 @@ ob_start();
                     <input type="hidden" name="action" value="add">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="add_username">用户名 *</label>
+                            <label for="add_username">用户名 <span class="required">*</span></label>
                             <input type="text" id="add_username" name="username" required>
                         </div>
                         <div class="form-group">
-                            <label for="add_real_name">真实姓名 *</label>
+                            <label for="add_real_name">真实姓名 <span class="required">*</span></label>
                             <input type="text" id="add_real_name" name="real_name" required>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="add_password">密码 *</label>
+                            <label for="add_password">密码 <span class="required">*</span></label>
                             <input type="password" id="add_password" name="password" required>
                         </div>
                         <div class="form-group">
-                            <label for="add_role">角色 *</label>
+                            <label for="add_role">角色 <span class="required">*</span></label>
                             <select id="add_role" name="role" required>
                                 <option value="">请选择角色</option>
                                 <?php foreach ($roleOptions as $value => $label): ?>
@@ -317,133 +384,6 @@ ob_start();
             </div>
         </div>
     </div>
-    <div class="dashboard-card">
-        <!-- 筛选和搜索 --><h3>🔍 筛选和搜索</h3>
-        
-            <form method="GET" action="" class="filter-form">
-                <div class="stats-grid">
-                <div class="stat-card">
-                    <label for="search">搜索</label>
-                    <input type="text" id="search" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="用户名、姓名或邮箱">
-                </div>
-
-                <div class="stat-card">
-                    <label for="role">角色</label>
-                    <select id="role" name="role">
-                        <option value="">全部角色</option>
-                        <?php foreach ($roleOptions as $value => $label): ?>
-                            <option value="<?php echo $value; ?>" <?php echo $roleFilter === $value ? 'selected' : ''; ?>>
-                                <?php echo $label; ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="stat-card">
-                    <label for="base">基地</label>
-                    <select id="base" name="base">
-                        <option value="">全部基地</option>
-                        <?php foreach ($bases as $base): ?>
-                            <option value="<?php echo $base['id']; ?>" <?php echo $baseFilter == $base['id'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($base['name']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="stat-card">
-                    <label for="status">状态</label>
-                    <select id="status" name="status">
-                        <option value="">全部状态</option>
-                        <?php foreach ($statusOptions as $value => $label): ?>
-                            <option value="<?php echo $value; ?>" <?php echo $statusFilter === $value ? 'selected' : ''; ?>>
-                                <?php echo $label; ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">筛选</button>
-                    <a href="users.php" class="btn btn-secondary">重置</a>
-                </div>
-             </div></form>
-       
-        <!-- 用户列表 -->
-
-            <h3>👤 用户列表 (共 <?php echo $totalUsers; ?> 个用户)</h3>
-            <?php if (empty($users)): ?>
-                <div class="no-data">
-                    <div class="no-data-content">
-                        <i>👤</i>
-                        <p>暂无用户数据</p>
-                    </div>
-                </div>
-            <?php else: ?>
-                <div class="users-grid">
-                    <?php foreach ($users as $user): ?>
-                        <div class="user-card">
-                            <div class="user-header">
-                                <div class="user-avatar">
-                                    <?php echo strtoupper(substr($user['real_name'] ?: $user['username'], 0, 1)); ?>
-                                </div>
-                                <div class="user-info">
-                                    <div class="user-name"><?php echo htmlspecialchars($user['real_name']); ?></div>
-                                    <div class="user-username">@<?php echo htmlspecialchars($user['username']); ?></div>
-                                </div>
-                                <div class="user-status">
-                                    <?php if ($user['status'] == 1): ?>
-                                        <span class="label label-success">正常</span>
-                                    <?php else: ?>
-                                        <span class="label label-danger">禁用</span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-
-                            <div class="user-details">
-                                <div class="detail-item">
-                                    <span class="detail-label">角色:</span>
-                                    <span class="detail-value"><?php echo $roleOptions[$user['role']] ?? $user['role']; ?></span>
-                                </div>
-
-                                <?php if ($user['base_name']): ?>
-                                    <div class="detail-item">
-                                        <span class="detail-label">基地:</span>
-                                        <span class="detail-value"><?php echo htmlspecialchars($user['base_name']); ?></span>
-                                    </div>
-                                <?php endif; ?>
-
-                                <?php if ($user['phone']): ?>
-                                    <div class="detail-item">
-                                        <span class="detail-label">电话:</span>
-                                        <span class="detail-value"><?php echo htmlspecialchars($user['phone']); ?></span>
-                                    </div>
-                                <?php endif; ?>
-
-                                <?php if ($user['email']): ?>
-                                    <div class="detail-item">
-                                        <span class="detail-label">邮箱:</span>
-                                        <span class="detail-value"><?php echo htmlspecialchars($user['email']); ?></span>
-                                    </div>
-                                <?php endif; ?>
-
-                                <div class="detail-item">
-                                    <span class="detail-label">最后登录:</span>
-                                    <span class="detail-value"><?php echo $user['last_login'] ? formatDateTime($user['last_login']) : '从未登录'; ?></span>
-                                </div>
-                            </div>
-
-                            <div class="user-actions">
-                                <a href="?edit=<?php echo $user['id']; ?>" class="btn btn-sm btn-info">编辑</a>
-                                <?php if ($user['id'] != $currentUser['id']): ?>
-                                    <button onclick="deleteUser(<?php echo $user['id']; ?>)" class="btn btn-sm btn-danger">删除</button>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-        </div>
 
     <!-- 编辑用户模态框 -->
     <?php if ($editRecord): ?>
@@ -460,12 +400,12 @@ ob_start();
                     <div class="modal-body">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="edit_username">用户名 *</label>
+                                <label for="edit_username">用户名 <span class="required">*</span></label>
                                 <input type="text" id="edit_username" name="username" value="<?php echo htmlspecialchars($editRecord['username']); ?>" required>
                             </div>
 
                             <div class="form-group">
-                                <label for="edit_real_name">真实姓名 *</label>
+                                <label for="edit_real_name">真实姓名 <span class="required">*</span></label>
                                 <input type="text" id="edit_real_name" name="real_name" value="<?php echo htmlspecialchars($editRecord['real_name']); ?>" required>
                             </div>
                         </div>
@@ -477,7 +417,7 @@ ob_start();
                             </div>
 
                             <div class="form-group">
-                                <label for="edit_role">角色 *</label>
+                                <label for="edit_role">角色 <span class="required">*</span></label>
                                 <select id="edit_role" name="role" required>
                                     <option value="">请选择角色</option>
                                     <?php foreach ($roleOptions as $value => $label): ?>
@@ -536,113 +476,153 @@ ob_start();
         </div>
     <?php endif; ?>
 </div>
+
 <script>
-    // 关闭编辑模态框
-    function closeEditModal() {
-        const modal = document.getElementById('editModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    }
-
-    // 打开编辑模态框
-    function openEditModal() {
-        const modal = document.getElementById('editModal');
-        if (modal) {
-            modal.style.display = 'block';
-        }
-    }
-
-    // 关闭添加用户模态框
-    function closeAddModal() {
-        const modal = document.getElementById('addModal');
-        if (modal) {
-            modal.style.display = 'none';
-            // 重置表单
-            const form = modal.querySelector('form');
-            if (form) {
-                form.reset();
+// DataTables 初始化
+$(document).ready(function() {
+    // 初始化用户管理表格
+    const table = initDataTable('usersTable', 'users', {
+        order: [[8, 'desc']], // 按创建时间降序排列
+        columnDefs: [
+            {
+                targets: [9], // 操作列
+                orderable: false,
+                searchable: false
+            },
+            {
+                targets: [2], // 角色列
+                render: function(data, type, row) {
+                    if (type === 'display') {
+                        return data;
+                    }
+                    // 为搜索和排序返回纯文本
+                    return $(data).text();
+                }
+            },
+            {
+                targets: [6], // 状态列
+                render: function(data, type, row) {
+                    if (type === 'display') {
+                        return data;
+                    }
+                    // 为搜索和排序返回纯文本
+                    return $(data).text();
+                }
             }
-        }
-    }
+        ]
+    });
+    
+    // 绑定表格事件
+    bindTableEvents();
+});
 
-    // 打开添加用户模态框
-    function openAddModal() {
-        const modal = document.getElementById('addModal');
-        if (modal) {
-            modal.style.display = 'block';
-        }
-    }
-
-    // 删除用户函数
-    function deleteRecord(id) {
-        if (confirm('确定要删除这个用户吗？此操作不可恢复。')) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.innerHTML = `
+// 删除用户函数
+function deleteUser(id) {
+    if (confirm('确定要删除这个用户吗？此操作不可恢复。')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="${id}">
         `;
-            document.body.appendChild(form);
-            form.submit();
-        }
+        document.body.appendChild(form);
+        form.submit();
     }
+}
 
-    // 点击模态框外部关闭
-    window.onclick = function(event) {
-        const editModal = document.getElementById('editModal');
-        const addModal = document.getElementById('addModal');
-
-        if (event.target == editModal) {
-            closeEditModal();
-        }
-        if (event.target == addModal) {
-            closeAddModal();
-        }
+// 关闭编辑模态框
+function closeEditModal() {
+    const modal = document.getElementById('editModal');
+    if (modal) {
+        modal.style.display = 'none';
     }
+}
 
-    // DOM加载完成后的初始化
-    document.addEventListener('DOMContentLoaded', function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        // 检查是否有成功消息显示，如果有则不自动打开模态框
-        const hasSuccessMessage = document.querySelector('.alert-success') !== null;
-        
-        // 如果URL中有edit参数且没有成功消息，自动显示编辑modal
-        if (urlParams.has('edit') && !hasSuccessMessage) {
-            const modal = document.getElementById('editModal');
-            if (modal) {
-                modal.style.display = 'block';
-            }
-        }
-        // 如果URL中有add参数且没有成功消息，自动显示添加modal
-        if (urlParams.has('add') && !hasSuccessMessage) {
-            const modal = document.getElementById('addModal');
-            if (modal) {
-                modal.style.display = 'block';
-            }
-        }
-        // 表单验证增强
-        const form = document.querySelector('.modern-form');
+// 打开编辑模态框
+function openEditModal() {
+    const modal = document.getElementById('editModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+// 关闭添加用户模态框
+function closeAddModal() {
+    const modal = document.getElementById('addModal');
+    if (modal) {
+        modal.style.display = 'none';
+        // 重置表单
+        const form = modal.querySelector('form');
         if (form) {
-            form.addEventListener('submit', function(e) {
-                const requiredFields = form.querySelectorAll('[required]');
-                let isValid = true;
-                requiredFields.forEach(field => {
-                    if (!field.value.trim()) {
-                        field.style.borderColor = '#e74c3c';
-                        isValid = false;
-                    } else {
-                        field.style.borderColor = '#ddd';
-                    }
-                });
-                if (!isValid) {
-                    e.preventDefault();
-                    alert('请填写所有必填字段');
+            form.reset();
+        }
+    }
+}
+
+// 打开添加用户模态框
+function openAddModal() {
+    const modal = document.getElementById('addModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+// 点击模态框外部关闭
+window.onclick = function(event) {
+    const editModal = document.getElementById('editModal');
+    const addModal = document.getElementById('addModal');
+
+    if (event.target == editModal) {
+        closeEditModal();
+    }
+    if (event.target == addModal) {
+        closeAddModal();
+    }
+}
+
+// DOM加载完成后的初始化
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // 检查是否有成功消息显示，如果有则不自动打开模态框
+    const hasSuccessMessage = document.querySelector('.alert-success') !== null;
+    
+    // 如果URL中有edit参数且没有成功消息，自动显示编辑modal
+    if (urlParams.has('edit') && !hasSuccessMessage) {
+        const modal = document.getElementById('editModal');
+        if (modal) {
+            modal.style.display = 'block';
+        }
+    }
+    // 如果URL中有add参数且没有成功消息，自动显示添加modal
+    if (urlParams.has('add') && !hasSuccessMessage) {
+        const modal = document.getElementById('addModal');
+        if (modal) {
+            modal.style.display = 'block';
+        }
+    }
+    
+    // 表单验证增强
+    const forms = document.querySelectorAll('.user-form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const requiredFields = form.querySelectorAll('[required]');
+            let isValid = true;
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.style.borderColor = '#e74c3c';
+                    isValid = false;
+                } else {
+                    field.style.borderColor = '#ddd';
                 }
             });
-        }
+            if (!isValid) {
+                e.preventDefault();
+                alert('请填写所有必填字段');
+            }
+        });
     });
+});
 </script>
 <?php
 $content = ob_get_clean();

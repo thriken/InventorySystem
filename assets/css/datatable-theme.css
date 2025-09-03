@@ -1,0 +1,187 @@
+/* ========================================
+   DataTables 核心样式
+   ======================================== */
+
+/* 容器样式 */
+.dataTables_wrapper {
+    padding: 15px;
+    background: white;
+}
+
+/* 顶部控件样式 */
+.dataTables_length,
+.dataTables_filter {
+    margin-bottom: 15px;
+}
+
+.dataTables_length {
+    float: left;
+}
+
+.dataTables_filter {
+    float: right;
+}
+
+.dataTables_length label,
+.dataTables_filter label {
+    font-weight: normal;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dataTables_filter input {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 200px;
+}
+
+/* 修复长度选择器样式 */
+.dataTables_wrapper .dataTables_length select {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    width: auto !important;
+    min-width: 60px;
+}
+
+/* 表格样式 */
+table.dataTable {
+    width: 100% !important;
+    border-collapse: collapse;
+    background-color: white;
+}
+
+table.dataTable thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    padding: 12px 8px;
+    font-weight: 600;
+    position: relative;
+}
+
+/* 排序图标 */
+table.dataTable thead th.sorting,
+table.dataTable thead th.sorting_asc,
+table.dataTable thead th.sorting_desc {
+    cursor: pointer;
+    padding-right: 30px;
+}
+
+table.dataTable thead th.sorting:after,
+table.dataTable thead th.sorting_asc:after,
+table.dataTable thead th.sorting_desc:after {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: #6c757d;
+}
+
+table.dataTable thead th.sorting:after {
+    content: '⇅';
+}
+
+table.dataTable thead th.sorting_asc:after {
+    content: '↑';
+    color: #007bff;
+}
+
+table.dataTable thead th.sorting_desc:after {
+    content: '↓';
+    color: #007bff;
+}
+
+table.dataTable tbody td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+table.dataTable tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* 文本对齐 */
+.text-center {
+    text-align: center !important;
+}
+
+.text-right {
+    text-align: right !important;
+}
+
+/* 基础按钮样式 */
+.btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    text-align: center;
+}
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* 底部信息和分页 */
+.dataTables_info {
+    padding-top: 8px;
+    float: left;
+}
+
+.dataTables_paginate {
+    margin-top: 15px;
+    float: right;
+}
+
+.dataTables_paginate .paginate_button {
+    display: inline-block;
+    padding: 6px 12px;
+    margin-left: 2px;
+    color: #007bff;
+    text-decoration: none;
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.dataTables_paginate .paginate_button:hover {
+    background-color: #e9ecef;
+}
+
+.dataTables_paginate .paginate_button.current {
+    color: white;
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.dataTables_paginate .paginate_button.disabled {
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+/* 清除浮动 */
+.dataTables_wrapper:after {
+    content: "";
+    display: table;
+    clear: both;
+}

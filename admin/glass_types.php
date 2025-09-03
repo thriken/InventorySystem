@@ -200,8 +200,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// 获取原片类型列表
-$glassTypes = fetchAll("SELECT * FROM glass_types ORDER BY created_at DESC");
+// 获取原片类型列表（移除分页逻辑，DataTables会处理）
+$glassTypes = fetchAll("SELECT * FROM glass_types ORDER BY id DESC");
 
 // 获取编辑的记录
 $editRecord = null;
@@ -209,13 +209,20 @@ if (isset($_GET['edit'])) {
     $editId = (int)$_GET['edit'];
     $editRecord = fetchRow("SELECT * FROM glass_types WHERE id = ?", [$editId]);
 }
-$typeNums = fetchOne("SELECT count(*) FROM glass_types");
+
+// 添加专用CSS和JS文件
+$additionalCSS = [];
+$additionalJS = [];
+
 ob_start();
 ?>
-<div class="admin-header">
+<!-- 操作按钮区域 -->
+<div class="action-section">
     <button type="button" class="btn btn-success" onclick="showAddForm()">添加原片类型</button>
-    <span>当前共 <?php echo $typeNums; ?> 种原片类型</span>
+    <button type="button" class="btn btn-info" onclick="exportToExcel('#glassTypesTable', '原片类型列表')">导出Excel</button>
+    <button type="button" class="btn btn-warning" onclick="exportToPDF('#glassTypesTable', '原片类型列表')">导出PDF</button>
 </div>
+
 <!-- 添加/编辑表单 -->
 <div class="form-container" id="formContainer" style="display: <?php echo $editRecord ? 'block' : 'none'; ?>">
     <div class="form-header">
@@ -294,6 +301,7 @@ ob_start();
                             <?php echo htmlspecialchars($mfr['name']); ?>
                         </option>
                     <?php endforeach; ?>
+                    <option value="其他">其他</option>
                 </select>
             </div>
         </div>
@@ -320,7 +328,7 @@ ob_start();
 
 <!-- 数据表格 -->
 <div class="table-container">
-    <table class="data-table">
+    <table id="glassTypesTable" class="display table table-striped table-bordered" data-table="glassTypes" data-page-length="15">
         <thead>
             <tr>
                 <th>原片ID</th>
@@ -339,28 +347,34 @@ ob_start();
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($glassTypes as $type): ?>
+            <?php if (empty($glassTypes)): ?>
                 <tr>
-                    <td><?php echo htmlspecialchars($type['custom_id']); ?></td> <!-- 原片ID-->
-                    <td><?php echo htmlspecialchars($type['name']); ?></td> <!-- 原片名称-->
-                    <td><?php echo htmlspecialchars($type['short_name']); ?></td> <!-- 原片简称-->
-                    <td><?php echo htmlspecialchars($type['finance_name']); ?></td> <!-- 财务核算名-->
-                    <td><?php echo htmlspecialchars($type['product_series']); ?></td> 
-                    <td><?php echo $type['thickness'] ? number_format($type['thickness'], 0) . 'mm' : '-'; ?></td>
-                    <td><?php echo htmlspecialchars($type['brand']); ?></td>
-                    <td><?php echo htmlspecialchars($type['color']); ?></td>
-                    <td><?php echo htmlspecialchars($type['silver_layers']); ?></td>
-                    <td><?php echo htmlspecialchars($type['substrate']); ?></td>
-                    <td><?php echo htmlspecialchars($type['transmittance']); ?></td>
-                    <td><?php echo formatDateTime($type['created_at']); ?></td>
-                    <td><a href="?edit=<?php echo $type['id']; ?>" class="btn btn-sm btn-info">编辑</a><button onclick="deleteRecord(<?php echo $type['id']; ?>)" class="btn btn-sm btn-danger">删除</button>
-                    </td>
+                    <td colspan="13" class="no-data">暂无数据</td>
                 </tr>
-            <?php endforeach; ?>
+            <?php else: ?>
+                <?php foreach ($glassTypes as $type): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($type['custom_id']); ?></td>
+                        <td><?php echo htmlspecialchars($type['name']); ?></td>
+                        <td><?php echo htmlspecialchars($type['short_name']); ?></td>
+                        <td><?php echo htmlspecialchars($type['finance_name']); ?></td>
+                        <td><?php echo htmlspecialchars($type['product_series']); ?></td>
+                        <td><?php echo $type['thickness'] ? number_format($type['thickness'], 0) . 'mm' : '-'; ?></td>
+                        <td><?php echo htmlspecialchars($type['brand']); ?></td>
+                        <td><?php echo htmlspecialchars($type['color']); ?></td>
+                        <td><?php echo htmlspecialchars($type['silver_layers']); ?></td>
+                        <td><?php echo htmlspecialchars($type['substrate']); ?></td>
+                        <td><?php echo htmlspecialchars($type['transmittance']); ?></td>
+                        <td><?php echo formatDateTime($type['created_at']); ?></td>
+                        <td>
+                            <a href="?edit=<?php echo $type['id']; ?>" class="btn btn-sm btn-info">编辑</a>
+                            <button onclick="deleteGlassType(<?php echo $type['id']; ?>)" class="btn btn-sm btn-danger">删除</button>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </tbody>
     </table>
-</div>
-</div>
 </div>
 
 <script>
@@ -378,7 +392,7 @@ ob_start();
         document.getElementById('formContainer').style.display = 'none';
     }
 
-    function deleteRecord(id) {
+    function deleteGlassType(id) {
         if (confirm('确定要删除这个原片类型吗？此操作不可恢复。')) {
             const form = document.createElement('form');
             form.method = 'POST';
@@ -390,6 +404,7 @@ ob_start();
             form.submit();
         }
     }
+
     // 添加到 glass_types.php 的 script 部分
     function loadManufacturersByBrand(brandName) {
         const manufacturerSelect = document.getElementById('manufacturer');
@@ -421,6 +436,7 @@ ob_start();
     document.getElementById('brand').addEventListener('change', function() {
         loadManufacturersByBrand(this.value);
     });
+
 </script>
 </body>
 
@@ -428,5 +444,5 @@ ob_start();
 <?php
 $content = ob_get_clean();
 // 渲染页面
-echo renderAdminLayout('原片类型', $content, $currentUser, 'glass_types.php', [], [], $message ?? '', $messageType ?? 'info');
+echo renderAdminLayout('原片类型', $content, $currentUser, 'glass_types.php', $additionalCSS, $additionalJS, $message ?? '', $messageType ?? 'info');
 ?>

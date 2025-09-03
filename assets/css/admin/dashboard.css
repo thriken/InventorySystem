@@ -1,0 +1,158 @@
+/* ========================================
+   仪表盘页面专用样式
+   ======================================== */
+
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 系统状态概览区域 */
+.dashboard-overview {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e1e5e9;
+    margin-bottom: 20px;
+}
+
+.dashboard-overview h3 {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: 600;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 8px;
+}
+
+/* 统计卡片网格 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.stat-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    border-left: 4px solid #3498db;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.stat-card .stat-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.stat-card .stat-label {
+    font-size: 14px;
+    color: #7f8c8d;
+    font-weight: 500;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e1e5e9;
+}
+
+.dashboard-card h3 {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: 600;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 8px;
+}
+
+.recent-list {
+    max-height: 800px;
+    overflow-y: auto;
+}
+
+.recent-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #ecf0f1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.recent-item:last-child {
+    border-bottom: none;
+}
+
+.item-info {
+    flex: 1;
+}
+
+.item-title {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 3px;
+}
+
+.item-detail {
+    font-size: 13px;
+    color: #0c5460;
+}
+
+.item-time {
+    font-size: 11px;
+    color: #95a5a6;
+    white-space: nowrap;
+}
+
+.consumption-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.consumption-item:last-child {
+    border-bottom: none;
+}
+
+.consumption-name {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.consumption-value {
+    font-weight: bold;
+    color: #e74c3c;
+}
+
+.dashboard-card .label {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.dashboard-card .label-success { background: #d4edda; color: #155724; }
+.dashboard-card .label-warning { background: #fff3cd; color: #856404; }
+.dashboard-card .label-info { background: #d1ecf1; color: #0c5460; }
+.dashboard-card .label-danger { background: #f8d7da; color: #721c24; }

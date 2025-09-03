@@ -89,7 +89,8 @@ $monthlyColorConsumption = fetchAll("SELECT g.color,
                                    HAVING total_consumption > 0
                                    ORDER BY total_consumption DESC LIMIT 10", [$monthStart, $monthEnd]);
 
-// 页面内容
+// 添加专用CSS文件
+$additionalCSS = ['../assets/css/admin/dashboard.css'];
 ob_start();
 ?>
 <div class="dashboard-container">
@@ -235,5 +236,5 @@ ob_start();
 <?php
 $content = ob_get_clean();
 // 渲染页面
-echo renderAdminLayout('仪表盘', $content, $currentUser, 'index.php', [], [], $message ?? '', $messageType ?? 'info');
+echo renderAdminLayout('仪表盘', $content, $currentUser, 'index.php',$additionalCSS, [], $message ?? '', $messageType ?? 'info');
 ?>

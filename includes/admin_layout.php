@@ -25,6 +25,12 @@ function renderAdminLayout($pageTitle, $content, $currentUser, $currentPage = ''
         <title><?php echo htmlspecialchars($pageTitle); ?> - <?php echo APP_NAME; ?></title>
         <link rel="stylesheet" href="../assets/css/main.css">
         <link rel="stylesheet" href="../assets/css/admin.css">
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+        <script src="../assets/js/datatable-config.js"></script>
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" href="../assets/css/datatable-theme.css">
         <?php foreach ($additionalCSS as $css): ?>
         <link rel="stylesheet" href="<?php echo htmlspecialchars($css); ?>">
         <?php endforeach; ?>

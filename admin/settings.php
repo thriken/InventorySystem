@@ -185,7 +185,7 @@ $stats = [
     'active_users' => fetchOne("SELECT COUNT(*) FROM users WHERE status = 1") ?: 0,
     'storage_packages' => fetchOne("SELECT COUNT(*) FROM glass_packages WHERE status = 'in_storage'") ?: 0,
 ];
-
+$additionalCSS=['../assets/css/admin/settings.css'];
 ob_start();
 ?>
 <div class="settings-container">
@@ -484,5 +484,5 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php
 $content = ob_get_clean();
 // 渲染页面
-echo renderAdminLayout('系统设置', $content, $currentUser, 'settings.php', [], [], $message ?? '', $messageType ?? 'info');
+echo renderAdminLayout('系统设置', $content, $currentUser, 'settings.php', $additionalCSS, [], $message ?? '', $messageType ?? 'info');
 ?>
