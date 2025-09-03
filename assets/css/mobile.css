@@ -1,0 +1,361 @@
+/* 移动端样式 */
+body {
+    font-size: 16px;
+}
+
+.mobile-container {
+    padding: 60px 0 70px;
+}
+
+.mobile-header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.mobile-header h1 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.mobile-footer {
+    background-color: white;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    border-top: 1px solid #eee;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.mobile-footer a {
+    flex: 1;
+    text-align: center;
+    padding: 12px 0;
+    color: #666;
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.mobile-footer a.active {
+    color: #4CAF50;
+}
+
+.mobile-footer a i {
+    display: block;
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.mobile-content {
+    padding: 15px;
+}
+
+.mobile-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+
+.mobile-card-header {
+    padding: 12px 15px;
+    background-color: #f9f9f9;
+    border-bottom: 1px solid #eee;
+    font-weight: bold;
+}
+
+.mobile-card-body {
+    padding: 15px;
+}
+
+.mobile-button {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 10px;
+    text-decoration: none;
+}
+
+.mobile-button.blue {
+    background-color: #2196F3;
+}
+
+.mobile-button.orange {
+    background-color: #FF9800;
+}
+
+.mobile-button.red {
+    background-color: #f44336;
+}
+
+/* 扫描页面特定样式 */
+.scan-form {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.scan-button {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-left: 5px;
+    font-size: 14px;
+}
+
+.input-with-scan {
+    display: flex;
+}
+
+.input-with-scan input {
+    flex: 1;
+}
+
+/* 适配PDA分辨率 */
+@media screen and (max-width: 720px) {
+    .mobile-header h1 {
+        font-size: 18px;
+    }
+    
+    .mobile-button {
+        padding: 12px;
+        font-size: 15px;
+    }
+    
+    .form-group {
+        margin-bottom: 12px;
+    }
+    
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+        padding: 10px;
+        font-size: 15px;
+    }
+}
+
+/* 适配320px及以下分辨率（超小屏幕设备）*/
+@media screen and (max-width: 320px) {
+    .mobile-header {
+        padding: 8px;
+    }
+    
+    .mobile-header h1 {
+        font-size: 14px;
+        line-height: 1.2;
+    }
+    
+    .user-info {
+        font-size: 10px;
+        margin-top: 2px;
+    }
+    
+    .content {
+        margin-top: 60px;
+        padding: 8px;
+    }
+    
+    .menu-grid {
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    
+    .menu-item {
+        padding: 12px 8px;
+        border-radius: 4px;
+    }
+    
+    .menu-item i {
+        font-size: 18px;
+        margin-bottom: 6px;
+    }
+    
+    .menu-item h3 {
+        font-size: 12px;
+        line-height: 1.2;
+    }
+    
+    .mobile-button {
+        padding: 8px;
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+    
+    .mobile-card {
+        margin-bottom: 8px;
+        border-radius: 4px;
+    }
+    
+    .mobile-card-header {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    
+    .mobile-card-body {
+        padding: 10px;
+    }
+    
+    .scan-form {
+        padding: 10px;
+        border-radius: 4px;
+    }
+    
+    .scan-button {
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+    
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+        padding: 6px;
+        font-size: 12px;
+    }
+    
+    .footer {
+        padding: 8px;
+        font-size: 10px;
+    }
+    
+    .form-group {
+        margin-bottom: 8px;
+    }
+    
+    /* 针对320px宽度的特殊优化 */
+    .header {
+        padding: 8px;
+    }
+    
+    .header h1 {
+        font-size: 14px;
+        line-height: 1.2;
+    }
+    
+    .header .user-info {
+        font-size: 10px;
+        margin-top: 2px;
+    }
+    
+    /* 确保内容不会被遮挡 */
+    body {
+        font-size: 12px;
+        
+    }
+}
+
+/* 针对低端Android设备的兼容性优化 */
+@media screen and (max-width: 320px) {
+   
+    /* 针对老版本浏览器的字体优化 */
+    body {
+        font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+    
+    /* 确保在低端设备上的性能 */
+    .menu-item {
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+        will-change: auto;
+    }
+    
+    /* 老版本浏览器的flexbox兼容 */
+    .menu-grid {
+        display: -webkit-box;
+        display: -webkit-flex;
+        display: -ms-flexbox;
+        display: flex;
+        -webkit-flex-wrap: wrap;
+        -ms-flex-wrap: wrap;
+        flex-wrap: wrap;
+    }
+    
+    .menu-item {
+        -webkit-box-flex: 0;
+        -webkit-flex: 0 0 calc(50% - 4px);
+        -ms-flex: 0 0 calc(50% - 4px);
+        flex: 0 0 calc(50% - 4px);
+        margin: 0 2px 8px 2px;
+    }
+    
+    /* 提升触摸体验 */
+    .menu-item {
+        -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    
+    /* 确保图标在低端设备上正常显示 */
+    .menu-item i {
+        display: block;
+        width: 18px;
+        height: 18px;
+        margin: 0 auto 6px;
+        text-align: center;
+        line-height: 18px;
+    }
+    
+    /* 优化按钮点击效果 */
+    .menu-item:active {
+        background-color: #f0f0f0;
+        -webkit-transform: scale(0.98);
+        transform: scale(0.98);
+    }
+    
+    /* 确保头部在低端设备上固定 */
+    .mobile-header {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 0;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+    }
+    
+    /* 优化滚动性能 */
+    .content {
+        -webkit-overflow-scrolling: touch;
+        overflow-scrolling: touch;
+    }
+}
+
+/* 针对Android 5.x的特殊优化 */
+@supports not (display: grid) {
+    .menu-grid {
+        display: -webkit-flex !important;
+        display: flex !important;
+        -webkit-flex-wrap: wrap;
+        flex-wrap: wrap;
+        margin: -4px;
+    }
+    
+    .menu-item {
+        -webkit-flex: 0 0 calc(50% - 8px);
+        flex: 0 0 calc(50% - 8px);
+        margin: 4px;
+    }
+}
