@@ -566,8 +566,8 @@ ob_start();
 </head>
 <body>
     <div class="header">
+        <a href="/viewer/inventory.php" class="nav-link">返回库存查询</a>
         <h1 id="page-title"><?php echo htmlspecialchars($baseInfo['name']); ?> - 库区可视化</h1>
-        
         <div class="base-selector">
             <label for="base-select">选择基地:</label>
             <select id="base-select">

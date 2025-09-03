@@ -54,7 +54,7 @@ function renderXinyiBaseLayout($rackInventory, $highlightRacks) {
             <div class="storage-row">
                 <div style="display: flex; gap: 15px;">
                     <?php
-                    for ($num = 10; $num <= 23; $num++) {
+                    for ($num = 10; $num < 23; $num++) {
                         echo '<div class="rack-pair">';
                         
                         // B架
@@ -139,7 +139,7 @@ function renderXinyiBaseLayout($rackInventory, $highlightRacks) {
 function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
     ob_start();
     ?>
-    <div class="warehouse-layout" style="width: 1800px;border:#ffc107 solid 3px;border-radius:15px">
+    <div class="warehouse-layout" style="padding: 50px 10px;width: 1800px;border:#ffc107 solid 3px;border-radius:15px">
         <!-- 上方库位区域 -->
         <div class="top-storage-area">
             <div class="storage-row" style="display: flex; gap: 8px; margin-bottom: 20px; justify-content: center;">
