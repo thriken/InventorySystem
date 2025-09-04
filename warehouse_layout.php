@@ -94,7 +94,7 @@ function renderXinyiBaseLayout($rackInventory, $highlightRacks) {
                         echo renderRack($num . 'A', $rackInventory, $highlightRacks);
                         echo '</div>';
                     }
-                    
+                    echo "<div style=\"display: flex; gap: 15px;\"></div>";
                     // 第二行：6B 6A 7B 7A 8B 8A 9B 9A
                     for ($num = 6; $num <= 9; $num++) {
                         echo '<div class="rack-pair">';

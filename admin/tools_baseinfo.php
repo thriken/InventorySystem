@@ -477,7 +477,7 @@ ob_start();
 
 <div class="content-section">
     <div class="section-header">
-        <p class="section-description">原片包数据导入</p>
+        <p class="section-description">基础数据导入</p>
     </div>
     <div class="import-container">
         <!-- 模板下载区域 -->
