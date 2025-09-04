@@ -116,6 +116,16 @@ const configTemplates = {
                 $(api.column(i).footer()).html(total.toLocaleString());
             }
         }
+    },
+    
+    // 库存查询表格配置
+    inventory: {
+        "order": [[ 9, "desc" ]], // 按入库日期降序排列
+        "columnDefs": [
+            { "className": "text-center", "targets": [0, 1, 2, 5, 6, 7, 8, 10] }, // 包号、名称、简称、颜色、厚度、库位、基地、状态列居中
+            { "className": "text-right", "targets": [4] }, // 片数右对齐
+            { "type": "date", "targets": [9] } // 日期列
+        ]
     }
 };
 
