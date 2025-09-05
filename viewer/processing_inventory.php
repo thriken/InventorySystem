@@ -51,11 +51,11 @@ $sql = "SELECT
             gt.thickness,
             gp.width,
             gp.height,
-            gp.pieces as current_pieces,
-            sr.code as current_rack_code,
+            gp.pieces as usage_pieces,
+            sr.name as current_rack_code,
             b.name as base_name,
-            gp.updated_at as last_update_time,
-            u.real_name as last_operator_name
+            gp.updated_at as usage_time,
+            u.real_name as operator_name
         FROM glass_packages gp
         LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id
         LEFT JOIN storage_racks sr ON gp.current_rack_id = sr.id

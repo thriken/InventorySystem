@@ -88,6 +88,7 @@ foreach ($allTransactionTypes as $key => $label) {
 // 处理表单提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'add_transaction') {
+        $showModal = false;
         try {
             $packageCode = trim($_POST['package_code']);
             $targetRackCode = trim($_POST['target_rack_code']);
@@ -116,57 +117,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $scrapReason,
                 $notes
             );
+            $messageType = 'success';
         } catch (Exception $e) {
-            $error = $e->getMessage();
+            $message = $e->getMessage();  // 改为使用 $message 而不是 $error
+            $messageType = 'error';
+            $showModal = true;
+
+            // 保存表单数据以便重新填充
+            $formData = [
+                'package_code' => $packageCode ?? '',
+                'target_rack_code' => $targetRackCode ?? '',
+                'quantity' => $quantity ?? '',
+                'transaction_type' => $transactionType ?? '',
+                'scrap_reason' => $scrapReason ?? '',
+                'notes' => $notes ?? ''
+            ];
         }
     }
 }
-// 获取搜索参数
-$search = $_GET['search'] ?? '';
-$typeFilter = $_GET['type'] ?? '';
-$dateFrom = $_GET['date_from'] ?? '';
-$dateTo = $_GET['date_to'] ?? '';
-$page = max(1, intval($_GET['page'] ?? 1));
-$limit = 8;
-$offset = ($page - 1) * $limit;
 
 // 构建查询条件
-$whereConditions = [];
 $params = [];
-
-if (!empty($search)) {
-    $whereConditions[] = "(gp.package_code LIKE ? OR gt.name LIKE ? OR u.real_name LIKE ?)";
-    $searchTerm = '%' . $search . '%';
-    $params[] = $searchTerm;
-    $params[] = $searchTerm;
-    $params[] = $searchTerm;
-}
-
-if (!empty($typeFilter)) {
-    $whereConditions[] = "t.transaction_type = ?";
-    $params[] = $typeFilter;
-}
-
-if (!empty($dateFrom)) {
-    $whereConditions[] = "DATE(t.transaction_time) >= ?";
-    $params[] = $dateFrom;
-}
-
-if (!empty($dateTo)) {
-    $whereConditions[] = "DATE(t.transaction_time) <= ?";
-    $params[] = $dateTo;
-}
-
-$whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
-
-// 获取交易记录总数 - 修正表名
-$countSql = "SELECT COUNT(*) FROM inventory_transactions t 
-             LEFT JOIN glass_packages gp ON t.package_id = gp.id 
-             LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id 
-             LEFT JOIN users u ON t.operator_id = u.id 
-             $whereClause";
-$totalRecords = fetchOne($countSql, $params);
-$totalPages = ceil($totalRecords / $limit);
 
 // 获取交易记录 - 移除areas相关的JOIN和字段
 $sql = "SELECT t.*, gp.package_code, gt.name as glass_name, gt.thickness, gt.color,
@@ -179,9 +150,7 @@ $sql = "SELECT t.*, gp.package_code, gt.name as glass_name, gt.thickness, gt.col
         LEFT JOIN users u ON t.operator_id = u.id
         LEFT JOIN storage_racks fr ON t.from_rack_id = fr.id
         LEFT JOIN storage_racks tr ON t.to_rack_id = tr.id
-        $whereClause
-        ORDER BY t.transaction_time DESC
-        LIMIT $limit OFFSET $offset";
+        ORDER BY t.transaction_time DESC";
 $transactions = fetchAll($sql, $params);
 
 // 获取统计数据 - 修正表名
@@ -217,48 +186,9 @@ ob_start();
 <div style="margin-bottom: 20px;">
     <button type="button" class="btn btn-success" onclick="openTransactionModal()">新增流转记录</button>
 </div>
-
-<!-- 搜索表单 -->
-<div class="search-form">
-    <form method="GET">
-        <div class="search-row-compact">
-            <div class="form-group-compact">
-                <label for="search">搜索:</label>
-                <input type="text" id="search" name="search" class="form-control-compact"
-                    value="<?php echo htmlspecialchars($search); ?>" placeholder="包号、玻璃名称、操作员">
-            </div>
-            <div class="form-group-compact">
-                <label for="type">类型:</label>
-                <select id="type" name="type" class="form-control-compact">
-                    <option value="">全部类型</option>
-                    <?php foreach ($transactionTypes as $value => $label): ?>
-                        <option value="<?php echo $value; ?>" <?php echo $typeFilter === $value ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($label); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group-compact">
-                <label for="date_from">开始:</label>
-                <input type="date" id="date_from" name="date_from" class="form-control-compact"
-                    value="<?php echo htmlspecialchars($dateFrom); ?>">
-            </div>
-            <div class="form-group-compact">
-                <label for="date_to">结束:</label>
-                <input type="date" id="date_to" name="date_to" class="form-control-compact"
-                    value="<?php echo htmlspecialchars($dateTo); ?>">
-            </div>
-            <div class="form-group-compact">
-                <button type="submit" class="btn btn-primary btn-compact">搜索</button>
-                <a href="transactions.php" class="btn btn-secondary btn-compact">重置</a>
-            </div>
-        </div>
-    </form>
-</div>
-
 <!-- 交易记录表格 -->
 <div class="table-container">
-    <table class="table">
+    <table id="transactions" class="table data-table" data-table="transactions">
         <thead>
             <tr>
                 <th>交易时间</th>
@@ -314,34 +244,21 @@ ob_start();
         </tbody>
     </table>
 </div>
-
-<!-- 分页 -->
-<?php if ($totalPages > 1): ?>
-    <div class="pagination">
-        <?php if ($page > 1): ?>
-            <a href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&type=<?php echo urlencode($typeFilter); ?>&date_from=<?php echo urlencode($dateFrom); ?>&date_to=<?php echo urlencode($dateTo); ?>">&laquo; 上一页</a>
-        <?php endif; ?>
-
-        <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
-            <?php if ($i == $page): ?>
-                <span class="current"><?php echo $i; ?></span>
-            <?php else: ?>
-                <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&type=<?php echo urlencode($typeFilter); ?>&date_from=<?php echo urlencode($dateFrom); ?>&date_to=<?php echo urlencode($dateTo); ?>"><?php echo $i; ?></a>
-            <?php endif; ?>
-        <?php endfor; ?>
-
-        <?php if ($page < $totalPages): ?>
-            <a href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&type=<?php echo urlencode($typeFilter); ?>&date_from=<?php echo urlencode($dateFrom); ?>&date_to=<?php echo urlencode($dateTo); ?>">下一页 &raquo;</a>
-        <?php endif; ?>
-    </div>
-<?php endif; ?>
 </div>
 
 <!-- 新增交易模态框 -->
 <div id="transactionModal" class="modal">
     <div class="modal-content">
         <span class="close" onclick="closeTransactionModal()">&times;</span>
-        <h2>新增流转记录</h2>
+        <?php if ($message): ?>
+                <div id="messageContainer" style="margin-bottom: 20px;text-align: center;">
+                    <div class="alert alert-<?php echo htmlspecialchars($messageType); ?> alert-dismissible">
+                        <?php echo htmlspecialchars($message); ?>
+                        <button type="button" class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</button>
+                    </div>
+                </div>
+                <?php endif; ?>
+        <h2 style="text-align: center;">新增流转记录</h2>
         <form method="POST">
             <input type="hidden" name="action" value="add_transaction">
 
@@ -390,7 +307,6 @@ ob_start();
 </div>
 
 <script>
-    // 模态框控制
     function openTransactionModal() {
         document.getElementById('transactionModal').style.display = 'block';
     }
@@ -403,6 +319,30 @@ ob_start();
         document.getElementById('scrap_reason').removeAttribute('required');
         document.getElementById('package-info').style.display = 'none';
     }
+
+
+    // 表单验证逻辑
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const requiredFields = form.querySelectorAll('[required]');
+            let isValid = true;
+
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.style.borderColor = '#dc3545';
+                    isValid = false;
+                } else {
+                    field.style.borderColor = '#ddd';
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                alert('请填写所有必填字段');
+            }
+        });
+    });
 
     // 点击模态框外部关闭
     window.onclick = function(event) {
@@ -515,8 +455,8 @@ ob_start();
     // 获取区域类型名称
     function getAreaTypeName(areaType) {
         const areaTypes = {
-            'temporary': '临时区',  //采购未到库的就在临时区
-            'storage': '存储区',    //基本区域，出库入库的基本库对象就是他
+            'temporary': '临时区', //采购未到库的就在临时区
+            'storage': '存储区', //基本区域，出库入库的基本库对象就是他
             'processing': '加工区',
             'scrap': '报废区'
         };
@@ -526,12 +466,38 @@ ob_start();
     // 获取状态名称
     function getStatusName(status) {
         const statuses = {
-            'in_stock': '在库',
-            'out_stock': '出库',
-            'scrapped': '已报废'
+            'in_storage': '库存中',
+            'in_processing': '加工中',
+            'scrapped': '已报废',
+            'used_up': '已用完'
         };
         return statuses[status] || status || '未知';
     }
+    // 页面加载时检查是否需要显示模态框
+    document.addEventListener('DOMContentLoaded', function() {
+                <?php if (isset($showModal) && $showModal): ?>
+                    // 重新打开模态框并填充表单数据
+                    openTransactionModal();
+                    
+                    <?php if (isset($formData)): ?>
+                        // 填充表单数据
+                        <?php foreach ($formData as $field => $value): ?>
+                            <?php if (!empty($value)): ?>
+                                document.getElementById('<?php echo $field; ?>').value = '<?php echo htmlspecialchars($value, ENT_QUOTES); ?>';
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                    
+                    // 如果是报废操作，显示报废原因字段
+                    if (document.getElementById('transaction_type').value === 'scrap') {
+                        toggleScrapReason();
+                    }
+                    
+                    // 如果有包号，自动加载包信息
+                    if (document.getElementById('package_code').value) {
+                        loadPackageInfo();
+                    }
+                <?php endif; ?> });
 </script>
 </div>
 </body>

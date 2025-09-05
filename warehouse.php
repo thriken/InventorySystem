@@ -26,6 +26,7 @@ if (!in_array($base_id, $baseIds)) {
 
 // 获取基地信息
 $baseInfo = fetchRow("SELECT * FROM bases WHERE id = ?", [$base_id]);
+
 // 处理AJAX搜索请求
 if (isset($_GET['ajax']) && $_GET['ajax'] == '1' && isset($_GET['search'])) {
     $searchQuery = trim($_GET['search']);
@@ -48,6 +49,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1' && isset($_GET['search'])) {
         exit;
     }
 }
+
 /**
  * 获取指定基地的库位库存数据
  * @param int $baseId 基地ID
@@ -66,7 +68,11 @@ function getBaseInventoryData($baseId) {
         GROUP_CONCAT(DISTINCT gp.package_code ORDER BY gp.package_code) as package_codes,
         SUM(gp.width * gp.height * gp.pieces / 1000000) as total_area_sqm
     FROM storage_racks sr
-    LEFT JOIN glass_packages gp ON sr.id = gp.current_rack_id AND gp.status = 'in_storage'
+    LEFT JOIN glass_packages gp ON sr.id = gp.current_rack_id 
+        AND (
+            (sr.area_type = 'storage' AND gp.status = 'in_storage') OR
+            (sr.area_type = 'processing' AND gp.status = 'in_processing')
+        )
     LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id
     WHERE sr.base_id = ?
     GROUP BY sr.id, sr.name, sr.area_type
@@ -96,7 +102,7 @@ function getHighlightRacks($baseId, $searchType) {
                   FROM storage_racks sr
                   JOIN glass_packages gp ON sr.id = gp.current_rack_id
                   JOIN glass_types gt ON gp.glass_type_id = gt.id
-                  WHERE sr.base_id = ? AND gp.status = 'in_storage'
+                  WHERE sr.base_id = ? AND (gp.status = 'in_storage' OR  gp.status = 'in_processing')
                   AND (gt.short_name LIKE ? OR gt.color LIKE ? OR gt.thickness LIKE ?)";
     
     $searchParam = '%' . $searchType . '%';
@@ -115,10 +121,14 @@ function getHighlightRacks($baseId, $searchType) {
 function renderRack($rackCode, $rackInventory, $highlightRacks, $rackType = 'storage') {
     $hasInventory = isset($rackInventory[$rackCode]) && $rackInventory[$rackCode]['package_count'] > 0;
     $isHighlighted = in_array($rackCode, $highlightRacks);
-    
-    $html = '<div class="rack ' . $rackType . ($hasInventory ? ' has-inventory' : '') . ($isHighlighted ? ' highlighted' : '') . '" ';
+    // 确定实际的库位类型
+    $actualRackType = $rackType;
+    if (isset($rackInventory[$rackCode]) && $rackInventory[$rackCode]['area_type']) {
+        $actualRackType = $rackInventory[$rackCode]['area_type'];
+    }
+    $html = '<div class="rack ' . $actualRackType . ($hasInventory ? ' has-inventory' : '') . ($isHighlighted ? ' highlighted' : '') . '" ';
     $html .= 'data-rack="' . $rackCode . '" ';
-    
+    $html .= 'data-area-type="' . $actualRackType . '" ';
     if ($hasInventory) {
         $data = $rackInventory[$rackCode];
         $html .= 'data-packages="' . $data['package_count'] . '" ';
@@ -130,9 +140,7 @@ function renderRack($rackCode, $rackInventory, $highlightRacks, $rackType = 'sto
         $html .= 'data-codes="' . htmlspecialchars($data['package_codes']) . '" ';
         $html .= 'data-area="' . number_format($data['total_area_sqm'], 2) . '" ';
     }
-    
     $html .= '>' . $rackCode . '</div>';
-    
     return $html;
 }
 
@@ -345,7 +353,12 @@ ob_start();
             display: flex;
             justify-content: center;
         }
-        
+        .rack.highlighted {
+            background: #ff6b6b !important;
+            border-color: #dc3545 !important;
+            color: white !important;
+            animation: pulse 1.5s infinite;
+        }
         .rack {
             width: 45px;
             height: 55px;
@@ -371,34 +384,37 @@ ob_start();
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
-        
-        .rack.processing {
-            background-color: #fff3cd;
-            border-color: #ffc107;
-            color: #856404;
-            height: 100px;
-        }
-        
         .rack.unused {
             background-color: #f8f9fa;
             border-color: #6c757d;
             color: #6c757d;
             opacity: 0.6;
         }
-        
-        .rack.has-inventory {
-            background-color: #28a745;
-            border-color: #1e7e34;
-            color: white;
-            font-weight: bold;
+
+        .rack.processing {
+            background: rgb(255,255,200);
+            border: 2px solid #ffc107;
+            color: #856404;
+            height: 100px;
+        }        
+        .rack.processing:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .rack.processing.has-inventory {
+            background: linear-gradient(135deg,rgb(255, 255, 100),rgb(252, 123, 18));
+            color: black;
+            font-size: 0.9rem;
+            font-weight: bolder;
             box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
         }
-        
-        .rack.highlighted {
-            background-color: #ff6b6b !important;
-            border-color: #dc3545 !important;
-            color: white !important;
-            animation: pulse 1.5s infinite;
+
+        .rack.storage.has-inventory {
+            background: linear-gradient(135deg,rgb(13, 161, 172),rgb(30, 206, 14));
+            color: white;
+            font-size:  0.9rem;
+            font-weight: bolder;
+            box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
         }
         
         @keyframes pulse {
@@ -812,7 +828,16 @@ ob_start();
                 
                 rack.addEventListener('click', function() {
                     const rackCode = this.dataset.rack;
-                    window.open(`viewer/inventory.php?search=${rackCode}`, '_blank');
+                    const areaType = this.dataset.areaType || 'storage';
+                    
+                    // 根据库位类型决定跳转页面
+                    if (areaType === 'processing') {
+                        // 加工区库位跳转到加工区库存页面
+                        window.open(`viewer/processing_inventory.php?search=${rackCode}`, '_blank');
+                    } else {
+                        // 普通库位跳转到库存查询页面
+                        window.open(`viewer/inventory.php?search=${rackCode}`, '_blank');
+                    }
                 });
             });
         }

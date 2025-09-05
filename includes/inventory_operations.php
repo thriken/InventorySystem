@@ -194,7 +194,7 @@ function processTransaction($packageCode, $targetRackCode, $quantity, $transacti
 {
     // 查询包信息
     $sql = "SELECT gp.*, gt.name as glass_name, gt.thickness, gt.color, gt.brand, gt.manufacturer,
-                   r.code as current_rack_code, r.area_type as current_area_type, b.name as base_name
+                   r.code as current_rack_code, r.area_type as current_area_type, b.name as base_name, r.base_id as current_base_id
             FROM glass_packages gp
             LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id
             LEFT JOIN storage_racks r ON gp.current_rack_id = r.id
@@ -226,11 +226,23 @@ function processTransaction($packageCode, $targetRackCode, $quantity, $transacti
         $fromRack = fetchRow($sql, [$package['current_rack_id']]);
     }
     
+    // ===== 新增：基地权限验证逻辑 =====
+    validateBasePermissions($currentUser, $package, $fromRack, $targetRack, $transactionType);
+    
     // 检查是否为跨基地操作，在备注中添加标识
     if ($fromRack && $fromRack['base_id'] !== $targetRack['base_id']) {
         $baseFromName = $fromRack['base_name'] ?? '未知基地';
         $baseToName = $targetRack['base_name'];
-        $notes = "[基地间流转] {$baseFromName} → {$baseToName}" . ($notes ? " | {$notes}" : '');
+        
+        // 根据目标区域类型判断是否为基地间转移
+        if ($targetRack['area_type'] === 'temporary') {
+            $notes = "[基地间转移] {$baseFromName} → {$baseToName}" . ($notes ? " | {$notes}" : '');
+        } else {
+            $notes = "[基地间流转] {$baseFromName} → {$baseToName}" . ($notes ? " | {$notes}" : '');
+        }
+    } else if ($targetRack['area_type'] === 'temporary' && $transactionType === 'purchase_in') {
+        // 采购入库到临时区的标识
+        $notes = "[采购入库]" . ($notes ? " | {$notes}" : '');
     }
     
     // 验证交易类型
@@ -239,13 +251,13 @@ function processTransaction($packageCode, $targetRackCode, $quantity, $transacti
     // 根据交易类型执行相应操作
     switch ($transactionType) {
         case 'purchase_in':
-            return processPurchaseIn($package, $targetRack, $currentUser);
+            return processPurchaseIn($package, $targetRack, $notes, $currentUser);
         case 'usage_out':
-            return processUsageOut($package, $targetRack, $quantity, $scrapReason, $currentUser);
+            return processUsageOut($package, $targetRack, $quantity, $scrapReason, $notes, $currentUser);
         case 'return_in':
             return processReturnIn($package, $targetRack, $quantity, $notes, $currentUser);
         case 'scrap':
-            return processScrap($package, $targetRack, $quantity, $scrapReason, $currentUser);
+            return processScrap($package, $targetRack, $quantity, $scrapReason, $notes, $currentUser);
         case 'check_in':
         case 'check_out':
             return processInventoryCheck($transactionType, $package, $targetRack, $quantity, $notes, $currentUser);
@@ -322,12 +334,12 @@ function validateTransactionType($transactionType, $package, $fromRack, $targetR
     }
 }
 
-function processPurchaseIn($package, $targetRack, $currentUser)
+function processPurchaseIn($package, $targetRack, $notes, $currentUser)
 {
     // 采购入库：整包入库
     $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-            quantity, actual_usage, operator_id, transaction_time) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+            quantity, actual_usage, notes, operator_id, transaction_time) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
     query($sql, [
         $package['id'],
         'purchase_in',
@@ -335,6 +347,7 @@ function processPurchaseIn($package, $targetRack, $currentUser)
         $targetRack['id'],
         $package['pieces'], // 整包数量
         0, // 采购入库不消耗，actual_usage为0
+        $notes, // 添加 notes 参数
         $currentUser['id']
     ]);
 
@@ -345,15 +358,15 @@ function processPurchaseIn($package, $targetRack, $currentUser)
     return '采购入库操作成功完成！';
 }
 
-function processUsageOut($package, $targetRack, $quantity, $scrapReason, $currentUser)
+function processUsageOut($package, $targetRack, $quantity, $scrapReason, $notes, $currentUser)
 {
     if ($quantity == $package['pieces']) {
         // 整包领用出库
         if ($targetRack['area_type'] === 'scrap') {
             // 直接报废
             $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                    quantity, actual_usage, scrap_reason, operator_id, transaction_time) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                    quantity, actual_usage, scrap_reason, notes, operator_id, transaction_time) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             query($sql, [
                 $package['id'],
                 'usage_out',
@@ -362,6 +375,7 @@ function processUsageOut($package, $targetRack, $quantity, $scrapReason, $curren
                 $quantity,
                 $quantity, // 整包报废，actual_usage等于quantity
                 $scrapReason,
+                $notes, // 添加 notes 参数
                 $currentUser['id']
             ]);
 
@@ -373,8 +387,8 @@ function processUsageOut($package, $targetRack, $quantity, $scrapReason, $curren
         } else {
             // 正常领用出库到加工区
             $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                    quantity, actual_usage, operator_id, transaction_time) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+                    quantity, actual_usage, notes, operator_id, transaction_time) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             query($sql, [
                 $package['id'],
                 'usage_out',
@@ -382,6 +396,7 @@ function processUsageOut($package, $targetRack, $quantity, $scrapReason, $curren
                 $targetRack['id'],
                 $quantity,
                 0, // 领用到加工区，actual_usage暂时为0，等归还时确定
+                $notes, // 添加 notes 参数
                 $currentUser['id']
             ]);
 
@@ -406,8 +421,8 @@ function processUsageOut($package, $targetRack, $quantity, $scrapReason, $curren
 
         // 2. 插入交易记录
         $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                quantity, actual_usage, operator_id, transaction_time) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+                quantity, actual_usage, notes, operator_id, transaction_time) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
         query($sql, [
             $package['id'],
             'partial_usage',
@@ -415,6 +430,7 @@ function processUsageOut($package, $targetRack, $quantity, $scrapReason, $curren
             $targetRack['id'],
             $quantity,
             $quantity, // 部分领用，actual_usage等于领用量
+            $notes, // 添加 notes 参数
             $currentUser['id']
         ]);
 
@@ -638,4 +654,61 @@ function removePackageAndReorder($rackId, $removedPackageId) {
     
     // 重新整理剩余包的位置顺序
     return reorderPackagePositions($rackId);
+}
+
+/**
+ * 验证基地权限
+ * @param array $currentUser 当前用户信息
+ * @param array $package 包信息
+ * @param array|null $fromRack 来源库位信息
+ * @param array $targetRack 目标库位信息
+ * @param string $transactionType 交易类型
+ * @throws Exception 权限不足时抛出异常
+ */
+function validateBasePermissions($currentUser, $package, $fromRack, $targetRack, $transactionType) {
+    $userRole = $currentUser['role'];
+    $userBaseId = $currentUser['base_id'];
+    
+    // 管理员拥有所有权限，跳过检查
+    if ($userRole === 'admin') {
+        return;
+    }
+    
+    // 获取包当前所在基地ID
+    $packageCurrentBaseId = $package['current_base_id'];
+    $targetBaseId = $targetRack['base_id'];
+    
+    // 检查用户是否有权限操作当前包
+    if ($packageCurrentBaseId && $packageCurrentBaseId != $userBaseId) {
+        throw new Exception('权限不足：您只能操作本基地内的原片包');
+    }
+    
+    // 检查目标库位权限
+    if ($userRole === 'operator' || $userRole === 'viewer') {
+        // 操作员和查看者只能在本基地内操作
+        if ($targetBaseId != $userBaseId) {
+            throw new Exception('权限不足：您只能将原片包转移到本基地内的库位');
+        }
+    } else if ($userRole === 'manager') {
+        // 库管可以进行跨基地转移，但只能转移到其他基地的临时区
+        if ($targetBaseId != $userBaseId) {
+            // 跨基地操作，检查目标是否为临时区
+            if ($targetRack['area_type'] !== 'temporary') {
+                throw new Exception('权限不足：跨基地转移只能将原片包转移到目标基地的临时区');
+            }
+            
+            // 检查是否为支持的跨基地操作类型
+            $allowedCrossBaseTypes = ['location_adjust', 'purchase_in'];
+            if (!in_array($transactionType, $allowedCrossBaseTypes)) {
+                throw new Exception('权限不足：不支持的跨基地操作类型');
+            }
+        }
+    }
+    
+    // 特殊检查：从临时区转移到库存区只能由目标基地的库管执行
+    if ($fromRack && $fromRack['area_type'] === 'temporary' && 
+        $targetRack['area_type'] === 'storage' && 
+        $targetBaseId != $userBaseId) {
+        throw new Exception('权限不足：只有目标基地的库管才能将临时区的原片包转移到库存区');
+    }
 }
