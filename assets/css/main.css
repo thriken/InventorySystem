@@ -10,12 +10,10 @@ body {
     background-color: #f5f5f5;
     color: #333;
 }
-
 a {
     text-decoration: none;
-    color: #2196F3;
+    color:#000000;
 }
-
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -369,39 +367,6 @@ textarea:focus {
         transform: translateY(0);
         opacity: 1;
     }
-}
-
-/* ========================================
-   分页样式
-   ======================================== */
-.pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0;
-    gap: 5px;
-}
-
-.pagination a,
-.pagination span {
-    display: inline-block;
-    padding: 8px 12px;
-    margin: 0 2px;
-    text-decoration: none;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    color: #333;
-}
-
-.pagination a:hover {
-    background-color: #f5f5f5;
-    border-color: #999;
-}
-
-.pagination .current {
-    background-color: #2196F3;
-    color: white;
-    border-color: #2196F3;
 }
 
 /* ========================================

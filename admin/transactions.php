@@ -188,7 +188,7 @@ ob_start();
 </div>
 <!-- 交易记录表格 -->
 <div class="table-container">
-    <table id="transactions" class="table data-table" data-table="transactions">
+    <table id="transactions" class="" data-table="transactions">
         <thead>
             <tr>
                 <th>交易时间</th>
