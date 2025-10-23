@@ -17,7 +17,6 @@ if ($currentUser['base_id']) {
 }
 
 // 获取查询参数
-
 $baseId = $_GET['base_id'] ?? '';
 $glassTypeId = $_GET['glass_type_id'] ?? '';
 $packageCode = $_GET['package_code'] ?? '';
@@ -26,24 +25,20 @@ $packageCode = $_GET['package_code'] ?? '';
 $whereConditions = [];
 $params = [];
 
-$whereConditions[] = "it.transaction_type = 'usage_out'";
-$whereConditions[] = "sr_to.area_type = 'processing'";
+$whereConditions[] = "sr.area_type = 'processing'";
+$whereConditions[] = "gp.status = 'in_processing'";
 
-// 基地筛选
+// 基地筛选 - 管理员可以手动筛选，非管理员只能看到自己基地的数据
 if (!empty($baseId)) {
-    $whereConditions[] = "sr_to.base_id = ?";
+    // 如果有选择基地，则按选择的基地筛选
+    $whereConditions[] = "sr.base_id = ?";
     $params[] = $baseId;
+} elseif (!isAdmin($currentUser) && $currentUser['base_id']) {
+    // 非管理员且有基地限制，则只能看到自己基地的数据
+    $whereConditions[] = "sr.base_id = ?";
+    $params[] = $currentUser['base_id'];
 }
-
-// 原片类型筛选
-if (!empty($glassTypeId)) {
-    $whereConditions[] = "gp.glass_type_id = ?";
-    $params[] = $glassTypeId;
-}
-
-$whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
-
-// 修改查询逻辑，显示当前在加工区的所有包（未归还的）
+// 构建SQL查询
 $sql = "SELECT 
             gp.package_code,
             gt.name as glass_name,
@@ -72,11 +67,12 @@ $sql = "SELECT
             )
         ) latest_op ON gp.id = latest_op.package_id
         LEFT JOIN users u ON latest_op.operator_id = u.id
-        WHERE sr.area_type = 'processing'
-        AND gp.status = 'in_processing'
-        ORDER BY gp.updated_at DESC";
+        WHERE " . implode(' AND ', $whereConditions);
 
-$processingInventory = fetchAll($sql);
+// 添加排序
+$sql .= " ORDER BY gp.updated_at DESC";
+
+$processingInventory = fetchAll($sql, $params);
 
 // 获取基地列表
 $bases = fetchAll("SELECT id, name FROM bases ORDER BY name");
@@ -94,9 +90,9 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
     <title>加工区库存 - <?php echo APP_NAME; ?></title>
     <link rel="stylesheet" href="../assets/css/main.css">
     <style>
+        /* 特定页面布局 */
         .viewer-layout {
             min-height: 100vh;
-            background-color: #f5f5f5;
         }
 
         /* 统一头部样式 */
@@ -126,12 +122,6 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
             font-size: 24px;
             font-weight: bold;
             margin: 0;
-        }
-
-        .page-title {
-            font-size: 18px;
-            margin: 0;
-            opacity: 0.9;
         }
 
         .header-right {
@@ -204,28 +194,12 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
             flex-wrap: wrap;
         }
 
+        /* 覆盖 main.css 中的 form-group 样式 */
         .form-group {
             flex: 1;
             min-width: 140px;
             max-width: 200px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #333;
-            font-size: 14px;
-        }
-
-        .form-group select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            height: 38px;
-            box-sizing: border-box;
+            margin-bottom: 0;
         }
 
         .inventory-table {
@@ -233,23 +207,6 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th,
-        td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-
-        th {
-            background: #f8f9fa;
-            font-weight: bold;
         }
 
         .processing-badge {
@@ -307,6 +264,13 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
             }
         }
     </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+    <script src="../assets/js/datatable-config.js"></script>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="../assets/css/datatable-theme.css">
 </head>
 
 <body>
@@ -315,7 +279,7 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
         <header class="viewer-header">
             <div class="header-content">
                 <div class="header-left">
-                    <h1 class="system-title"><?php echo APP_NAME; ?></h1>
+                    <h1 class="system-title"><?php echo APP_NAME; ?> - 加工区库存</h1>
                 </div>
                 <div class="header-right">
                     <nav class="nav-links">
@@ -355,17 +319,7 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
                                 </select>
                             </div>
 
-                            <div class="form-group">
-                                <label for="glass_type_id">原片类型</label>
-                                <select id="glass_type_id" name="glass_type_id">
-                                    <option value="">全部类型</option>
-                                    <?php foreach ($glassTypes as $type): ?>
-                                        <option value="<?php echo $type['id']; ?>" <?php echo $glassTypeId == $type['id'] ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($type['name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+
                             <div class="form-group" style="display: flex; align-items: end;">
                                 <button type="submit" class="btn btn-primary">查询</button>
                             </div>
@@ -373,8 +327,8 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
                     </form>
                 </div>
 
-                <div class="inventory-table">
-                    <table>
+                <div class="inventory-table" id="processingInventoryTableContainer">
+                    <table id="processingInventoryTable" data-table="processingInventoryTable">
                         <thead>
                             <tr>
                                 <th>包号</th>
@@ -424,6 +378,21 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
             </div>
         </div>
     </div>
+    <script>
+$(document).ready(function() {
+    // 初始化DataTable
+    const table = $('#processingInventoryTable').DataTable();
+    
+    // 获取URL中的search参数
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchValue = urlParams.get('search');
+    
+    // 如果search参数存在，自动应用到DataTable搜索框
+    if (searchValue) {
+        table.search(searchValue).draw();
+    }
+});
+</script>
 </body>
 
 </html>

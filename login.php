@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             left: 0;
             width: 100%;
             background-color: #f5f5f5;
-            padding: 10px 0;
+            padding: 1rem 0;
             text-align: center;
         }
     </style>
@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     <div id="footer">
         <p><a href="/down.html">安卓客户端下载</a></p>
-        <p>&copy; 2025 <?php echo APP_NAME; ?>  版本 <?php echo APP_VERSION; ?> 版权所有</p>
+        <p>&copy; 2025 <?php echo APP_NAME; ?>  版本 <?php echo APP_VERSION; ?> 版权所有 <a href="https://beian.miit.gov.cn/" target="_blank">蜀ICP备2025164203号-1</a></p>
     </div>
 </body>
 </html>

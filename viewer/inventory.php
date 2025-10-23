@@ -7,7 +7,7 @@ require_once '../includes/db.php';
 // 要求用户登录
 requireLogin();
 // 检查是否为viewer角色
-requireRole(['viewer', 'admin', 'manager']);
+requireRole(['viewer', 'admin', 'manager', 'operator']);
 // 获取当前用户信息
 $currentUser = getCurrentUser();
 // 获取基地信息
@@ -274,5 +274,20 @@ foreach ($packages as $package) {
             </div>
         </div>
     </div>
+    <script>
+$(document).ready(function() {
+    // 初始化DataTable
+    const table = $('#inventoryTable').DataTable();
+    
+    // 获取URL中的search参数
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchValue = urlParams.get('search');
+    
+    // 如果search参数存在，自动应用到DataTable搜索框
+    if (searchValue) {
+        table.search(searchValue).draw();
+    }
+});
+</script>
 </body>
 </html>

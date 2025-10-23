@@ -8,7 +8,7 @@ require_once '../includes/db.php';
 requireLogin();
 
 // 检查是否为viewer角色
-requireRole(['viewer']);
+requireRole(['viewer','operator']);
 
 // 获取当前用户信息
 $currentUser = getCurrentUser();
