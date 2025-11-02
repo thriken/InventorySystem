@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>认证接口文档 - 原片管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .nav {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+            transition: opacity 0.3s ease;
+        }
+        
+        .nav a:hover {
+            opacity: 0.8;
+        }
+        
+        .content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .api-section {
+            margin-bottom: 40px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 30px;
+        }
+        
+        .api-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .api-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .method-badge {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .endpoint {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .description {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+        
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #f9f9f9;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .param-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .param-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .param-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .code-block .comment {
+            color: #6272a4;
+        }
+        
+        .code-block .string {
+            color: #f1fa8c;
+        }
+        
+        .code-block .number {
+            color: #bd93f9;
+        }
+        
+        .code-block .key {
+            color: #ff79c6;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .back-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .example-tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .example-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-weight: bold;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+        
+        .example-tab.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .example-content {
+            display: none;
+        }
+        
+        .example-content.active {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .api-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .method-badge {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 认证接口文档</h1>
+            <p>用户登录验证和令牌管理功能</p>
+        </div>
+        
+        <div class="nav">
+            <a href="index.html">🏠 首页</a>
+            <a href="packages.html">📦 包信息接口</a>
+            <a href="racks.html">🏗️ 库位架接口</a>
+            <a href="scan.html">📱 扫描操作接口</a>
+            <a href="apicommon.html">🔧 工具类文档</a>
+        </div>
+        
+        <div class="content">
+            <div class="api-section">
+                <div class="api-header">
+                    <span class="method-badge">POST</span>
+                    <span class="endpoint">/api/auth.php</span>
+                </div>
+                
+                <div class="description">
+                    用户登录接口，验证用户身份并返回认证令牌。
+                </div>
+                
+                <h3>请求参数</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>参数名</th>
+                            <th>类型</th>
+                            <th>必填</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>username</td>
+                            <td>string</td>
+                            <td>是</td>
+                            <td>用户名</td>
+                        </tr>
+                        <tr>
+                            <td>password</td>
+                            <td>string</td>
+                            <td>是</td>
+                            <td>密码</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>请求示例</h3>
+                <div class="code-block">
+<span class="comment">// 请求头</span><br>
+Content-Type: application/json<br>
+<br>
+<span class="comment">// 请求体</span><br>
+{
+    <span class="key">"username"</span>: <span class="string">"admin"</span>,
+    <span class="key">"password"</span>: <span class="string">"123456"</span>
+}
+                </div>
+                
+                <h3>响应示例</h3>
+                <div class="code-block">
+{
+    <span class="key">"code"</span>: <span class="number">200</span>,
+    <span class="key">"message"</span>: <span class="string">"登录成功"</span>,
+    <span class="key">"timestamp"</span>: <span class="number">1698758400</span>,
+    <span class="key">"data"</span>: {
+        <span class="key">"token"</span>: <span class="string">"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."</span>,
+        <span class="key">"user"</span>: {
+            <span class="key">"id"</span>: <span class="number">1</span>,
+            <span class="key">"username"</span>: <span class="string">"admin"</span>,
+            <span class="key">"name"</span>: <span class="string">"管理员"</span>,
+            <span class="key">"role"</span>: <span class="string">"admin"</span>,
+            <span class="key">"base_id"</span>: <span class="number">1</span>
+        }
+    }
+}
+                </div>
+                
+                <h3>错误响应</h3>
+                <div class="code-block">
+{
+    <span class="key">"code"</span>: <span class="number">401</span>,
+    <span class="key">"message"</span>: <span class="string">"用户名或密码错误"</span>,
+    <span class="key">"timestamp"</span>: <span class="number">1698758400</span>
+}
+                </div>
+            </div>
+            
+            <div class="api-section">
+                <div class="api-header">
+                    <span class="method-badge">GET</span>
+                    <span class="endpoint">/api/auth.php</span>
+                </div>
+                
+                <div class="description">
+                    检查登录状态，验证令牌有效性并返回用户信息。
+                </div>
+                
+                <h3>请求头</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>参数名</th>
+                            <th>值</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Authorization</td>
+                            <td>Bearer {token}</td>
+                            <td>认证令牌</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>请求示例</h3>
+                <div class="code-block">
+<span class="comment">// 请求头</span><br>
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                </div>
+                
+                <h3>响应示例</h3>
+                <div class="code-block">
+{
+    <span class="key">"code"</span>: <span class="number">200</span>,
+    <span class="key">"message"</span>: <span class="string">"用户已登录"</span>,
+    <span class="key">"timestamp"</span>: <span class="number">1698758400</span>,
+    <span class="key">"data"</span>: {
+        <span class="key">"user"</span>: {
+            <span class="key">"id"</span>: <span class="number">1</span>,
+            <span class="key">"username"</span>: <span class="string">"admin"</span>,
+            <span class="key">"name"</span>: <span class="string">"管理员"</span>,
+            <span class="key">"role"</span>: <span class="string">"admin"</span>,
+            <span class="key">"base_id"</span>: <span class="number">1</span>
+        }
+    }
+}
+                </div>
+                
+                <h3>错误响应</h3>
+                <div class="code-block">
+{
+    <span class="key">"code"</span>: <span class="number">401</span>,
+    <span class="key">"message"</span>: <span class="string">"令牌无效或已过期"</span>,
+    <span class="key">"timestamp"</span>: <span class="number">1698758400</span>
+}
+                </div>
+            </div>
+            
+            <div class="api-section">
+                <h3>使用示例</h3>
+                
+                <div class="example-tabs">
+                    <button class="example-tab active" onclick="showExample('js')">JavaScript</button>
+                    <button class="example-tab" onclick="showExample('python')">Python</button>
+                    <button class="example-tab" onclick="showExample('curl')">cURL</button>
+                </div>
+                
+                <div id="js-example" class="example-content active">
+                    <div class="code-block">
+<span class="comment">// 用户登录</span><br>
+async function login(username, password) {<br>
+    const response = await fetch('/api/auth.php', {<br>
+        method: 'POST',<br>
+        headers: {<br>
+            'Content-Type': 'application/json'<br>
+        },<br>
+        body: JSON.stringify({ username, password })<br>
+    });<br>
+    <br>
+    const data = await response.json();<br>
+    if (data.code === 200) {<br>
+        localStorage.setItem('token', data.data.token);<br>
+        console.log('登录成功:', data.data.user);<br>
+        return data.data;<br>
+    } else {<br>
+        throw new Error(data.message);<br>
+    }<br>
+}<br>
+<br>
+<span class="comment">// 检查登录状态</span><br>
+async function checkLogin() {<br>
+    const token = localStorage.getItem('token');<br>
+    if (!token) return null;<br>
+    <br>
+    const response = await fetch('/api/auth.php', {<br>
+        method: 'GET',<br>
+        headers: {<br>
+            'Authorization': 'Bearer ' + token<br>
+        }<br>
+    });<br>
+    <br>
+    const data = await response.json();<br>
+    if (data.code === 200) {<br>
+        return data.data.user;<br>
+    } else {<br>
+        localStorage.removeItem('token');<br>
+        return null;<br>
+    }<br>
+}
+                    </div>
+                </div>
+                
+                <div id="python-example" class="example-content">
+                    <div class="code-block">
+<span class="comment"># 用户登录</span><br>
+import requests<br>
+<br>
+def login(username, password):<br>
+    response = requests.post(<br>
+        'http://your-domain.com/api/auth.php',<br>
+        json={'username': username, 'password': password}<br>
+    )<br>
+    data = response.json()<br>
+    if data['code'] == 200:<br>
+        return data['data']<br>
+    else:<br>
+        raise Exception(data['message'])<br>
+<br>
+<span class="comment"># 检查登录状态</span><br>
+def check_login(token):<br>
+    headers = {'Authorization': f'Bearer {token}'}<br>
+    response = requests.get(<br>
+        'http://your-domain.com/api/auth.php',<br>
+        headers=headers<br>
+    )<br>
+    data = response.json()<br>
+    if data['code'] == 200:<br>
+        return data['data']['user']<br>
+    else:<br>
+        return None
+                    </div>
+                </div>
+                
+                <div id="curl-example" class="example-content">
+                    <div class="code-block">
+<span class="comment"># 用户登录</span><br>
+curl -X POST \<br>
+  -H "Content-Type: application/json" \<br>
+  -d '{"username":"admin","password":"123456"}' \<br>
+  http://your-domain.com/api/auth.php<br>
+<br>
+<span class="comment"># 检查登录状态</span><br>
+curl -X GET \<br>
+  -H "Authorization: Bearer your-token-here" \<br>
+  http://your-domain.com/api/auth.php
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-section">
+                <h3>错误码说明</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>错误码</th>
+                            <th>描述</th>
+                            <th>解决方案</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>200</td>
+                            <td>操作成功</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>400</td>
+                            <td>请求参数错误</td>
+                            <td>检查请求参数是否完整</td>
+                        </tr>
+                        <tr>
+                            <td>401</td>
+                            <td>认证失败</td>
+                            <td>检查用户名密码或令牌有效性</td>
+                        </tr>
+                        <tr>
+                            <td>404</td>
+                            <td>用户不存在</td>
+                            <td>检查用户名是否正确</td>
+                        </tr>
+                        <tr>
+                            <td>405</td>
+                            <td>请求方法不允许</td>
+                            <td>使用正确的HTTP方法</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <a href="index.html" class="back-btn">← 返回首页</a>
+        </div>
+    </div>
+    
+    <script>
+        function showExample(lang) {
+            // 隐藏所有示例内容
+            document.querySelectorAll('.example-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 移除所有标签的active类
+            document.querySelectorAll('.example-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 显示选中的示例内容
+            document.getElementById(lang + '-example').classList.add('active');
+            
+            // 为选中的标签添加active类
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

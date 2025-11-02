@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApiCommon工具类文档 - 原片管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .nav {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .nav a {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 0 10px;
+            transition: background 0.3s ease;
+        }
+        
+        .nav a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        
+        .section h3 {
+            color: #555;
+            margin: 25px 0 15px 0;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .method-info {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .method-info h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        .param-table th, .param-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        .param-table th {
+            background: #f0f0f0;
+            font-weight: bold;
+        }
+        
+        .param-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .example {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .example h4 {
+            color: #4caf50;
+            margin-bottom: 10px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 ApiCommon工具类文档</h1>
+            <p>统一认证和响应处理工具类 - 版本 2.0</p>
+        </div>
+        
+        <div class="nav">
+            <a href="index.html">🏠 首页</a>
+            <a href="auth.html">🔐 认证接口</a>
+            <a href="packages.html">📦 包信息接口</a>
+            <a href="racks.html">🏗️ 库位架接口</a>
+            <a href="scan.html">📱 扫描操作接口</a>
+        </div>
+        
+        <div class="content">
+            <div class="section">
+                <h2>📋 概述</h2>
+                <p><span class="status-badge">✅ 已实现</span> ApiCommon.php 是为原片管理系统API提供统一认证和响应处理的核心工具类。</p>
+                
+                <div class="example">
+                    <h4>🎯 主要功能</h4>
+                    <ul>
+                        <li><strong>统一认证机制</strong>：所有API使用相同的认证流程</li>
+                        <li><strong>标准化响应格式</strong>：统一的JSON响应结构</li>
+                        <li><strong>预检请求处理</strong>：自动处理CORS预检请求</li>
+                        <li><strong>错误处理</strong>：一致的错误响应机制</li>
+                        <li><strong>代码复用</strong>：消除重复的认证和响应代码</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>🔧 核心方法</h2>
+                
+                <div class="method-info">
+                    <h4>📤 setHeaders() - 设置响应头</h4>
+                    <p><strong>功能</strong>：设置统一的HTTP响应头，包括CORS支持。</p>
+                    <div class="code-block">
+ApiCommon::setHeaders();
+                    </div>
+                </div>
+                
+                <div class="method-info">
+                    <h4>🔄 handlePreflight() - 处理预检请求</h4>
+                    <p><strong>功能</strong>：自动处理OPTIONS预检请求。</p>
+                    <div class="code-block">
+ApiCommon::handlePreflight();
+                    </div>
+                </div>
+                
+                <div class="method-info">
+                    <h4>🔐 authenticate() - 统一认证</h4>
+                    <p><strong>功能</strong>：验证Bearer Token并返回当前用户信息。</p>
+                    <div class="code-block">
+$currentUser = ApiCommon::authenticate();
+                    </div>
+                    <p><strong>返回值</strong>：成功返回用户信息数组，失败自动发送401响应。</p>
+                </div>
+                
+                <div class="method-info">
+                    <h4>📨 sendResponse() - 发送响应</h4>
+                    <p><strong>功能</strong>：发送标准化的JSON响应。</p>
+                    <div class="code-block">
+ApiCommon::sendResponse(200, '操作成功', $data);
+                    </div>
+                    <table class="param-table">
+                        <tr>
+                            <th>参数</th>
+                            <th>类型</th>
+                            <th>说明</th>
+                        </tr>
+                        <tr>
+                            <td>code</td>
+                            <td>int</td>
+                            <td>HTTP状态码</td>
+                        </tr>
+                        <tr>
+                            <td>message</td>
+                            <td>string</td>
+                            <td>响应消息</td>
+                        </tr>
+                        <tr>
+                            <td>data</td>
+                            <td>mixed</td>
+                            <td>响应数据（可选）</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="method-info">
+                    <h4>🔍 getBearerToken() - 获取Token</h4>
+                    <p><strong>功能</strong>：从请求头中提取Bearer Token。</p>
+                    <div class="code-block">
+$token = ApiCommon::getBearerToken();
+                    </div>
+                </div>
+                
+                <div class="method-info">
+                    <h4>✅ validateApiToken() - 验证Token</h4>
+                    <p><strong>功能</strong>：验证Token的有效性。</p>
+                    <div class="code-block">
+$isValid = ApiCommon::validateApiToken($token);
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>🚀 使用示例</h2>
+                
+                <div class="example">
+                    <h4>📝 完整的API实现示例</h4>
+                    <div class="code-block">
+<?php
+require_once '../config/config.php';
+require_once '../includes/db.php';
+require_once '../includes/functions.php';
+require_once 'ApiCommon.php';
+
+// 设置响应头和处理预检请求
+ApiCommon::setHeaders();
+ApiCommon::handlePreflight();
+
+// 验证Token认证
+$currentUser = ApiCommon::authenticate();
+
+// 处理业务逻辑
+try {
+    // 业务代码...
+    $data = ['result' => 'success'];
+    
+    // 发送成功响应
+    ApiCommon::sendResponse(200, '操作成功', $data);
+    
+} catch (Exception $e) {
+    // 发送错误响应
+    ApiCommon::sendResponse(500, '服务器错误: ' . $e->getMessage());
+}
+?>
+                    </div>
+                </div>
+                
+                <div class="example">
+                    <h4>📊 响应格式示例</h4>
+                    <div class="code-block">
+{
+    "code": 200,
+    "message": "操作成功",
+    "timestamp": 1698765432,
+    "data": {
+        "id": 1,
+        "name": "示例数据"
+    }
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>🎯 优化效果</h2>
+                
+                <div class="example">
+                    <h4>✅ 已完成优化</h4>
+                    <ul>
+                        <li><strong>代码冗余消除</strong>：移除了重复的认证和响应函数</li>
+                        <li><strong>维护性提升</strong>：统一的认证机制便于后续维护</li>
+                        <li><strong>安全性增强</strong>：一致的认证流程</li>
+                        <li><strong>使用简化</strong>：API调用更加简洁明了</li>
+                    </ul>
+                </div>
+                
+                <div class="example">
+                    <h4>📈 性能提升</h4>
+                    <ul>
+                        <li>减少代码重复，提高开发效率</li>
+                        <li>统一错误处理，便于问题排查</li>
+                        <li>标准化响应格式，便于前端处理</li>
+                        <li>简化认证流程，减少维护成本</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 原片管理系统 API文档 | ApiCommon工具类 | 版本 2.0 | 最后更新: 2025-11-01</p>
+        </div>
+    </div>
+</body>
+</html>

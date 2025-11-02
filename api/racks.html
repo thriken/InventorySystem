@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库位架接口文档 - 原片管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .nav {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+            transition: opacity 0.3s ease;
+        }
+        
+        .nav a:hover {
+            opacity: 0.8;
+        }
+        
+        .content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .api-section {
+            margin-bottom: 40px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 30px;
+        }
+        
+        .api-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .api-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .method-badge {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .endpoint {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .description {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+        
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #f9f9f9;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .param-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .param-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .param-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .code-block .comment {
+            color: #6272a4;
+        }
+        
+        .code-block .string {
+            color: #f1fa8c;
+        }
+        
+        .code-block .number {
+            color: #bd93f9;
+        }
+        
+        .code-block .key {
+            color: #ff79c6;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .back-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .example-tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .example-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-weight: bold;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+        
+        .example-tab.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .example-content {
+            display: none;
+        }
+        
+        .example-content.active {
+            display: block;
+        }
+        
+        .data-structure {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .data-structure h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .data-field {
+            margin-bottom: 10px;
+            padding-left: 15px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .data-field .field-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .data-field .field-type {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .data-field .field-desc {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .api-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .method-badge {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ 库位架接口文档</h1>
+            <p>库位架信息的查询和管理功能</p>
+        </div>
+        
+        <div class="nav">
+            <a href="index.html">🏠 首页</a>
+            <a href="auth.html">🔐 认证接口</a>
+            <a href="packages.html">📦 包信息接口</a>
+            <a href="scan.html">📱 扫描操作接口</a>
+            <a href="apicommon.html">🔧 工具类文档</a>
+        </div>
+        
+        <div class="content">
+            <div class="api-section">
+                <div class="api-header">
+                    <span class="method-badge">GET</span>
+                    <span class="endpoint">/api/racks.php</span>
+                </div>
+                
+                <div class="description">
+                    获取库位架信息列表，支持按基地、区域类型和状态筛选，包含包数量统计功能。
+                </div>
+                
+                <h3>查询参数</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>参数名</th>
+                            <th>类型</th>
+                            <th>必填</th>
+                            <th>描述</th>
+                            <th>示例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>base_id</td>
+                            <td>int</td>
+                            <td>否</td>
+                            <td>基地ID精确查询</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>area_type</td>
+                            <td>string</td>
+                            <td>否</td>
+                            <td>区域类型查询<br>可选值: storage, processing, scrap, temporary</td>
+                            <td>storage</td>
+                        </tr>
+                        <tr>
+                            <td>status</td>
+                            <td>string</td>
+                            <td>否</td>
+                            <td>状态查询<br>可选值: normal, maintenance, full</td>
+                            <td>normal</td>
+                        </tr>
+                        <tr>
+                            <td>page</td>
+                            <td>int</td>
+                            <td>否</td>
+                            <td>页码，默认1</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>page_size</td>
+                            <td>int</td>
+                            <td>否</td>
+                            <td>每页数量，默认20，最大100</td>
+                            <td>20</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>请求示例</h3>
+                <div class="code-block">
+<span class="comment">// 请求头</span><br>
+Authorization: Bearer your-token-here<br>
+<br>
+<span class="comment">// 查询特定基地的库位架</span><br>
+GET /api/racks.php?base_id=1&page=1&page_size=20<br>
+<br>
+<span class="comment">// 查询库存区的库位架</span><br>
+GET /api/racks.php?area_type=storage&status=normal<br>
+<br>
+<span class="comment">// 查询所有正常状态的库位架</span><br>
+GET /api/racks.php?status=normal&page=1&page_size=50
+                </div>
+                
+                <h3>响应示例</h3>
+                <div class="code-block">
+{
+    <span class="key">"code"</span>: <span class="number">200</span>,
+    <span class="key">"message"</span>: <span class="string">"获取成功"</span>,
+    <span class="key">"timestamp"</span>: <span class="number">1698765432</span>,
+    <span class="key">"data"</span>: {
+        <span class="key">"racks"</span>: [
+            {
+                <span class="key">"id"</span>: <span class="number">1</span>,
+                <span class="key">"base_id"</span>: <span class="number">1</span>,
+                <span class="key">"base_name"</span>: <span class="string">"总部基地"</span>,
+                <span class="key">"code"</span>: <span class="string">"R001"</span>,
+                <span class="key">"name"</span>: <span class="string">"A区货架"</span>,
+                <span class="key">"area_type"</span>: <span class="string">"storage"</span>,
+                <span class="key">"area_type_name"</span>: <span class="string">"库存区"</span>,
+                <span class="key">"capacity"</span>: <span class="number">100</span>,
+                <span class="key">"status"</span>: <span class="string">"normal"</span>,
+                <span class="key">"status_name"</span>: <span class="string">"正常"</span>,
+                <span class="key">"package_count"</span>: <span class="number">25</span>,
+                <span class="key">"total_pieces"</span>: <span class="number">2500</span>,
+                <span class="key">"created_at"</span>: <span class="string">"2024-01-15 10:00:00"</span>,
+                <span class="key">"updated_at"</span>: <span class="string">"2024-01-15 10:00:00"</span>
+            }
+        ],
+        <span class="key">"pagination"</span>: {
+            <span class="key">"page"</span>: <span class="number">1</span>,
+            <span class="key">"page_size"</span>: <span class="number">20</span>,
+            <span class="key">"total"</span>: <span class="number">50</span>,
+            <span class="key">"total_pages"</span>: <span class="number">3</span>
+        }
+    }
+}
+                </div>
+                
+                <h3>数据结构说明</h3>
+                
+                <div class="data-structure">
+                    <h4>Rack 对象</h4>
+                    <div class="data-field">
+                        <span class="field-name">id</span> <span class="field-type">(int)</span>
+                        <div class="field-desc">库位架的唯一标识符</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">base_id</span> <span class="field-type">(int)</span>
+                        <div class="field-desc">所属基地ID</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">base_name</span> <span class="field-type">(string)</span>
+                        <div class="field-desc">所属基地名称</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">code</span> <span class="field-type">(string)</span>
+                        <div class="field-desc">库位架编号</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">name</span> <span class="field-type">(string)</span>
+                        <div class="field-desc">库位架名称</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">area_type</span> <span class="field-type">(string)</span>
+                        <div class="field-desc">区域类型：storage, processing, scrap, temporary</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">area_type_name</span> <span class="field-type">(string)</span>
+                        <div class="field-desc">区域类型中文名称</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">capacity</span> <span class="field-type">(int)</span>
+                        <div class="field-desc">库位架容量</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">status</span> <span class="field-type">(string)</span>
+                        <div class="field-desc">状态：normal, maintenance, full</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">status_name</span> <span class="field-type">(string)</span>
+                        <div class="field-desc">状态中文名称</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">package_count</span> <span class="field-type">(int)</span>
+                        <div class="field-desc">当前包数量</div>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">total_pieces</span> <span class="field-type">(int)</span>
+                        <div class="field-desc">总片数</div>
+                    </div>
+                </div>
+                
+                <h3>使用示例</h3>
+                
+                <div class="example-tabs">
+                    <button class="example-tab active" onclick="showExample('js')">JavaScript</button>
+                    <button class="example-tab" onclick="showExample('python')">Python</button>
+                    <button class="example-tab" onclick="showExample('curl')">cURL</button>
+                </div>
+                
+                <div id="js-example" class="example-content active">
+                    <div class="code-block">
+<span class="comment">// 获取库位架列表</span><br>
+async function getRacks(params = {}) {<br>
+    const token = localStorage.getItem('token');<br>
+    const queryParams = new URLSearchParams(params).toString();<br>
+    <br>
+    const response = await fetch(`/api/racks.php?${queryParams}`, {<br>
+        method: 'GET',<br>
+        headers: {<br>
+            'Authorization': 'Bearer ' + token<br>
+        }<br>
+    });<br>
+    <br>
+    const data = await response.json();<br>
+    if (data.code === 200) {<br>
+        return data.data;<br>
+    } else {<br>
+        throw new Error(data.message);<br>
+    }<br>
+}<br>
+<br>
+<span class="comment">// 使用示例</span><br>
+const racks = await getRacks({<br>
+    base_id: 1,<br>
+    area_type: 'storage',<br>
+    page: 1,<br>
+    page_size: 20<br>
+});<br>
+console.log('获取到的库位架列表:', racks.racks);
+                    </div>
+                </div>
+                
+                <div id="python-example" class="example-content">
+                    <div class="code-block">
+<span class="comment"># 获取库位架列表</span><br>
+import requests<br>
+<br>
+def get_racks(token, **params):<br>
+    headers = {'Authorization': f'Bearer {token}'}<br>
+    response = requests.get(<br>
+        'http://your-domain.com/api/racks.php',<br>
+        headers=headers,<br>
+        params=params<br>
+    )<br>
+    data = response.json()<br>
+    if data['code'] == 200:<br>
+        return data['data']<br>
+    else:<br>
+        raise Exception(data['message'])<br>
+<br>
+<span class="comment"># 使用示例</span><br>
+token = "your-token-here"<br>
+racks = get_racks(token, base_id=1, area_type='storage', page=1, page_size=20)
+                    </div>
+                </div>
+                
+                <div id="curl-example" class="example-content">
+                    <div class="code-block">
+<span class="comment"># 获取库位架列表</span><br>
+curl -X GET \<br>
+  -H "Authorization: Bearer your-token-here" \<br>
+  "http://your-domain.com/api/racks.php?base_id=1&area_type=storage&page=1&page_size=20"
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-section">
+                <h3>错误码说明</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>错误码</th>
+                            <th>描述</th>
+                            <th>解决方案</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>200</td>
+                            <td>请求成功</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>401</td>
+                            <td>认证失败</td>
+                            <td>检查令牌有效性</td>
+                        </tr>
+                        <tr>
+                            <td>405</td>
+                            <td>请求方法不允许</td>
+                            <td>使用GET方法</td>
+                        </tr>
+                        <tr>
+                            <td>500</td>
+                            <td>服务器内部错误</td>
+                            <td>联系系统管理员</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="api-section">
+                <h3>使用建议</h3>
+                <ul style="color: #666; margin-left: 20px;">
+                    <li><strong>基地筛选</strong>：按基地查询可快速定位特定区域的库位架</li>
+                    <li><strong>区域类型</strong>：根据业务需求筛选不同功能区域的库位架</li>
+                    <li><strong>状态监控</strong>：通过状态筛选可及时发现需要维护的库位架</li>
+                    <li><strong>包数量统计</strong>：package_count和total_pieces字段帮助了解库位架使用情况</li>
+                    <li><strong>容量管理</strong>：结合capacity字段进行库位架容量规划</li>
+                </ul>
+            </div>
+            
+            <div class="api-section">
+                <h3>区域类型说明</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>区域类型</th>
+                            <th>英文标识</th>
+                            <th>中文名称</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>库存区</td>
+                            <td>storage</td>
+                            <td>库存区</td>
+                            <td>用于存放正常库存的原片包</td>
+                        </tr>
+                        <tr>
+                            <td>加工区</td>
+                            <td>processing</td>
+                            <td>加工区</td>
+                            <td>用于存放正在加工的原片包</td>
+                        </tr>
+                        <tr>
+                            <td>报废区</td>
+                            <td>scrap</td>
+                            <td>报废区</td>
+                            <td>用于存放已报废的原片包</td>
+                        </tr>
+                        <tr>
+                            <td>临时区</td>
+                            <td>temporary</td>
+                            <td>临时区</td>
+                            <td>用于临时存放的原片包</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="api-section">
+                <h3>状态说明</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>状态</th>
+                            <th>英文标识</th>
+                            <th>中文名称</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>正常</td>
+                            <td>normal</td>
+                            <td>正常</td>
+                            <td>库位架正常可用</td>
+                        </tr>
+                        <tr>
+                            <td>维护中</td>
+                            <td>maintenance</td>
+                            <td>维护中</td>
+                            <td>库位架正在维护，暂时不可用</td>
+                        </tr>
+                        <tr>
+                            <td>已满</td>
+                            <td>full</td>
+                            <td>已满</td>
+                            <td>库位架已满，无法存放更多原片包</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <a href="index.html" class="back-btn">← 返回首页</a>
+        </div>
+    </div>
+    
+    <script>
+        function showExample(lang) {
+            // 隐藏所有示例内容
+            document.querySelectorAll('.example-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 移除所有标签的active类
+            document.querySelectorAll('.example-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 显示选中的示例内容
+            document.getElementById(lang + '-example').classList.add('active');
+            
+            // 为选中的标签添加active类
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原片管理系统 - API文档</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .api-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-left: 5px solid #667eea;
+        }
+        
+        .api-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .api-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        
+        .api-info {
+            margin-bottom: 15px;
+        }
+        
+        .api-info .method {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .api-info .endpoint {
+            font-family: 'Courier New', monospace;
+            color: #555;
+            font-weight: bold;
+        }
+        
+        .api-description {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+        
+        .quick-links {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .quick-links h3 {
+            color: white;
+            margin-bottom: 15px;
+        }
+        
+        .link-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .link-item {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+        
+        .link-item:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .link-item a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .api-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>原片管理系统 API文档</h1>
+            <p>为安卓APP提供完整的原片管理接口服务</p>
+        </div>
+        
+        <div class="quick-links">
+            <h3>快速导航</h3>
+            <div class="link-grid">
+                <div class="link-item">
+                    <a href="auth.html">🔐 认证接口</a>
+                </div>
+                <div class="link-item">
+                    <a href="packages.html">📦 包信息接口</a>
+                </div>
+                <div class="link-item">
+                    <a href="racks.html">🏗️ 库位架接口</a>
+                </div>
+                <div class="link-item">
+                    <a href="scan.html">📱 扫描操作接口</a>
+                </div>
+                <div class="link-item">
+                    <a href="apicommon.html">🔧 工具类文档</a>
+                </div>
+                <div class="link-item">
+                    <a href="test_package_query.html" style="background: #28a745; color: white; padding: 10px; border-radius: 5px;">🧪 API测试工具</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="api-grid">
+            <div class="api-card">
+                <h3>🔐 用户认证</h3>
+                <div class="api-info">
+                    <span class="method">POST</span>
+                    <span class="endpoint">/api/auth.php</span>
+                </div>
+                <div class="api-description">
+                    提供用户登录验证和令牌管理功能，支持Bearer Token认证机制。
+                </div>
+                <ul style="color: #666; margin-left: 20px; margin-bottom: 15px;">
+                    <li>用户登录验证</li>
+                    <li>令牌生成与验证</li>
+                    <li>登录状态检查</li>
+                </ul>
+                <a href="auth.html" class="btn">查看详情</a>
+            </div>
+            
+                <div class="api-card">
+                <h3>📦 原片包信息</h3>
+                <div class="api-info">
+                    <span class="method">GET</span>
+                    <span class="endpoint">/api/packages.php</span>
+                </div>
+                <div class="api-description">
+                    提供原片包信息的查询功能，支持多种查询条件（已移除分页功能）。
+                </div>
+                <ul style="color: #666; margin-left: 20px; margin-bottom: 15px;">
+                    <li>包号精确/模糊查询</li>
+                    <li>原片类型筛选</li>
+                    <li>货架位置查询</li>
+                    <li>状态筛选</li>
+                    <li>✅ 统一认证机制</li>
+                    <li>✅ 移除分页功能</li>
+                </ul>
+                <a href="packages.html" class="btn">查看详情</a>
+            </div>
+            
+            <div class="api-card">
+                <h3>🏗️ 库位架信息</h3>
+                <div class="api-info">
+                    <span class="method">GET</span>
+                    <span class="endpoint">/api/racks.php</span>
+                </div>
+                <div class="api-description">
+                    提供库位架信息的查询功能，支持按基地、区域类型和状态筛选（已移除分页功能）。
+                </div>
+                <ul style="color: #666; margin-left: 20px; margin-bottom: 15px;">
+                    <li>基地筛选</li>
+                    <li>区域类型查询</li>
+                    <li>库位状态监控</li>
+                    <li>包数量统计</li>
+                    <li>✅ 统一认证机制</li>
+                    <li>✅ 移除分页功能</li>
+                </ul>
+                <a href="racks.html" class="btn">查看详情</a>
+            </div>
+            
+            <div class="api-card">
+                <h3>📱 扫描操作</h3>
+                <div class="api-info">
+                    <span class="method">GET/POST</span>
+                    <span class="endpoint">/api/scan.php</span>
+                </div>
+                <div class="api-description">
+                    为移动设备提供扫描操作功能，移植自mobile/scan.php的完整功能（已统一认证方式）。
+                </div>
+                <ul style="color: #666; margin-left: 20px; margin-bottom: 15px;">
+                    <li>获取包信息</li>
+                    <li>获取目标库位信息</li>
+                    <li>自动判断操作类型</li>
+                    <li>执行库存流转操作</li>
+                    <li>✅ 统一认证机制</li>
+                    <li>✅ 移除重复方法</li>
+                </ul>
+                <a href="scan.html" class="btn">查看详情</a>
+            </div>
+        </div>
+        
+        <div class="api-card">
+            <h3>📋 通用说明</h3>
+            <div class="api-description">
+                <h4>认证方式</h4>
+                <p>所有API接口使用Bearer Token认证，需要在请求头中添加：</p>
+                <code style="background: #f4f4f4; padding: 5px 10px; border-radius: 4px; display: block; margin: 10px 0;">
+                    Authorization: Bearer {token}
+                </code>
+                
+                <h4>响应格式</h4>
+                <p>所有接口返回统一的JSON格式：</p>
+                <pre style="background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; margin: 10px 0;">
+{
+    "code": 200,
+    "message": "操作成功",
+    "timestamp": 1698765432,
+    "data": { ... }
+}</pre>
+                
+                <h4>错误码说明</h4>
+                <ul style="color: #666; margin-left: 20px;">
+                    <li><strong>200</strong>: 请求成功</li>
+                    <li><strong>400</strong>: 请求参数错误</li>
+                    <li><strong>401</strong>: 认证失败</li>
+                    <li><strong>404</strong>: 资源不存在</li>
+                    <li><strong>405</strong>: 请求方法不允许</li>
+                    <li><strong>500</strong>: 服务器内部错误</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 原片管理系统 API文档 | 版本 2.0（优化重构版） | 最后更新: 2025-11-01</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,9 +1,4 @@
 <?php
-/**
- * 登录验证API
- * 为安卓APP提供登录验证接口
- */
-
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/functions.php';
@@ -57,12 +52,10 @@ function handleLogin() {
         return;
     }
     
-    // 开始会话
-    session_start();
+    // 验证登录（不使用会话机制）
+    $user = validateLogin($username, $password);
     
-    // 验证登录
-    if (login($username, $password)) {
-        $user = getCurrentUser();
+    if ($user) {
         
         // 生成API令牌（简化版，实际项目中应该使用更安全的令牌机制）
         $token = generateApiToken($user['id']);
@@ -173,6 +166,27 @@ function getBearerToken() {
     }
     
     return null;
+}
+
+/**
+ * 验证用户登录（无会话版本）
+ */
+function validateLogin($username, $password) {
+    // 查询用户信息
+    $user = fetchRow("SELECT id, username, real_name as name, role, base_id, password FROM users WHERE username = ? AND status = 1", [$username]);
+    
+    if (!$user) {
+        return false;
+    }
+    
+    // 验证密码（假设使用password_hash加密）
+    if (password_verify($password, $user['password'])) {
+        // 移除密码字段，不返回给客户端
+        unset($user['password']);
+        return $user;
+    }
+    
+    return false;
 }
 
 /**

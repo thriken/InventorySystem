@@ -55,6 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $manufacturer = trim($_POST['manufacturer'] ?? '');
             $color = trim($_POST['color'] ?? '');
             $thickness = floatval($_POST['thickness'] ?? 0);
+            $silver_layers = trim($_POST['silver_layers'] ?? '');
+            $substrate = trim($_POST['substrate'] ?? '');
+            $transmittance = trim($_POST['transmittance'] ?? '');
 
             // 完整的字段验证
             if (empty($customId)) {
@@ -101,6 +104,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'manufacturer' => $manufacturer,
                 'color' => $color,
                 'thickness' => $thickness,
+                'silver_layers' => $silver_layers,
+                'substrate' => $substrate,
+                'transmittance' => $transmittance,
                 'created_at' => date('Y-m-d H:i:s')
             ]);
 
@@ -117,6 +123,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $manufacturer = trim($_POST['manufacturer'] ?? '');
             $color = trim($_POST['color'] ?? '');
             $thickness = floatval($_POST['thickness'] ?? 0);
+            $silver_layers = trim($_POST['silver_layers'] ?? '');
+            $substrate = trim($_POST['substrate'] ?? '');
+            $transmittance = trim($_POST['transmittance'] ?? '');
 
             if ($id <= 0) {
                 throw new Exception('参数错误');
@@ -158,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             query(
-                "UPDATE glass_types SET custom_id = ?, name = ?, short_name = ?, finance_name = ?, product_series = ?, brand = ?, manufacturer = ?, color = ?, thickness = ?, updated_at = ? WHERE id = ?",
+                "UPDATE glass_types SET custom_id = ?, name = ?, short_name = ?, finance_name = ?, product_series = ?, brand = ?, manufacturer = ?, color = ?, thickness = ?,silver_layers = ?, substrate = ?, transmittance = ?,  pdated_at = ? WHERE id = ?",
                 [
                     $customId,
                     $name,
@@ -169,6 +178,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $manufacturer,
                     $color,
                     $thickness,
+                    $silver_layers,
+                    $substrate,
+                    $transmittance,
                     date('Y-m-d H:i:s'),
                     $id
                 ]
@@ -245,9 +257,6 @@ ob_start();
                 <label for="short_name">原片简称 *</label>
                 <input type="text" id="short_name" name="short_name" value="<?php echo htmlspecialchars($editRecord['short_name'] ?? ''); ?>" required placeholder="如：5白、4白、5白南玻">
             </div>
-        </div>
-
-        <div class="form-row">
             <div class="form-group">
                 <label for="name">原片名称 *</label>
                 <input type="text" id="name" name="name" value="<?php echo htmlspecialchars($editRecord['name'] ?? ''); ?>" required placeholder="完整的原片名称">
@@ -257,9 +266,6 @@ ob_start();
                 <label for="finance_name">财务核算名</label>
                 <input type="text" id="finance_name" name="finance_name" value="<?php echo htmlspecialchars($editRecord['finance_name'] ?? ''); ?>" placeholder="财务核算使用的名称">
             </div>
-        </div>
-
-        <div class="form-row">
             <div class="form-group">
                 <label for="product_series">原片商色系</label>
                 <input type="text" id="product_series" name="product_series" value="<?php echo htmlspecialchars($editRecord['product_series'] ?? ''); ?>" placeholder="如：5lowe XETB0160、XETB0060、PLE60">
@@ -277,9 +283,6 @@ ob_start();
                     <?php endforeach; ?>
                 </select>
             </div>
-        </div>
-
-        <div class="form-row">
             <div class="form-group">
                 <label for="brand">原片品牌</label>
                 <select id="brand" name="brand">
@@ -304,9 +307,6 @@ ob_start();
                     <option value="其他">其他</option>
                 </select>
             </div>
-        </div>
-
-        <div class="form-row">
             <div class="form-group">
                 <label for="color">原片颜色</label>
                 <select id="color" name="color">
@@ -316,6 +316,36 @@ ob_start();
                             <?php echo htmlspecialchars($color['name']); ?>
                         </option>
                     <?php endforeach; ?>
+                </select>
+            </div>
+            <!-- 银层、基片、透光字段 - 默认隐藏，通过JS控制显示 -->
+            <div class="form-group lowe-fields" style="display: none;">
+                <label for="silver_layers">银层</label>
+                <select name="silver_layers" id="silver_layers">
+                    <option value="">-无-</option>
+                    <option value="单银" <?php echo ($editRecord['silver_layers'] ?? '') == '单银' ? 'selected' : ''; ?>>单银</option>
+                    <option value="双银" <?php echo ($editRecord['silver_layers'] ?? '') == '双银' ? 'selected' : ''; ?>>双银</option>
+                    <option value="三银" <?php echo ($editRecord['silver_layers'] ?? '') == '三银' ? 'selected' : ''; ?>>三银</option>
+                    <option value="无银" <?php echo ($editRecord['silver_layers'] ?? '') == '无银' ? 'selected' : ''; ?>>无银</option>
+                </select>
+            </div>
+            <div class="form-group lowe-fields" style="display: none;">
+                <label for="substrate">基片</label>
+                <select name="substrate" id="substrate">
+                    <option value="">-无-</option>
+                    <option value="普白" <?php echo ($editRecord['substrate'] ?? '') == '普白' ? 'selected' : ''; ?>>普白</option>
+                    <option value="超白" <?php echo ($editRecord['substrate'] ?? '') == '超白' ? 'selected' : ''; ?>>超白</option>
+                    <option value="其他" <?php echo ($editRecord['substrate'] ?? '') == '其他' ? 'selected' : ''; ?>>其他</option>
+                </select>
+            </div>
+            <div class="form-group lowe-fields" style="display: none;">
+                <label for="transmittance">透光</label>
+                <select name="transmittance" id="transmittance">
+                    <option>-无-</option>
+                    <option value="低透" <?php echo ($editRecord['transmittance'] ?? '') == '低透' ? 'selected' : ''; ?>>低透</option>
+                    <option value="中透" <?php echo ($editRecord['transmittance'] ?? '') == '中透' ? 'selected' : ''; ?>>中透</option>
+                    <option value="高透" <?php echo ($editRecord['transmittance'] ?? '') == '高透' ? 'selected' : ''; ?>>高透</option>
+                    <option value="其他" <?php echo ($editRecord['transmittance'] ?? '') == '其他' ? 'selected' : ''; ?>>其他</option>
                 </select>
             </div>
         </div>
@@ -436,6 +466,38 @@ ob_start();
     document.getElementById('brand').addEventListener('change', function() {
         loadManufacturersByBrand(this.value);
     });
+
+    // 控制LOWE相关字段的显示/隐藏
+    function toggleLoweFields() {
+        const colorSelect = document.getElementById('color');
+        const loweFields = document.querySelectorAll('.lowe-fields');
+        const isLowe = colorSelect.value === 'LOWE';
+        
+        loweFields.forEach(field => {
+            field.style.display = isLowe ? 'flex' : 'none';
+        });
+    }
+
+    // 颜色选择变化时触发
+    document.getElementById('color').addEventListener('change', toggleLoweFields);
+
+    // 页面加载时检查是否需要显示LOWE字段
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleLoweFields();
+    });
+
+    // 在showAddForm函数中重置时也调用
+    function showAddForm() {
+        document.getElementById('formContainer').style.display = 'block';
+        document.querySelector('input[name="action"]').value = 'add';
+        document.querySelector('.form-header h3').textContent = '添加原片类型';
+        document.querySelector('form').reset();
+        // 移除隐藏的id字段
+        const idField = document.querySelector('input[name="id"]');
+        if (idField) idField.remove();
+        // 重置后重新检查LOWE字段显示状态
+        setTimeout(toggleLoweFields, 100);
+    }
 
 </script>
 </body>
