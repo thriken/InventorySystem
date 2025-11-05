@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试页面 - 原片管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            min-height: 600px;
+        }
+        
+        .sidebar {
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            padding: 20px;
+        }
+        
+        .api-list {
+            list-style: none;
+        }
+        
+        .api-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .api-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .api-item.active {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+        
+        .api-item h3 {
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .api-item .method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .method.get { background: #61affe; color: white; }
+        .method.post { background: #49cc90; color: white; }
+        
+        .content-area {
+            padding: 30px;
+            overflow-y: auto;
+        }
+        
+        .api-section {
+            display: none;
+        }
+        
+        .api-section.active {
+            display: block;
+        }
+        
+        .section-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .section-header h2 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .section-header .description {
+            color: #6c757d;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .response-area {
+            margin-top: 30px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .response-header {
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .response-content {
+            padding: 20px;
+            background: white;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .json-key { color: #d73a49; }
+        .json-string { color: #032f62; }
+        .json-number { color: #005cc5; }
+        .json-boolean { color: #6f42c1; }
+        .json-null { color: #6a737d; }
+        
+        .token-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .token-section h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .token-input {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .status-success { color: #28a745; }
+        .status-error { color: #dc3545; }
+        .status-info { color: #17a2b8; }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+        
+        .loading.spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .param-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .remove-param {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        
+        .add-param {
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 15px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>API测试页面</h1>
+            <p>原片管理系统 - 统一接口测试平台</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <h3>API列表</h3>
+                <ul class="api-list">
+                    <li class="api-item active" data-api="auth">
+                        <h3>用户认证</h3>
+                        <div>
+                            <span class="method post">POST</span>
+                            <span class="method get">GET</span>
+                            /api/auth.php
+                        </div>
+                    </li>
+                    <li class="api-item" data-api="packages">
+                        <h3>原片包查询</h3>
+                        <span class="method get">GET</span>
+                        /api/packages.php
+                    </li>
+                    <li class="api-item" data-api="racks">
+                        <h3>库位架查询</h3>
+                        <span class="method get">GET</span>
+                        /api/racks.php
+                    </li>
+                    <li class="api-item" data-api="scan">
+                        <h3>扫描操作</h3>
+                        <span class="method get">GET</span>
+                        <span class="method post">POST</span>
+                        /api/scan.php
+                    </li>
+                    <li class="api-item" data-api="dictionary">
+                        <h3>字典查询</h3>
+                        <span class="method get">GET</span>
+                        /api/dictionary.php
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="content-area">
+                <!-- 用户认证API -->
+                <div class="api-section active" id="auth-section">
+                    <div class="section-header">
+                        <h2>用户认证 API</h2>
+                        <p class="description">提供用户登录认证和令牌验证功能，支持Bearer Token认证机制。</p>
+                    </div>
+                    
+                    <div class="token-section">
+                        <h3>认证令牌</h3>
+                        <input type="text" id="auth-token" class="form-control token-input" placeholder="Bearer Token (登录后自动获取)" readonly>
+                        <div style="margin-top: 10px;">
+                            <button class="btn btn-primary" onclick="testLogin()">测试登录</button>
+                            <button class="btn btn-secondary" onclick="testCheckLogin()">验证令牌</button>
+                            <button class="btn btn-secondary" onclick="clearToken()">清除令牌</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="auth-username">用户名</label>
+                        <input type="text" id="auth-username" class="form-control" value="admin" placeholder="请输入用户名">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="auth-password">密码</label>
+                        <input type="password" id="auth-password" class="form-control" value="123456" placeholder="请输入密码">
+                    </div>
+                </div>
+                
+                <!-- 原片包查询API -->
+                <div class="api-section" id="packages-section">
+                    <div class="section-header">
+                        <h2>原片包查询 API</h2>
+                        <p class="description">查询原片包信息，支持按包号、玻璃类型、库位等条件筛选，支持分页查询。</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="packages-package-code">包号</label>
+                        <input type="text" id="packages-package-code" class="form-control" placeholder="请输入包号（支持模糊查询）">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="packages-glass-type-id">玻璃类型ID</label>
+                        <input type="text" id="packages-glass-type-id" class="form-control" placeholder="请输入玻璃类型ID">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="packages-rack-id">库位架ID</label>
+                        <input type="number" id="packages-rack-id" class="form-control" placeholder="请输入库位架ID">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="packages-base-id">基地ID</label>
+                        <input type="number" id="packages-base-id" class="form-control" placeholder="请输入基地ID">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="packages-status">状态</label>
+                        <select id="packages-status" class="form-control">
+                            <option value="">全部</option>
+                            <option value="in_storage">库存中</option>
+                            <option value="in_processing">加工中</option>
+                            <option value="scrapped">已报废</option>
+                            <option value="used_up">已用完</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="packages-page">页码</label>
+                        <input type="number" id="packages-page" class="form-control" value="1" min="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="packages-page-size">每页数量</label>
+                        <input type="number" id="packages-page-size" class="form-control" value="20" min="1" max="100">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="testPackages()">查询原片包</button>
+                </div>
+                
+                <!-- 库位架查询API -->
+                <div class="api-section" id="racks-section">
+                    <div class="section-header">
+                        <h2>库位架查询 API</h2>
+                        <p class="description">查询库位架信息，支持按ID、基地、区域类型、状态等条件筛选。</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="racks-id">库位架ID</label>
+                        <input type="number" id="racks-id" class="form-control" placeholder="请输入库位架ID">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="racks-base-id">基地ID</label>
+                        <input type="number" id="racks-base-id" class="form-control" placeholder="请输入基地ID">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="racks-name">库位架名称/编号</label>
+                        <input type="text" id="racks-name" class="form-control" placeholder="请输入库位架名称或编号">
+                        <small class="form-text text-muted">使用名称查询时必须提供基地ID</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="racks-name">库位架名称/编号</label>
+                        <input type="text" id="racks-name" class="form-control" placeholder="请输入库位架名称或编号">
+                        <small class="form-text text-muted">使用名称查询时必须提供基地ID</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="racks-name">库位架名称/编号</label>
+                        <input type="text" id="racks-name" class="form-control" placeholder="请输入库位架名称或编号">
+                        <small class="form-text text-muted">使用名称查询时必须提供基地ID</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="racks-area-type">区域类型</label>
+                        <select id="racks-area-type" class="form-control">
+                            <option value="">全部</option>
+                            <option value="storage">库存区</option>
+                            <option value="processing">加工区</option>
+                            <option value="scrap">报废区</option>
+                            <option value="temporary">临时区</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="racks-status">状态</label>
+                        <select id="racks-status" class="form-control">
+                            <option value="">全部</option>
+                            <option value="normal">正常</option>
+                            <option value="maintenance">维护中</option>
+                            <option value="full">已满</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="racks-page">页码</label>
+                        <input type="number" id="racks-page" class="form-control" value="1" min="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="racks-page-size">每页数量</label>
+                        <input type="number" id="racks-page-size" class="form-control" value="20" min="1" max="100">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="testRacks()">查询库位架</button>
+                </div>
+                
+                <!-- 扫描操作API -->
+                <div class="api-section" id="scan-section">
+                    <div class="section-header">
+                        <h2>扫描操作 API</h2>
+                        <p class="description">移动设备扫描操作功能，包括获取包信息、目标库位信息和执行库存流转操作。</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>操作类型</label>
+                        <select id="scan-action" class="form-control" onchange="toggleScanForm()">
+                            <option value="package_info">获取包信息</option>
+                            <option value="target_info">获取目标库位信息</option>
+                            <option value="execute_transaction">执行库存流转</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 获取包信息 -->
+                    <div id="scan-package-info" class="scan-form">
+                        <div class="form-group">
+                            <label for="scan-package-code">包号</label>
+                            <input type="text" id="scan-package-code" class="form-control" placeholder="请输入包号">
+                        </div>
+                        <button class="btn btn-primary" onclick="testScanPackageInfo()">获取包信息</button>
+                    </div>
+                    
+                    <!-- 获取目标库位信息 -->
+                    <div id="scan-target-info" class="scan-form" style="display: none;">
+                        <div class="form-group">
+                            <label for="scan-target-rack-code">目标架号</label>
+                            <input type="text" id="scan-target-rack-code" class="form-control" placeholder="请输入目标架号">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scan-current-area-type">当前区域类型</label>
+                            <select id="scan-current-area-type" class="form-control">
+                                <option value="storage">库存区</option>
+                                <option value="processing">加工区</option>
+                                <option value="scrap">报废区</option>
+                                <option value="temporary">临时区</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scan-base-name">基地名称</label>
+                            <input type="text" id="scan-base-name" class="form-control" placeholder="请输入基地名称">
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="testScanTargetInfo()">获取目标库位信息</button>
+                    </div>
+                    
+                    <!-- 执行库存流转 -->
+                    <div id="scan-execute-transaction" class="scan-form" style="display: none;">
+                        <div class="form-group">
+                            <label for="scan-transaction-package-code">包号</label>
+                            <input type="text" id="scan-transaction-package-code" class="form-control" placeholder="请输入包号">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scan-transaction-target-rack-code">目标架号</label>
+                            <input type="text" id="scan-transaction-target-rack-code" class="form-control" placeholder="请输入目标架号">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scan-transaction-quantity">数量</label>
+                            <input type="number" id="scan-transaction-quantity" class="form-control" value="0" min="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scan-transaction-type">流转类型</label>
+                            <select id="scan-transaction-type" class="form-control">
+                                <option value="usage_out">领用出库</option>
+                                <option value="return_in">归还入库</option>
+                                <option value="scrap">报废</option>
+                                <option value="location_adjust">库位调整</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scan-scrap-reason">报废原因</label>
+                            <input type="text" id="scan-scrap-reason" class="form-control" placeholder="仅报废操作需要填写">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scan-notes">备注</label>
+                            <textarea id="scan-notes" class="form-control" rows="3" placeholder="请输入备注信息"></textarea>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="testScanExecuteTransaction()">执行库存流转</button>
+                    </div>
+                </div>
+                
+                <!-- 字典查询API -->
+                <div class="api-section" id="dictionary-section">
+                    <div class="section-header">
+                        <h2>字典查询 API</h2>
+                        <p class="description">查询系统基础字典数据，包括品牌、厂家、原片类型等基础数据。</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dictionary-action">操作类型</label>
+                        <select id="dictionary-action" class="form-control">
+                            <option value="categories">获取字典分类</option>
+                            <option value="items">获取字典项</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dictionary-category">分类</label>
+                        <select id="dictionary-category" class="form-control">
+                            <option value="">全部</option>
+                            <option value="brand">品牌</option>
+                            <option value="manufacturer">厂家</option>
+                            <option value="color">颜色</option>
+                            <option value="glass_type">原片类型</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dictionary-search">搜索关键词</label>
+                        <input type="text" id="dictionary-search" class="form-control" placeholder="请输入搜索关键词">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dictionary-page">页码</label>
+                        <input type="number" id="dictionary-page" class="form-control" value="1" min="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dictionary-limit">每页数量</label>
+                        <input type="number" id="dictionary-limit" class="form-control" value="100" min="1" max="200">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="testDictionary()">查询字典</button>
+                </div>
+                
+                <!-- 响应区域 -->
+                <div class="response-area">
+                    <div class="response-header">
+                        <span>API响应</span>
+                        <span id="response-status" class="status-info" style="float: right;">等待请求...</span>
+                    </div>
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <div>请求中...</div>
+                    </div>
+                    <div class="response-content" id="response-content">
+                        请选择API并点击测试按钮查看响应结果
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentToken = localStorage.getItem('api_token') || '';
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置当前令牌
+            document.getElementById('auth-token').value = currentToken;
+            
+            // API列表点击事件
+            document.querySelectorAll('.api-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    // 移除所有active类
+                    document.querySelectorAll('.api-item').forEach(i => i.classList.remove('active'));
+                    document.querySelectorAll('.api-section').forEach(s => s.classList.remove('active'));
+                    
+                    // 添加active类
+                    this.classList.add('active');
+                    const apiType = this.getAttribute('data-api');
+                    document.getElementById(apiType + '-section').classList.add('active');
+                });
+            });
+        });
+        
+        // 显示加载状态
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('response-content').style.display = 'none';
+        }
+        
+        // 隐藏加载状态
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('response-content').style.display = 'block';
+        }
+        
+        // 更新响应状态
+        function updateResponseStatus(status, message) {
+            const statusElement = document.getElementById('response-status');
+            statusElement.textContent = message;
+            statusElement.className = 'status-' + status;
+        }
+        
+        // 格式化JSON响应
+        function formatJsonResponse(data) {
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (e) {
+                    return '<pre>' + data + '</pre>';
+                }
+            }
+            
+            return syntaxHighlight(JSON.stringify(data, null, 2));
+        }
+        
+        // JSON语法高亮
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+        
+        // 通用API调用函数
+        async function callApi(url, options = {}) {
+            showLoading();
+            updateResponseStatus('info', '请求中...');
+            
+            const defaultOptions = {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+            
+            // 添加认证令牌
+            if (currentToken) {
+                defaultOptions.headers['Authorization'] = 'Bearer ' + currentToken;
+            }
+            
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            try {
+                const response = await fetch(url, finalOptions);
+                const data = await response.text();
+                
+                hideLoading();
+                
+                if (response.ok) {
+                    updateResponseStatus('success', `成功 (${response.status})`);
+                    document.getElementById('response-content').innerHTML = formatJsonResponse(data);
+                } else {
+                    updateResponseStatus('error', `错误 (${response.status})`);
+                    document.getElementById('response-content').innerHTML = formatJsonResponse(data);
+                }
+                
+                return { success: response.ok, data: data, status: response.status };
+            } catch (error) {
+                hideLoading();
+                updateResponseStatus('error', '网络错误');
+                document.getElementById('response-content').innerHTML = '<pre>错误: ' + error.message + '</pre>';
+                return { success: false, error: error };
+            }
+        }
+        
+        // 用户认证API测试函数
+        async function testLogin() {
+            const username = document.getElementById('auth-username').value;
+            const password = document.getElementById('auth-password').value;
+            
+            if (!username || !password) {
+                alert('请输入用户名和密码');
+                return;
+            }
+            
+            const result = await callApi('auth.php', {
+                method: 'POST',
+                body: JSON.stringify({ username, password })
+            });
+            
+            if (result.success) {
+                try {
+                    const data = JSON.parse(result.data);
+                    if (data.data && data.data.token) {
+                        currentToken = data.data.token;
+                        localStorage.setItem('api_token', currentToken);
+                        document.getElementById('auth-token').value = currentToken;
+                    }
+                } catch (e) {
+                    console.error('解析令牌失败:', e);
+                }
+            }
+        }
+        
+        async function testCheckLogin() {
+            if (!currentToken) {
+                alert('请先登录获取令牌');
+                return;
+            }
+            
+            await callApi('auth.php');
+        }
+        
+        function clearToken() {
+            currentToken = '';
+            localStorage.removeItem('api_token');
+            document.getElementById('auth-token').value = '';
+            updateResponseStatus('info', '令牌已清除');
+            document.getElementById('response-content').innerHTML = '<pre>令牌已清除</pre>';
+        }
+        
+        // 原片包查询API测试函数
+        async function testPackages() {
+            const params = new URLSearchParams();
+            
+            const packageCode = document.getElementById('packages-package-code').value;
+            const glassTypeId = document.getElementById('packages-glass-type-id').value;
+            const rackId = document.getElementById('packages-rack-id').value;
+            const baseId = document.getElementById('packages-base-id').value;
+            const status = document.getElementById('packages-status').value;
+            const page = document.getElementById('packages-page').value;
+            const pageSize = document.getElementById('packages-page-size').value;
+            
+            if (packageCode) params.append('package_code', packageCode);
+            if (glassTypeId) params.append('glass_type_id', glassTypeId);
+            if (rackId) params.append('rack_id', rackId);
+            if (baseId) params.append('base_id', baseId);
+            if (status) params.append('status', status);
+            params.append('page', page);
+            params.append('page_size', pageSize);
+            
+            await callApi('packages.php?' + params.toString());
+        }
+        
+        // 库位架查询API测试函数
+        async function testRacks() {
+            const params = new URLSearchParams();
+            
+            const id = document.getElementById('racks-id').value;
+            const baseId = document.getElementById('racks-base-id').value;
+            const rackName = document.getElementById('racks-name').value;
+            const areaType = document.getElementById('racks-area-type').value;
+            const status = document.getElementById('racks-status').value;
+            const page = document.getElementById('racks-page').value;
+            const pageSize = document.getElementById('racks-page-size').value;
+            
+            if (id) params.append('id', id);
+            if (baseId) params.append('base_id', baseId);
+            if (rackName) params.append('rack_name', rackName);
+            if (areaType) params.append('area_type', areaType);
+            if (status) params.append('status', status);
+            params.append('page', page);
+            params.append('page_size', pageSize);
+            
+            await callApi('racks.php?' + params.toString());
+        }
+        
+        // 扫描操作API相关函数
+        function toggleScanForm() {
+            const action = document.getElementById('scan-action').value;
+            
+            // 隐藏所有表单
+            document.querySelectorAll('.scan-form').forEach(form => {
+                form.style.display = 'none';
+            });
+            // 显示对应表单
+            document.getElementById('scan-' + action.replace(/_/g, '-')).style.display = 'block';
+        }
+        
+        async function testScanPackageInfo() {
+            const packageCode = document.getElementById('scan-package-code').value;
+            
+            if (!packageCode) {
+                alert('请输入包号');
+                return;
+            }
+            
+            await callApi('scan.php?action=get_package_info&package_code=' + encodeURIComponent(packageCode));
+        }
+        
+        async function testScanTargetInfo() {
+            const targetRackCode = document.getElementById('scan-target-rack-code').value;
+            const currentAreaType = document.getElementById('scan-current-area-type').value;
+            const baseName = document.getElementById('scan-base-name').value;
+            
+            if (!targetRackCode) {
+                alert('请输入目标架号');
+                return;
+            }
+            
+            const params = new URLSearchParams({
+                action: 'get_target_info',
+                target_rack_code: targetRackCode,
+                current_area_type: currentAreaType
+            });
+            
+            if (baseName) params.append('base_name', baseName);
+            
+            await callApi('scan.php?' + params.toString());
+        }
+        
+        async function testScanExecuteTransaction() {
+            const packageCode = document.getElementById('scan-transaction-package-code').value;
+            const targetRackCode = document.getElementById('scan-transaction-target-rack-code').value;
+            const quantity = document.getElementById('scan-transaction-quantity').value;
+            const transactionType = document.getElementById('scan-transaction-type').value;
+            const scrapReason = document.getElementById('scan-scrap-reason').value;
+            const notes = document.getElementById('scan-notes').value;
+            
+            if (!packageCode || !targetRackCode || !quantity || !transactionType) {
+                alert('请填写所有必填字段');
+                return;
+            }
+            
+            if (transactionType === 'scrap' && !scrapReason) {
+                alert('报废操作必须填写报废原因');
+                return;
+            }
+            
+            const data = {
+                package_code: packageCode,
+                target_rack_code: targetRackCode,
+                quantity: parseInt(quantity),
+                transaction_type: transactionType,
+                scrap_reason: scrapReason,
+                notes: notes
+            };
+            
+            await callApi('scan.php', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        }
+        
+        // 字典查询API测试函数
+        async function testDictionary() {
+            const action = document.getElementById('dictionary-action').value;
+            const category = document.getElementById('dictionary-category').value;
+            const search = document.getElementById('dictionary-search').value;
+            const page = document.getElementById('dictionary-page').value;
+            const limit = document.getElementById('dictionary-limit').value;
+            
+            const params = new URLSearchParams({
+                action: action,
+                page: page,
+                limit: limit
+            });
+            
+            if (category) params.append('category', category);
+            if (search) params.append('search', search);
+            
+            await callApi('dictionary.php?' + params.toString());
+        }
+        
+        // 初始化扫描表单显示
+        toggleScanForm();
+    </script>
+</body>
+</html>

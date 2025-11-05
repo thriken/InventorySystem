@@ -19,10 +19,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// 验证令牌
+// 验证令牌并获取用户信息
 $token = getBearerToken();
-if (!$token || !validateApiToken($token)) {
+$userId = validateApiToken($token);
+if (!$userId) {
     sendResponse(401, '认证失败');
+    return;
+}
+
+// 获取用户信息（包含base_id）
+$user = fetchRow("SELECT id, username, real_name as name, role, base_id FROM users WHERE id = ?", [$userId]);
+if (!$user) {
+    sendResponse(404, '用户不存在');
     return;
 }
 
@@ -43,16 +51,36 @@ switch ($method) {
  * 获取库位架信息
  */
 function handleGetRacks() {
+    global $user;
+    
     // 获取查询参数
+    $id = isset($_GET['id']) ? intval($_GET['id']) : null;
     $baseId = isset($_GET['base_id']) ? intval($_GET['base_id']) : null;
+    $rackName = isset($_GET['rack_name']) ? trim($_GET['rack_name']) : null;
     $areaType = isset($_GET['area_type']) ? $_GET['area_type'] : null;
     $status = isset($_GET['status']) ? $_GET['status'] : null;
     $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
     $pageSize = isset($_GET['page_size']) ? min(100, max(1, intval($_GET['page_size']))) : 20;
     
+    // 如果没有提供base_id，则使用当前用户的base_id
+    if (!$baseId && $user && isset($user['base_id'])) {
+        $baseId = intval($user['base_id']);
+    }
+    
+    // 如果提供了rack_name参数，则必须提供base_id
+    if ($rackName && !$baseId) {
+        sendResponse(400, '使用库位架名称查询时必须提供base_id参数');
+        return;
+    }
+    
     // 构建查询条件
     $where = [];
     $params = [];
+    
+    if ($id) {
+        $where[] = "sr.id = ?";
+        $params[] = $id;
+    }
     
     if ($baseId) {
         $where[] = "sr.base_id = ?";
@@ -67,6 +95,18 @@ function handleGetRacks() {
     if ($status && in_array($status, ['normal', 'maintenance', 'full'])) {
         $where[] = "sr.status = ?";
         $params[] = $status;
+    }
+    
+    if ($rackName) {
+        $where[] = "(sr.name LIKE ? OR sr.code LIKE ?)";
+        $params[] = "%{$rackName}%";
+        $params[] = "%{$rackName}%";
+    }
+    
+    if ($rackName) {
+        $where[] = "(sr.name LIKE ? OR sr.code LIKE ?)";
+        $params[] = "%{$rackName}%";
+        $params[] = "%{$rackName}%";
     }
     
     $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -192,7 +232,7 @@ function validateApiToken($token) {
             return false;
         }
         
-        return true;
+        return $tokenData['user_id'];
     } catch (Exception $e) {
         return false;
     }

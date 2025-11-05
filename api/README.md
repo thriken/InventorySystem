@@ -29,6 +29,7 @@
 | [原片包信息接口](packages.md) | `/api/packages.php` | GET | 原片包信息查询 |
 | [库位架信息接口](racks.md) | `/api/racks.php` | GET | 库位架信息查询 |
 | [扫描操作接口](scan.md) | `/api/scan.php` | GET/POST | 移动设备扫描操作 |
+| [字典查询接口](dictionary.md) | `/api/dictionary.php` | GET | 基础字典数据查询 |
 | [通用工具类](apicommon.md) | `/api/ApiCommon.php` | - | API通用工具函数 |
 
 ## 🚀 快速开始
@@ -73,11 +74,13 @@ api/
 ├── packages.md              # 包信息接口文档
 ├── racks.md                 # 库位架接口文档
 ├── scan.md                  # 扫描操作接口文档
+├── dictionary.md            # 字典查询接口文档
 ├── apicommon.md             # 工具类文档
 ├── auth.php                 # 认证接口实现
 ├── packages.php             # 包信息接口实现
 ├── racks.php                # 库位架接口实现
 ├── scan.php                 # 扫描操作接口实现
+├── dictionary.php           # 字典查询接口实现
 ├── ApiCommon.php            # 通用工具类
 ├── index.html               # API文档首页
 ├── auth.html                # 认证接口HTML文档
