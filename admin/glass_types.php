@@ -58,7 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $silver_layers = trim($_POST['silver_layers'] ?? '');
             $substrate = trim($_POST['substrate'] ?? '');
             $transmittance = trim($_POST['transmittance'] ?? '');
-
+            
+            // ENUM字段特殊处理：将"-无-"转换为空字符串
+            if ($transmittance === '-无-') {
+                $transmittance = '';
+            }
+            
+            $silver_layers = ($silver_layers === '') ? null : $silver_layers;
+            $substrate = ($substrate === '') ? null : $substrate;
+            $transmittance = ($transmittance === '') ? null : $transmittance;
+            
             // 完整的字段验证
             if (empty($customId)) {
                 throw new Exception('原片ID不能为空');
@@ -94,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('该原片ID已存在');
             }
 
-            insert('glass_types', [
+            $result = insert('glass_types', [
                 'custom_id' => $customId,
                 'name' => $name,
                 'short_name' => $shortName,
@@ -110,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'created_at' => date('Y-m-d H:i:s')
             ]);
 
-            $message = '原片类型添加成功！';
+            $message = '原片类型添加成功！' .$result;
             $messageType = 'success';
         } elseif ($action === 'edit') {
             $id = (int)($_POST['id'] ?? 0);
@@ -167,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             query(
-                "UPDATE glass_types SET custom_id = ?, name = ?, short_name = ?, finance_name = ?, product_series = ?, brand = ?, manufacturer = ?, color = ?, thickness = ?,silver_layers = ?, substrate = ?, transmittance = ?,  pdated_at = ? WHERE id = ?",
+                "UPDATE glass_types SET custom_id = ?, name = ?, short_name = ?, finance_name = ?, product_series = ?, brand = ?, manufacturer = ?, color = ?, thickness = ?,silver_layers = ?, substrate = ?, transmittance = ?,  updated_at = ? WHERE id = ?",
                 [
                     $customId,
                     $name,
@@ -341,7 +350,7 @@ ob_start();
             <div class="form-group lowe-fields" style="display: none;">
                 <label for="transmittance">透光</label>
                 <select name="transmittance" id="transmittance">
-                    <option>-无-</option>
+                    <option value="">-无-</option>
                     <option value="低透" <?php echo ($editRecord['transmittance'] ?? '') == '低透' ? 'selected' : ''; ?>>低透</option>
                     <option value="中透" <?php echo ($editRecord['transmittance'] ?? '') == '中透' ? 'selected' : ''; ?>>中透</option>
                     <option value="高透" <?php echo ($editRecord['transmittance'] ?? '') == '高透' ? 'selected' : ''; ?>>高透</option>

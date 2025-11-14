@@ -153,7 +153,9 @@ function insert($table, $data) {
     $types = '';
     $values = [];
     foreach ($data as $value) {
-        if (is_int($value)) {
+        if ($value === null) {
+            $types .= 's'; // 对于NULL值，使用's'类型，MySQL会自动处理
+        } elseif (is_int($value)) {
             $types .= 'i';
         } elseif (is_float($value)) {
             $types .= 'd';
@@ -165,10 +167,24 @@ function insert($table, $data) {
         $values[] = $value;
     }
     
+    error_log("DEBUG: insert函数 - bind类型: " . $types);
+    error_log("DEBUG: insert函数 - 绑定值: " . print_r($values, true));
+    
     $stmt->bind_param($types, ...$values);
-    $stmt->execute();
+    
+    $result = $stmt->execute();
+    
+    if (!$result) {
+        error_log("ERROR: 执行插入失败: " . $stmt->error . " SQL: " . $sql);
+    }
     
     $insertId = $conn->insert_id;
+    $affectedRows = $stmt->affected_rows;
+    
+    error_log("DEBUG: insert函数 - 执行结果: " . ($result ? '成功' : '失败'));
+    error_log("DEBUG: insert函数 - 影响行数: " . $affectedRows);
+    error_log("DEBUG: insert函数 - 插入ID: " . $insertId);
+    
     $stmt->close();
     
     return $insertId;
