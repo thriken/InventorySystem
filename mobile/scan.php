@@ -88,7 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="../assets/css/mobile.css">
     <!-- 添加二维码扫描库 -->
     <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
-    <link rel="stylesheet" href="../assets/css/main.css">
     <style>
     /* 只保留scan.php特有的样式 */
     .header {

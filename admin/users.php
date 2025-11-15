@@ -320,7 +320,7 @@ ob_start();
     </div>
 
     <!-- 添加用户模态框 -->
-    <div class="modal-overlay" id="addModal">
+    <div class="modal" id="addModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>添加用户</h3>
@@ -387,7 +387,7 @@ ob_start();
 
     <!-- 编辑用户模态框 -->
     <?php if ($editRecord): ?>
-        <div class="modal-overlay" id="editModal">
+        <div class="modal" id="editModal">
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>编辑用户</h3>
