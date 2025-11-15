@@ -186,6 +186,7 @@ foreach ($packages as $package) {
                     <a href="/warehouse.php" class="nav-link">可视化库区</a>
                     <a href="/viewer/inventory.php" class="nav-link active">库存查询</a>
                     <a href="/viewer/processing_inventory.php" class="nav-link">加工库存</a>
+                    <a href="/admin/index.php" class="nav-link">进入后台</a>
                 </div>
                 <div class="user-info">
                     <div class="user-avatar"><?php echo mb_substr($currentUser['name'], 0, 1); ?></div>

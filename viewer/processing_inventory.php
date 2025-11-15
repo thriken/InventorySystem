@@ -287,6 +287,7 @@ $glassTypes = fetchAll("SELECT id, name FROM glass_types ORDER BY name");
                         <a href="/warehouse.php" class="nav-link">可视化库区</a>
                         <a href="/viewer/inventory.php" class="nav-link">库存查询</a>
                         <a href="/viewer/processing_inventory.php" class="nav-link active">加工区库存</a>
+                        <a href="/admin/index.php" class="nav-link">进入后台</a>
                     </nav>
                     <div class="user-info">
                         <div class="user-avatar"><?php echo mb_substr($currentUser['name'], 0, 1); ?></div>
