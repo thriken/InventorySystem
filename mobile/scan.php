@@ -30,49 +30,56 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
     $result = getTargetRackInfo($targetRackCode, $currentAreaType,$baseName);
     jsonResponse($result);
 }
-// 处理表单提交
-$message = '';
-$messageType = '';
+        // 处理表单提交
+        $message = '';
+        $messageType = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        $packageCode = trim($_POST['package_code'] ?? '');
-        $base_name = trim($_POST['base_name'] ?? '');
-        $RackCode = trim($_POST['target_rack_code'] ?? '');
-        // 优先使用完整的rack_code，如果没有则使用用户输入的简化代码
-        $fullRackCode = trim($_POST['full_rack_code'] ?? '');
-        $targetRackCode = !empty($fullRackCode) ? $fullRackCode : $RackCode;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                $packageCode = trim($_POST['package_code'] ?? '');
+                $base_name = trim($_POST['base_name'] ?? '');
+                $RackCode = trim($_POST['target_rack_code'] ?? '');
+                // 优先使用完整的rack_code，如果没有则使用用户输入的简化代码
+                $fullRackCode = trim($_POST['full_rack_code'] ?? '');
+                $targetRackCode = !empty($fullRackCode) ? $fullRackCode : $RackCode;
 
-        $quantity = intval($_POST['quantity'] ?? 0);
-        $transactionType = $_POST['transaction_type'] ?? '';
-        $scrapReason = trim($_POST['scrap_reason'] ?? '');
-        $notes = trim($_POST['notes'] ?? '');
+                $quantity = intval($_POST['quantity'] ?? 0);
+                $transactionType = $_POST['transaction_type'] ?? '';
+                $scrapReason = trim($_POST['scrap_reason'] ?? '');
+                $notes = trim($_POST['notes'] ?? '');
+                $allUse = isset($_POST['alluse']) ? true : false;
 
-        if (empty($packageCode) || empty($targetRackCode) || $quantity < 0 || empty($transactionType)) {
-            throw new Exception('请填写所有必填字段');
+                // 处理"全部用完"逻辑
+                if ($allUse) {
+                    // 勾选全部用完时，数量设为0，表示完全使用
+                    $quantity = 0;
+                }
+
+                if (empty($packageCode) || empty($targetRackCode) || $quantity < 0 || empty($transactionType)) {
+                    throw new Exception('请填写所有必填字段');
+                }
+
+                if ($transactionType === 'scrap' && empty($scrapReason)) {
+                    throw new Exception('报废操作必须填写报废原因');
+                }
+
+                $result = executeInventoryTransaction(
+                    $packageCode,
+                    $targetRackCode,
+                    $quantity,
+                    $transactionType,
+                    $currentUser,    // 移到第5位
+                    $scrapReason,    // 移到第6位（可选参数）
+                    $notes           // 移到第7位（可选参数）
+                );
+
+                $message = $result;
+                $messageType = 'success';
+            } catch (Exception $e) {
+                $message = $e->getMessage();
+                $messageType = 'error';
+            }
         }
-
-        if ($transactionType === 'scrap' && empty($scrapReason)) {
-            throw new Exception('报废操作必须填写报废原因');
-        }
-
-        $result = executeInventoryTransaction(
-            $packageCode,
-            $targetRackCode,
-            $quantity,
-            $transactionType,
-            $currentUser,    // 移到第5位
-            $scrapReason,    // 移到第6位（可选参数）
-            $notes           // 移到第7位（可选参数）
-        );
-
-        $message = $result;
-        $messageType = 'success';
-    } catch (Exception $e) {
-        $message = $e->getMessage();
-        $messageType = 'error';
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -293,7 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label for="target_rack_code">目标架号</label>
                 <div class="input-with-scan">
                     <input type="text" id="base_name" name="base_name" value="" required readonly hidden >
-                    <input type="text" id="target_rack_code" name="target_rack_code" autocomplete=“new-password” required onchange="getTargetInfo()">
+                    <input type="text" id="target_rack_code" name="target_rack_code" autocomplete="new-password" required onchange="getTargetInfo()">
                     <button type="button" class="scan-button" onclick="scanBarcode('target_rack_code')">扫描</button>
                 </div>
             </div>
@@ -305,6 +312,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
                 <label for="quantity">数量</label>
                 <input type="number" id="quantity" name="quantity" min="0" required autocomplete="new-password">
+                <div style="display: flex; align-items: center; margin-top: 10px;">
+                    <input type="checkbox" id="alluse" name="alluse" style="margin-right: 8px;">
+                    <label for="alluse" style="margin: 0;">全部用完</label>
+                </div>
             </div>
 
             <div class="form-group">
@@ -472,7 +483,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         // 降级到手动输入
         function fallbackToManualInput(fieldId, message) {
-            const result = prompt(message + '\n\n请手动输入二维码内容：');
+            const result = prompt(message + '请手动输入二维码内容：');
             if (result && result.trim()) {
                 document.getElementById(fieldId).value = result.trim();
             }
@@ -572,7 +583,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             closeCameraModal();
             // 提供手动输入选项
-            if (confirm(message + '\n\n是否手动输入二维码内容？')) {
+            if (confirm(message + '是否手动输入二维码内容？')) {
                 fallbackToManualInput(currentFieldId, '');
             }
         }
@@ -773,11 +784,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 closeCameraModal();
             }
         }
+        // 处理"全部用完"复选框
+        function handleAllUseCheckbox() {
+            const allUseCheckbox = document.getElementById('alluse');
+            const quantityInput = document.getElementById('quantity');
+            
+            if (allUseCheckbox && quantityInput) {
+                allUseCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        // 勾选"全部用完"时，禁用数量输入框并显示提示
+                        quantityInput.disabled = true;
+                        quantityInput.style.opacity = '0.6';
+                        quantityInput.style.backgroundColor = '#f0f0f0';
+                        quantityInput.value = window.currentPackageInfo ? window.currentPackageInfo.pieces : 0;
+                        
+                        // 添加提示文本
+                        if (!document.getElementById('alluse-hint')) {
+                            const hint = document.createElement('div');
+                            hint.id = 'alluse-hint';
+                            hint.style.cssText = 'font-size: 12px; color: #4CAF50; margin-top: 5px;';
+                            hint.textContent = '勾选"全部用完"将标记该包为完全使用状态';
+                            allUseCheckbox.parentNode.appendChild(hint);
+                        }
+                    } else {
+                        // 取消勾选时，启用数量输入框
+                        quantityInput.disabled = false;
+                        quantityInput.style.opacity = '1';
+                        quantityInput.style.backgroundColor = '';
+                        
+                        // 移除提示文本
+                        const hint = document.getElementById('alluse-hint');
+                        if (hint) {
+                            hint.remove();
+                        }
+                    }
+                });
+            }
+        }
+
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 initializeCodeReader();
             }, 500);
+            
+            // 初始化"全部用完"复选框处理
+            handleAllUseCheckbox();
 
             // 检测安卓扫码枪
             let scanBuffer = '';

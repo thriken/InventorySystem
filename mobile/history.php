@@ -68,7 +68,7 @@ $sql = "SELECT it.*, gp.package_code, gt.name as glass_name, gt.color, gt.thickn
                sr_from.code as from_rack_code, sr_from.area_type as from_area_type,
                sr_to.code as to_rack_code, sr_to.area_type as to_area_type,
                b_from.name as from_base_name, b_to.name as to_base_name,
-               u.username as operator_name
+               u.real_name as operator_name
         FROM inventory_transactions it 
         LEFT JOIN glass_packages gp ON it.package_id = gp.id 
         LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id 
@@ -96,7 +96,7 @@ $transactionTypes = [
 ];
 
 $areaTypes = [
-    'purchase' => '采购区',
+    'temporary' => '临时区',
     'storage' => '存储区',
     'processing' => '加工区',
     'scrap' => '报废区'

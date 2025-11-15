@@ -107,6 +107,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_GET['action']) || $_GET['
         $transactionType = $input['transaction_type'] ?? '';
         $scrapReason = trim($input['scrap_reason'] ?? '');
         $notes = trim($input['notes'] ?? '');
+        $allUse = isset($input['all_use']) ? boolval($input['all_use']) : false;
+        
+        // 处理"全部用完"逻辑
+        if ($allUse) {
+            // 勾选全部用完时，数量设为0，表示完全使用
+            $quantity = 0;
+        }
         
         // 验证数据
         if (empty($packageCode) || empty($targetRackCode) || $quantity < 0 || empty($transactionType)) {

@@ -360,6 +360,43 @@ function processPurchaseIn($package, $targetRack, $notes, $currentUser)
 
 function processUsageOut($package, $targetRack, $quantity, $scrapReason, $notes, $currentUser)
 {
+    // 处理"全部用完"逻辑：数量为0表示完全使用
+    if ($quantity == 0) {
+        // 完全使用 - 类似部分领用但使用全部片数
+        $quantity = $package['pieces']; // 使用包的全部片数
+        
+        // 插入交易记录
+        $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
+                quantity, actual_usage, notes, operator_id, transaction_time) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        query($sql, [
+            $package['id'],
+            'partial_usage',
+            $package['current_rack_id'],
+            $targetRack['id'],
+            $quantity,
+            $quantity, // 实际使用量等于领用量
+            $notes . ' (完全使用)',
+            $currentUser['id']
+        ]);
+
+        // 使用原子操作更新片数，将片数设为0
+        $sql = "UPDATE glass_packages SET pieces = 0, status = 'used_up', current_rack_id = ?, updated_at = ? 
+                WHERE id = ? AND pieces >= ?";
+        $affectedRows = query($sql, [
+            $targetRack['id'],
+            date('Y-m-d H:i:s'),
+            $package['id'],
+            $quantity
+        ]);
+
+        if ($affectedRows === 0) {
+            throw new Exception('更新失败：包的片数不足或包不存在');
+        }
+
+        return '完全使用操作成功完成！该包已标记为已用完状态。';
+    }
+    
     if ($quantity == $package['pieces']) {
         // 整包领用出库
         if ($targetRack['area_type'] === 'scrap') {
@@ -408,7 +445,6 @@ function processUsageOut($package, $targetRack, $quantity, $scrapReason, $notes,
         }
     } else {
         // 部分领用出库 - 使用原子操作
-
         // 1. 先检查片数是否足够（在事务中）
         $currentPieces = fetchOne(
             "SELECT pieces FROM glass_packages WHERE id = ?",
