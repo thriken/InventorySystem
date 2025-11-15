@@ -603,7 +603,7 @@ ob_start();
                 <div id="search-suggestions" class="search-suggestions"></div>
             </div>
             <button type="button" id="search-btn" class="search-btn">🔍 搜索</button>
-            <a href="warehouse.php" class="clear-btn">清除</a>
+            <button type="button" id="clear-btn" class="clear-btn">清除</button>
         </div>
     </div>
     
@@ -711,10 +711,32 @@ ob_start();
             }
         });
         
+        // 清除按钮点击事件
+        document.getElementById('clear-btn').addEventListener('click', function() {
+            // 清除搜索框内容
+            searchInput.value = '';
+            // 隐藏搜索建议
+            searchSuggestions.style.display = 'none';
+            
+            // 保持当前base_id，只是清除搜索内容
+            const baseId = document.getElementById('base-select').value;
+            if (baseId) {
+                window.location.href = 'warehouse.php?base_id=' + baseId;
+            } else {
+                window.location.href = 'warehouse.php';
+            }
+        });
+        
         function performSearch() {
             const query = searchInput.value.trim();
-            if (query) {
+            const baseId = document.getElementById('base-select').value;
+            
+            if (query && baseId) {
+                window.location.href = 'warehouse.php?base_id=' + baseId + '&search_type=' + encodeURIComponent(query);
+            } else if (query) {
                 window.location.href = 'warehouse.php?search_type=' + encodeURIComponent(query);
+            } else if (baseId) {
+                window.location.href = 'warehouse.php?base_id=' + baseId;
             } else {
                 window.location.href = 'warehouse.php';
             }
@@ -795,7 +817,7 @@ ob_start();
         
         // 搜索玻璃类型
         function searchGlassType() {
-            const searchType = document.getElementById('search-type').value;
+            const searchType = document.getElementById('search_type').value;
             currentSearchType = searchType;
             
             if (searchType) {
@@ -807,7 +829,7 @@ ob_start();
         
         // 清除搜索
         function clearSearch() {
-            document.getElementById('search-type').value = '';
+            document.getElementById('search_type').value = '';
             currentSearchType = '';
             switchBase(currentBaseId); // 重新加载当前基地数据以清除搜索
         }

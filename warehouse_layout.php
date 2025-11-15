@@ -174,12 +174,12 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
                 <div class="processing-left" style="display: flex; flex-direction: column; gap: 10px;">
                     <div style="margin-right: 30px;margin-top: -30px;transform: rotate(90deg);">
                         <?php
-                        echo renderRack('A', $rackInventory, $highlightRacks, 'processing');
+                        echo renderRack('B', $rackInventory, $highlightRacks);
                         ?>
                     </div>
                     <div style="transform: rotate(90deg);margin-right: 30px;margin-top: -50px;">
                         <?php
-                        echo renderRack('B', $rackInventory, $highlightRacks, 'processing');
+                        echo renderRack('A', $rackInventory, $highlightRacks);
                         ?>
                     </div>
                 </div>
@@ -208,13 +208,13 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
                 <div class="processing-right" style="display: flex; gap: 10px;">
                     <?php
                     for ($num = 4; $num >= 3; $num--) {
-                        echo renderRack((string)$num, $rackInventory, $highlightRacks, 'processing');
+                        echo renderRack((string)$num, $rackInventory, $highlightRacks);
                     }
                     ?>
                     <div style="width: 100px;"></div>
                     <?php
                     for ($num = 2; $num >= 1; $num--) {
-                        echo renderRack((string)$num, $rackInventory, $highlightRacks, 'processing');
+                        echo renderRack((string)$num, $rackInventory, $highlightRacks);
                     }
                     ?>
                 </div>
