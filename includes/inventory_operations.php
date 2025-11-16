@@ -243,6 +243,8 @@ function processTransaction($packageCode, $targetRackCode, $quantity, $transacti
     } else if ($targetRack['area_type'] === 'temporary' && $transactionType === 'purchase_in') {
         // 采购入库到临时区的标识
         $notes = "[采购入库]" . ($notes ? " | {$notes}" : '');
+    } else if ($targetRack['area_type'] === 'storage' && $transactionType === 'return_in') {
+        $notes = "[实际使用]" . ($notes ? " | {$notes}" : '');
     }
     
     // 验证交易类型
@@ -257,7 +259,7 @@ function processTransaction($packageCode, $targetRackCode, $quantity, $transacti
         case 'return_in':
             return processReturnIn($package, $targetRack, $quantity, $notes, $currentUser);
         case 'scrap':
-            return processScrap($package, $targetRack, $quantity, $scrapReason, $notes, $currentUser);
+            return processScrap($package, $targetRack, $quantity, $scrapReason, $currentUser);
         case 'check_in':
         case 'check_out':
             return processInventoryCheck($transactionType, $package, $targetRack, $quantity, $notes, $currentUser);
@@ -510,7 +512,7 @@ function processReturnIn($package, $targetRack, $quantity, $notes, $currentUser)
             $targetRack['id'],
             0, // 归还数量为0
             $actualUsage, // 实际使用量
-            $notes . ' (完全使用)',
+            $notes . ' (完全使用)' . '(' . $actualUsage . '片)',
             $currentUser['id']
         ]);
 
@@ -531,7 +533,7 @@ function processReturnIn($package, $targetRack, $quantity, $notes, $currentUser)
             $targetRack['id'],
             $quantity,
             $package['pieces'] - $quantity, // 实际领用量
-            $notes,
+            $notes . ' (' . $package['pieces'] - $quantity . ')',
             $currentUser['id']
         ]);
 
@@ -547,7 +549,7 @@ function processScrap($package, $targetRack, $quantity, $scrapReason, $currentUs
 {
     // 报废操作
     $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-            quantity, actual_usage, scrap_reason, operator_id, transaction_time) 
+            quantity, actual_usage, scrap_reason,notes, operator_id, transaction_time) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
     query($sql, [
         $package['id'],
@@ -557,6 +559,7 @@ function processScrap($package, $targetRack, $quantity, $scrapReason, $currentUs
         $quantity,
         $quantity, // 报废操作，actual_usage等于报废量
         $scrapReason,
+        $scrapReason,   //备注也写上
         $currentUser['id']
     ]);
 
