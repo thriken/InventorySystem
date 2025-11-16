@@ -143,7 +143,7 @@ $params = [];
 $sql = "SELECT t.*, gp.package_code, gt.name as glass_name, gt.thickness, gt.color,
                u.real_name as operator_name, u.username as operator_username,
                fr.code as from_rack_code,
-               tr.code as to_rack_code
+               tr.code as to_rack_code , t.notes as notes
         FROM inventory_transactions t
         LEFT JOIN glass_packages gp ON t.package_id = gp.id
         LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id
@@ -234,6 +234,8 @@ ob_start();
                         <td>
                             <?php if ($transaction['scrap_reason']): ?>
                                 <strong>报废原因:</strong> <?php echo htmlspecialchars($transaction['scrap_reason']); ?>
+                            <?php elseif ($transaction['notes']): ?>
+                                <span><?php echo htmlspecialchars($transaction['notes']); ?></span>
                             <?php else: ?>
                                 <span style="color: #999;">-</span>
                             <?php endif; ?>
