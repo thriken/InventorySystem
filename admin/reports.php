@@ -26,14 +26,14 @@ $bases = fetchAll("SELECT id, name, code FROM bases ORDER BY name");
 
 // 获取查询参数
 $reportDate = $_GET['report_date'] ?? date('Y-m-d');
+$reportDateEnd = $_GET['report_date_end'] ?? $reportDate;
 $baseId = $_GET['base_id'] ?? '';
 
-// 计算时间范围：当日8点到次日8点
-$startTime = $reportDate . ' 08:00:00';
-$endTime = date('Y-m-d H:i:s', strtotime($reportDate . ' +1 day 08:00:00'));
+// 按操作日期统计，不再使用8点时间范围，避免跨日操作计数异常
+$startDate = $reportDate;
+$endDate = date('Y-m-d', strtotime($reportDateEnd . ' +1 day')); // 包含结束日期
 
 // 获取每日领用总表数据 - 直接使用 inventory_transactions 表
-// 修改第28-43行的SQL查询
 $sql = "SELECT 
             gt.name as glass_name,
             gt.color,
@@ -54,11 +54,18 @@ $sql = "SELECT
         LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id
         LEFT JOIN storage_racks sr ON gp.current_rack_id = sr.id
         LEFT JOIN bases b ON sr.base_id = b.id
-        WHERE it.transaction_time >= ?
-        AND it.transaction_time < ?
+        WHERE DATE(it.transaction_time) >= ?
+        AND DATE(it.transaction_time) < ?
         AND it.transaction_type IN ('usage_out', 'partial_usage', 'return_in', 'scrap')";
 
-$params = [$startTime, $endTime];
+$params = [$startDate, $endDate];
+
+// 添加基地筛选条件
+if (!empty($baseId)) {
+    $sql .= " AND b.id = ?";
+    $params[] = $baseId;
+}
+
 $sql .= " GROUP BY gt.id, gt.name, gt.color, gt.thickness, gp.width, gp.height, b.name
          HAVING (usage_out_pieces > 0 OR partial_usage_pieces > 0 OR scrap_pieces > 0)
          ORDER BY gt.name";
@@ -102,11 +109,19 @@ $summarySql = "SELECT
                 COUNT(DISTINCT it.package_id) as total_packages
                FROM inventory_transactions it
                LEFT JOIN glass_packages gp ON it.package_id = gp.id
-               WHERE it.transaction_time >= ?
-               AND it.transaction_time < ?
+               LEFT JOIN storage_racks sr ON gp.current_rack_id = sr.id
+               LEFT JOIN bases b ON sr.base_id = b.id
+               WHERE DATE(it.transaction_time) >= ?
+               AND DATE(it.transaction_time) < ?
                AND it.transaction_type IN ('usage_out', 'partial_usage', 'return_in', 'scrap')";
 
-$summaryParams = [$startTime, $endTime];
+$summaryParams = [$startDate, $endDate];
+
+// 添加基地筛选条件到汇总查询
+if (!empty($baseId)) {
+    $summarySql .= " AND b.id = ?";
+    $summaryParams[] = $baseId;
+}
 
 $summaryResult = fetchAll($summarySql, $summaryParams);
 $summaryData = !empty($summaryResult) ? $summaryResult[0] : [];
@@ -120,8 +135,13 @@ ob_start();
         <form method="GET" class="filter-form">
             <div class="search-grid">
                 <div class="form-group">
-                    <label for="report_date">报表日期</label>
+                    <label for="report_date">起始日期</label>
                     <input type="date" id="report_date" name="report_date" value="<?php echo htmlspecialchars($reportDate); ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label for="report_date_end">结束日期</label>
+                    <input type="date" id="report_date_end" name="report_date_end" value="<?php echo htmlspecialchars($reportDateEnd); ?>">
                 </div>
                 
                 <div class="form-group">
@@ -143,6 +163,7 @@ ob_start();
                     </div>
                 </div>
             </div>
+            <span class="text-info">日期范围：包含起始日期，不包含结束日期</span>
         </form>
     </div>
     
