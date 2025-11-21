@@ -114,6 +114,49 @@ function getTargetRackInfo($targetRackCode, $currentAreaType,$baseName) {
     ];
 }
 
+/**
+ * 根据库位名称获取目标库位信息并判断操作类型（支持基地ID限制）
+ * @param string $targetRackName 目标库位名称
+ * @param string $currentAreaType 当前区域类型
+ * @param int $baseId 用户基地ID
+ * @return array 包含success和data/message的数组
+ */
+function getTargetRackInfoByName($targetRackName, $currentAreaType, $baseId) {
+    if (empty($targetRackName)) {
+        return ['success' => false, 'message' => '目标库位名称不能为空'];
+    }
+    
+    if (empty($baseId)) {
+        return ['success' => false, 'message' => '用户基地信息无效'];
+    }
+    
+    // 根据库位名称和用户基地ID查询
+    $sql = "SELECT r.*, b.name as base_name
+            FROM storage_racks r 
+            LEFT JOIN bases b ON r.base_id = b.id 
+            WHERE r.name = ? AND r.base_id = ?";
+    
+    $targetRack = fetchRow($sql, [$targetRackName, $baseId]);
+    
+    if (!$targetRack) {
+        return ['success' => false, 'message' => '未找到指定基地的目标库位'];
+    }
+    
+    $transactionType = determineTransactionType($currentAreaType, $targetRack['area_type']);
+    
+    return [
+        'success' => true,
+        'data' => [
+            'rack_code' => $targetRack['code'],
+            'rack_name' => $targetRack['name'],
+            'area_type' => $targetRack['area_type'],
+            'base_name' => $targetRack['base_name'],
+            'transaction_type' => $transactionType['type'],
+            'transaction_name' => $transactionType['name']
+        ]
+    ];
+}
+
 function determineTransactionType($fromAreaType, $toAreaType) {
     if (empty($fromAreaType)) {
         // 从未分配到任何区域（新包入库）

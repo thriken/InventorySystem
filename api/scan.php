@@ -56,15 +56,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_package_info') {
  */
 if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
     try {
-        $targetRackCode = trim($_GET['target_rack_code'] ?? '');
+        $targetNO = trim($_GET['target_rack_code'] ?? '');
         $currentAreaType = $_GET['current_area_type'] ?? '';
         $baseName = $_GET['base_name'] ?? '';
         
-        if (empty($targetRackCode)) {
+        if (empty($targetNO)) {
             ApiCommon::sendResponse(400, '目标架号不能为空');
         }
         
-        $result = getTargetRackInfo($targetRackCode, $currentAreaType, $baseName);
+        if (strpos($targetNO, '-') !== false) {
+            $result = getTargetRackInfo($targetNO, $currentAreaType, $baseName);
+        } else {
+            $result = getTargetRackInfoByName($targetNO, $currentAreaType, $currentUser['base_id']);
+        }
         
         if ($result['success']) {
             ApiCommon::sendResponse(200, '获取成功', $result['data']);
