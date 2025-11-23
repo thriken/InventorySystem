@@ -570,6 +570,13 @@ GET /api/scan.php?action=get_target_info&target_rack_code=R001
                             <td>备注信息</td>
                             <td>领用出库</td>
                         </tr>
+                        <tr>
+                            <td>all_use</td>
+                            <td>boolean</td>
+                            <td>否</td>
+                            <td>是否全部用完（勾选时数量自动设为0表示完全使用）</td>
+                            <td>true</td>
+                        </tr>
                     </tbody>
                 </table>
                 
@@ -586,7 +593,19 @@ Content-Type: application/json<br>
     <span class="key">"quantity"</span>: <span class="number">100</span>,
     <span class="key">"transaction_type"</span>: <span class="string">"usage_out"</span>,
     <span class="key">"scrap_reason"</span>: <span class="string">""</span>,
-    <span class="key">"notes"</span>: <span class="string">"领用出库"</span>
+    <span class="key">"notes"</span>: <span class="string">"领用出库"</span>,
+    <span class="key">"all_use"</span>: <span class="boolean">false</span>
+}
+<br><br>
+<span class="comment">// 全部用完示例（勾选全部使用时）</span><br>
+{
+    <span class="key">"package_code"</span>: <span class="string">"YP20240001"</span>,
+    <span class="key">"target_rack_code"</span>: <span class="string">"R001"</span>,
+    <span class="key">"quantity"</span>: <span class="number">0</span>,
+    <span class="key">"transaction_type"</span>: <span class="string">"usage_out"</span>,
+    <span class="key">"scrap_reason"</span>: <span class="string">""</span>,
+    <span class="key">"notes"</span>: <span class="string">"整包领用"</span>,
+    <span class="key">"all_use"</span>: <span class="boolean">true</span>
 }
                 </div>
                 
@@ -720,6 +739,28 @@ async function executeTransaction(data) {<br>
         body: JSON.stringify(data)<br>
     });<br>
     return await response.json();<br>
+}<br>
+<br>
+<span class="comment">// 4. 全部用完操作示例</span><br>
+async function executeFullUseTransaction(packageCode, targetRackCode) {<br>
+    const data = {<br>
+        package_code: packageCode,<br>
+        target_rack_code: targetRackCode,<br>
+        quantity: 0,<br>
+        transaction_type: 'usage_out',<br>
+        all_use: true,<br>
+        notes: '整包领用'<br>
+    };<br>
+    <br>
+    const response = await fetch('/api/scan.php', {<br>
+        method: 'POST',<br>
+        headers: {<br>
+            'Authorization': 'Bearer ' + getToken(),<br>
+            'Content-Type': 'application/json'<br>
+        },<br>
+        body: JSON.stringify(data)<br>
+    });<br>
+    return await response.json();<br>
 }
                     </div>
                 </div>
@@ -768,6 +809,27 @@ def execute_transaction(token, data):<br>
         headers=headers,<br>
         json=data<br>
     )<br>
+    return response.json()<br>
+<br>
+<span class="comment"># 4. 全部用完操作示例</span><br>
+def execute_full_use_transaction(token, package_code, target_rack_code):<br>
+    data = {<br>
+        'package_code': package_code,<br>
+        'target_rack_code': target_rack_code,<br>
+        'quantity': 0,<br>
+        'transaction_type': 'usage_out',<br>
+        'all_use': True,<br>
+        'notes': '整包领用'<br>
+    }<br>
+    headers = {<br>
+        'Authorization': f'Bearer {token}',<br>
+        'Content-Type': 'application/json'<br>
+    }<br>
+    response = requests.post(<br>
+        'http://your-domain.com/api/scan.php',<br>
+        headers=headers,<br>
+        json=data<br>
+    )<br>
     return response.json()
                     </div>
                 </div>
@@ -789,6 +851,13 @@ curl -X POST \<br>
   -H "Authorization: Bearer your-token-here" \<br>
   -H "Content-Type: application/json" \<br>
   -d '{"package_code":"YP20240001","target_rack_code":"R001","quantity":100,"transaction_type":"usage_out"}' \<br>
+  "http://your-domain.com/api/scan.php"<br>
+<br>
+<span class="comment"># 4. 全部用完操作示例</span><br>
+curl -X POST \<br>
+  -H "Authorization: Bearer your-token-here" \<br>
+  -H "Content-Type: application/json" \<br>
+  -d '{"package_code":"YP20240001","target_rack_code":"R001","quantity":0,"transaction_type":"usage_out","all_use":true,"notes":"整包领用"}' \<br>
   "http://your-domain.com/api/scan.php"
                     </div>
                 </div>

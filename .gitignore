@@ -1,0 +1,6 @@
+.osp/
+py2apk/.buildozer/*
+py2apk/android-ndk*/
+py2apk/Android*/
+py2apk/build/*
+py2apk/bin/*

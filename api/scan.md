@@ -126,6 +126,7 @@ Content-Type: application/json
 | transaction_type | string | 是 | 交易类型 | "usage_out" |
 | scrap_reason | string | 否 | 报废原因(报废操作时必填) | "破损" |
 | notes | string | 否 | 备注信息 | "领用出库" |
+| all_use | boolean | 否 | 是否全部用完（勾选时数量自动设为0表示完全使用） | true |
 
 **交易类型可选值**:
 - `warehouse_in`: 入库
@@ -147,7 +148,22 @@ Authorization: Bearer your-token-here
     "quantity": 100,
     "transaction_type": "usage_out",
     "scrap_reason": "",
-    "notes": "领用出库"
+    "notes": "领用出库",
+    "all_use": false
+}
+```
+
+#### 全部用完示例
+
+```json
+{
+    "package_code": "YP20240001",
+    "target_rack_code": "R001",
+    "quantity": 0,
+    "transaction_type": "usage_out",
+    "scrap_reason": "",
+    "notes": "整包领用",
+    "all_use": true
 }
 ```
 
@@ -270,6 +286,29 @@ async function executeTransaction(transactionData) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(transactionData)
+    });
+    return await response.json();
+}
+
+// 全部用完操作示例
+async function executeFullUseTransaction(packageCode, targetRackCode) {
+    const data = {
+        package_code: packageCode,
+        target_rack_code: targetRackCode,
+        quantity: 0,
+        transaction_type: 'usage_out',
+        all_use: true,
+        notes: '整包领用'
+    };
+    
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/scan.php', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
     });
     return await response.json();
 }
