@@ -63,7 +63,7 @@ define('TRANSACTION_TYPE_NAMES', [
     'return_in' => '归还入库',
     'scrap' => '报废出库',
     'partial_usage' => '部分领用',
-    'location_adjust' => '基地流转',
+    'location_adjust' => '库位调整',
     'check_in' => '盘盈入库',
     'check_out' => '盘亏出库'
 ]);
