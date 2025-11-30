@@ -1,0 +1,28 @@
+# 盘点功能目录访问控制
+# 确保只有登录用户可以访问
+
+# 阻止直接访问（不通过身份验证）
+<Files "*.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# 允许访问的文件（除了需要身份验证的）
+<Files "index.php">
+    Order allow,deny
+    Allow from all
+</Files>
+
+# 防止直接访问敏感文件
+<Files "*.sql">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# 设置默认字符集
+AddDefaultCharset UTF-8
+
+# 启用GZIP压缩
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+</IfModule>

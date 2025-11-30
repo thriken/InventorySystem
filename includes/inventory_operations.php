@@ -92,8 +92,8 @@ function getTargetRackInfo($targetRackCode, $currentAreaType,$baseName) {
         $sql = "SELECT r.*, b.name as base_name
         FROM storage_racks r 
         LEFT JOIN bases b ON r.base_id = b.id 
-        WHERE r.name = ? AND b.name = ?";
-        $targetRack = fetchRow($sql, [$targetRackCode, $baseName]);
+        WHERE (r.code = ? OR r.name = ?) AND b.name = ?";
+        $targetRack = fetchRow($sql, [$targetRackCode, $targetRackCode, $baseName]);
     }
     if (!$targetRack) {
         return ['success' => false, 'message' => '未找到目标架号'];

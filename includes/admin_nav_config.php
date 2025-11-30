@@ -99,12 +99,12 @@ function getAdminNavConfig($userRole) {
             'roles' => ['admin'], // 仅管理员可访问
             'order' => 10
         ],
-                [
+        [
             'id' => 'tools',
             'title' => '原片包导入',
             'url' => 'tools_packages.php',
             'icon' => 'icon-tools',
-            'roles' => ['manager'], // 仅管理员可访问
+            'roles' => ['manager'], 
             'order' => 10
         ],
         [
@@ -112,8 +112,16 @@ function getAdminNavConfig($userRole) {
             'title' => '查看库存',
             'url' => '../viewer/inventory.php',
             'icon' => 'icon-tools',
-            'roles' => ['admin', 'manager'], // 仅管理员可访问
+            'roles' => ['admin', 'manager'], 
             'order' => 11
+        ],
+        [
+            'id' => 'inventory_check',
+            'title' => '库存盘点',
+            'url' => '../inventory/index.php',
+            'icon' => 'icon-check',
+            'roles' => ['admin', 'manager'], // 仅管理员和库管可访问
+            'order' => 12
         ],
 
     ];
@@ -147,7 +155,8 @@ function getCurrentNavId($currentPage) {
         'transactions.php' => 'transactions',
         'reports.php' => 'reports',
         'users.php' => 'users',
-        'settings.php' => 'settings'
+        'settings.php' => 'settings',
+
     ];
     
     return $pageNavMap[$currentPage] ?? '';

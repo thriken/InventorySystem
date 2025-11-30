@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库存盘点API文档</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet">
+    <style>
+        .method-get { color: #61affe; }
+        .method-post { color: #49cc90; }
+        .method-put { color: #fca130; }
+        .method-delete { color: #f93e3e; }
+        .endpoint { font-family: monospace; background: #f7f7f7; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .code-block { background: #f5f5f5; padding: 15px; border-radius: 4px; margin: 10px 0; }
+        pre { margin: 0; }
+        .nav-tabs { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="page-header">库存盘点API文档</h1>
+            <p class="lead">原片管理系统库存盘点模块的RESTful API接口</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4>目录</h4>
+                </div>
+                <div class="panel-body">
+                    <ul class="nav nav-pills nav-stacked">
+                        <li><a href="#overview">概述</a></li>
+                        <li><a href="#auth">认证机制</a></li>
+                        <li><a href="#list-tasks">获取任务列表</a></li>
+                        <li><a href="#get-task">获取任务详情</a></li>
+                        <li><a href="#scan-package">扫码盘点</a></li>
+                        <li><a href="#batch-scan">批量扫码</a></li>
+                        <li><a href="#get-package">获取包信息</a></li>
+                        <li><a href="#submit-check">手动提交盘点</a></li>
+                        <li><a href="#sync-data">同步数据</a></li>
+                        <li><a href="#error-codes">错误码</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <!-- 概述 -->
+            <section id="overview">
+                <h2>概述</h2>
+                <p>库存盘点API为PDA设备和移动应用提供完整的盘点功能支持，包括任务获取、扫码盘点、批量提交等功能。</p>
+                <div class="alert alert-info">
+                    <strong>基础URL：</strong> <code>/api/inventory_check.php</code>
+                </div>
+            </section>
+
+            <!-- 认证机制 -->
+            <section id="auth">
+                <h2>认证机制</h2>
+                <p>所有API请求需要在请求头中包含Bearer Token：</p>
+                <div class="code-block">
+                    <pre><code>Authorization: Bearer {your_token}</code></pre>
+                </div>
+                <p>Token通过 <a href="auth.md">认证接口</a> 获取，有效期为24小时。</p>
+            </section>
+
+            <!-- 获取任务列表 -->
+            <section id="list-tasks">
+                <h2>获取任务列表</h2>
+                <p>获取当前用户的进行中和已创建的盘点任务列表。</p>
+                
+                <h4>请求</h4>
+                <div class="endpoint">
+                    <span class="method-get">GET</span> /api/inventory_check.php?action=list
+                </div>
+
+                <h4>响应示例</h4>
+                <div class="code-block">
+                    <pre><code class="language-json">{
+  "code": 200,
+  "message": "获取成功",
+  "timestamp": 1701234567,
+  "data": [
+    {
+      "id": 1,
+      "task_name": "2025年11月全盘盘点",
+      "task_type": "full",
+      "status": "in_progress",
+      "total_packages": 150,
+      "checked_packages": 45,
+      "difference_count": 3,
+      "completion_rate": 30.0,
+      "status_text": "进行中",
+      "task_type_text": "全盘",
+      "created_at": "2025-11-29 09:00:00",
+      "started_at": "2025-11-29 09:30:00"
+    }
+  ]
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- 获取任务详情 -->
+            <section id="get-task">
+                <h2>获取任务详情</h2>
+                <p>获取指定任务的详细信息，包括待盘点包列表。</p>
+                
+                <h4>请求</h4>
+                <div class="endpoint">
+                    <span class="method-get">GET</span> /api/inventory_check.php?action=get&task_id=1
+                </div>
+
+                <h4>参数</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr><th>参数</th><th>类型</th><th>必需</th><th>说明</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+                    </tbody>
+                </table>
+
+                <h4>响应示例</h4>
+                <div class="code-block">
+                    <pre><code class="language-json">{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "task": {
+      "id": 1,
+      "task_name": "2025年11月全盘盘点",
+      "task_type": "full",
+      "status": "in_progress",
+      "total_packages": 150,
+      "checked_packages": 45
+    },
+    "packages": [
+      {
+        "cache_id": 1,
+        "package_code": "L250831002",
+        "package_id": 123,
+        "system_quantity": 50,
+        "check_quantity": 0,
+        "glass_name": "5白"
+      }
+    ],
+    "total_packages": 105,
+    "checked_packages": 45,
+    "completion_rate": 42.86
+  }
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- 扫码盘点 -->
+            <section id="scan-package">
+                <h2>扫码盘点</h2>
+                <p>通过PDA扫码完成单个包的盘点操作。</p>
+                
+                <h4>请求</h4>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/inventory_check.php?action=scan
+                </div>
+
+                <h4>参数</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr><th>参数</th><th>类型</th><th>必需</th><th>说明</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+                        <tr><td>package_code</td><td>string</td><td>是</td><td>包号</td></tr>
+                        <tr><td>check_quantity</td><td>int</td><td>是</td><td>盘点数量</td></tr>
+                    </tbody>
+                </table>
+
+                <h4>响应示例</h4>
+                <div class="code-block">
+                    <pre><code class="language-json">{
+  "code": 200,
+  "message": "盘点成功",
+  "data": {
+    "package_code": "L250831002",
+    "glass_name": "5白",
+    "system_quantity": 50,
+    "check_quantity": 48,
+    "difference": -2,
+    "checked_packages": 46
+  }
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- 批量扫码 -->
+            <section id="batch-scan">
+                <h2>批量扫码</h2>
+                <p>一次性提交多个包的盘点数据。</p>
+                
+                <h4>请求</h4>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/inventory_check.php?action=batch_scan
+                </div>
+
+                <h4>参数</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr><th>参数</th><th>类型</th><th>必需</th><th>说明</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+                        <tr><td>batch_data</td><td>string</td><td>是</td><td>JSON格式的批量数据</td></tr>
+                    </tbody>
+                </table>
+
+                <h4>batch_data格式</h4>
+                <div class="code-block">
+                    <pre><code class="language-json">[
+  {
+    "package_code": "L250831002",
+    "check_quantity": 48
+  },
+  {
+    "package_code": "L250831003",
+    "check_quantity": 52
+  }
+]</code></pre>
+                </div>
+
+                <h4>响应示例</h4>
+                <div class="code-block">
+                    <pre><code class="language-json">{
+  "code": 200,
+  "message": "批量盘点完成",
+  "data": {
+    "success_count": 18,
+    "total_count": 20,
+    "errors": [
+      "包 L250831015 不存在或不在库存状态",
+      "包 L250831016 已盘点"
+    ],
+    "checked_packages": 63
+  }
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- 获取包信息 -->
+            <section id="get-package">
+                <h2>获取包信息</h2>
+                <p>根据包号获取详细信息，用于盘点前确认。</p>
+                
+                <h4>请求</h4>
+                <div class="endpoint">
+                    <span class="method-get">GET</span> /api/inventory_check.php?action=get_package_info&package_code=L250831002
+                </div>
+
+                <h4>响应示例</h4>
+                <div class="code-block">
+                    <pre><code class="language-json">{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "id": 123,
+    "package_code": "L250831002",
+    "pieces": 50,
+    "width": 2440.00,
+    "height": 3300.00,
+    "entry_date": "2025-11-20",
+    "glass_name": "5白",
+    "thickness": "5.00",
+    "brand": "信义",
+    "color": "白玻",
+    "rack_code": "A01-01",
+    "base_name": "生产基地1"
+  }
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- 手动提交盘点 -->
+            <section id="submit-check">
+                <h2>手动提交盘点</h2>
+                <p>手动输入包号和数量完成盘点。</p>
+                
+                <h4>请求</h4>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/inventory_check.php?action=submit_check
+                </div>
+
+                <h4>参数</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr><th>参数</th><th>类型</th><th>必需</th><th>说明</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+                        <tr><td>package_code</td><td>string</td><td>是</td><td>包号</td></tr>
+                        <tr><td>check_quantity</td><td>int</td><td>是</td><td>盘点数量</td></tr>
+                        <tr><td>notes</td><td>string</td><td>否</td><td>备注信息</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 同步数据 -->
+            <section id="sync-data">
+                <h2>同步数据</h2>
+                <p>获取指定时间之后的盘点数据更新，用于多设备同步。</p>
+                
+                <h4>请求</h4>
+                <div class="endpoint">
+                    <span class="method-get">GET</span> /api/inventory_check.php?action=sync&task_id=1&last_sync=2025-11-29 10:30:00
+                </div>
+
+                <h4>参数</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr><th>参数</th><th>类型</th><th>必需</th><th>说明</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+                        <tr><td>last_sync</td><td>string</td><td>否</td><td>上次同步时间</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 错误码 -->
+            <section id="error-codes">
+                <h2>错误码说明</h2>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr><th>错误码</th><th>说明</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>200</td><td>请求成功</td></tr>
+                        <tr><td>400</td><td>请求参数错误</td></tr>
+                        <tr><td>401</td><td>未认证或Token无效</td></tr>
+                        <tr><td>403</td><td>无权限访问</td></tr>
+                        <tr><td>404</td><td>资源不存在</td></tr>
+                        <tr><td>500</td><td>服务器内部错误</td></tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+</body>
+</html>
