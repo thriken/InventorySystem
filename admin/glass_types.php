@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'created_at' => date('Y-m-d H:i:s')
             ]);
 
-            $message = '原片类型添加成功！' .$result;
+            $message = '原片类型添加成功！';
             $messageType = 'success';
         } elseif ($action === 'edit') {
             $id = (int)($_POST['id'] ?? 0);

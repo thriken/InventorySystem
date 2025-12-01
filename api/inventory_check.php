@@ -10,11 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../includes/db.php';
-require_once '../ApiCommon.php';
+require_once '../api/ApiCommon.php';
 require_once '../includes/inventory_check_auth.php';
 
-// 创建API实例
-$api = new ApiCommon();
+// 设置API响应头
+ApiCommon::setHeaders();
+ApiCommon::handlePreflight();
 
 // 处理请求
 try {
@@ -42,25 +43,25 @@ try {
         case 'submit_check':
             handleSubmitCheck();
             break;
+        case 'get_rollback_count':
+            handleGetRollbackCount();
+            break;
         default:
-            $api->response(400, '不支持的操作类型');
+            ApiCommon::sendResponse(400, '不支持的操作类型');
     }
     
 } catch (Exception $e) {
-    $api->response(500, '服务器错误', ['error' => $e->getMessage()]);
+    ApiCommon::sendResponse(500, '服务器错误', ['error' => $e->getMessage()]);
 }
 
 /**
  * 获取当前用户的盘点任务列表
  */
 function handleListTasks() {
-    global $api;
-    
-    if (!validateInventoryCheckAPI()) {
+    $user = ApiCommon::authenticate();
+    if (!$user || !validateInventoryCheckPermissions($user)) {
         return;
     }
-    
-    $user = $api->getCurrentUser();
     
     $baseId = $user['base_id'];
     
@@ -80,30 +81,27 @@ function handleListTasks() {
         $task['task_type_text'] = getTaskTypeText($task['task_type']);
     }
     
-    $api->response(200, '获取成功', $tasks);
+    ApiCommon::sendResponse(200, '获取成功', $tasks);
 }
 
 /**
  * 获取单个任务详情
  */
 function handleGetTask() {
-    global $api;
-    
-    if (!validateInventoryCheckAPI()) {
+    $user = ApiCommon::authenticate();
+    if (!$user || !validateInventoryCheckPermissions($user)) {
         return;
     }
     
-    $user = $api->getCurrentUser();
-    
     $taskId = $_GET['task_id'] ?? 0;
     if (!$taskId) {
-        $api->response(400, '缺少任务ID');
+        ApiCommon::sendResponse(400, '缺少任务ID');
     }
     
     // 获取任务信息
     $task = fetchRow("SELECT * FROM inventory_check_tasks WHERE id = ? AND base_id = ?", [$taskId, $user['base_id']]);
     if (!$task) {
-        $api->response(404, '任务不存在');
+        ApiCommon::sendResponse(404, '任务不存在');
     }
     
     // 获取待盘点包列表
@@ -127,34 +125,31 @@ function handleGetTask() {
             : 0
     ];
     
-    $api->response(200, '获取成功', $result);
+    ApiCommon::sendResponse(200, '获取成功', $result);
 }
 
 /**
  * 扫码处理单个包
  */
 function handleScanPackage() {
-    global $api;
-    
-    if (!validateInventoryCheckAPI()) {
+    $user = ApiCommon::authenticate();
+    if (!$user || !validateInventoryCheckPermissions($user)) {
         return;
     }
-    
-    $user = $api->getCurrentUser();
     
     $taskId = $_POST['task_id'] ?? 0;
     $packageCode = $_POST['package_code'] ?? '';
     $checkQuantity = $_POST['check_quantity'] ?? 0;
     
     if (!$taskId || !$packageCode || !$checkQuantity) {
-        $api->response(400, '缺少必要参数');
+        ApiCommon::sendResponse(400, '缺少必要参数');
     }
     
     // 验证任务权限
     $task = fetchRow("SELECT * FROM inventory_check_tasks WHERE id = ? AND base_id = ? AND status = 'in_progress'", 
                      [$taskId, $user['base_id']]);
     if (!$task) {
-        $api->response(404, '任务不存在或未开始');
+        ApiCommon::sendResponse(404, '任务不存在或未开始');
     }
     
     // 查找包信息
@@ -165,7 +160,7 @@ function handleScanPackage() {
                         [$packageCode]);
     
     if (!$package) {
-        $api->response(404, '包不存在或不在库存状态');
+        ApiCommon::sendResponse(404, '包不存在或不在库存状态');
     }
     
     beginTransaction();
@@ -176,8 +171,8 @@ function handleScanPackage() {
                            [$taskId, $packageCode]);
         
         if ($existing) {
-            rollback();
-            $api->response(400, '该包已盘点');
+            rollbackTransaction();
+            ApiCommon::sendResponse(400, '该包已盘点');
         }
         
         // 更新盘点缓存
@@ -195,7 +190,7 @@ function handleScanPackage() {
         update('inventory_check_cache', $updateData, 'task_id = ? AND package_code = ?', [$taskId, $packageCode]);
         
         // 更新任务进度
-        $newCount = fetchColumn("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        $newCount = fetchOne("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
         update('inventory_check_tasks', ['checked_packages' => $newCount], 'id = ?', [$taskId]);
         
         commitTransaction();
@@ -209,11 +204,11 @@ function handleScanPackage() {
             'checked_packages' => $newCount
         ];
         
-        $api->response(200, '盘点成功', $result);
+        ApiCommon::sendResponse(200, '盘点成功', $result);
         
     } catch (Exception $e) {
-        rollback();
-        $api->response(500, '盘点失败', ['error' => $e->getMessage()]);
+        rollbackTransaction();
+        ApiCommon::sendResponse(500, '盘点失败', ['error' => $e->getMessage()]);
     }
 }
 
@@ -221,31 +216,28 @@ function handleScanPackage() {
  * 批量扫码处理
  */
 function handleBatchScan() {
-    global $api;
-    
-    if (!validateInventoryCheckAPI()) {
+    $user = ApiCommon::authenticate();
+    if (!$user || !validateInventoryCheckPermissions($user)) {
         return;
     }
-    
-    $user = $api->getCurrentUser();
     
     $taskId = $_POST['task_id'] ?? 0;
     $batchData = $_POST['batch_data'] ?? '';
     
     if (!$taskId || !$batchData) {
-        $api->response(400, '缺少必要参数');
+        ApiCommon::sendResponse(400, '缺少必要参数');
     }
     
     $data = json_decode($batchData, true);
     if (!$data || !is_array($data)) {
-        $api->response(400, '批量数据格式错误');
+        ApiCommon::sendResponse(400, '批量数据格式错误');
     }
     
     // 验证任务权限
     $task = fetchRow("SELECT * FROM inventory_check_tasks WHERE id = ? AND base_id = ? AND status = 'in_progress'", 
                      [$taskId, $user['base_id']]);
     if (!$task) {
-        $api->response(404, '任务不存在或未开始');
+        ApiCommon::sendResponse(404, '任务不存在或未开始');
     }
     
     $successCount = 0;
@@ -300,7 +292,7 @@ function handleBatchScan() {
         }
         
         // 更新任务进度
-        $newCount = fetchColumn("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        $newCount = fetchOne("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
         update('inventory_check_tasks', ['checked_packages' => $newCount], 'id = ?', [$taskId]);
         
         commitTransaction();
@@ -312,11 +304,11 @@ function handleBatchScan() {
             'checked_packages' => $newCount
         ];
         
-        $api->response(200, '批量盘点完成', $result);
+        ApiCommon::sendResponse(200, '批量盘点完成', $result);
         
     } catch (Exception $e) {
-        rollback();
-        $api->response(500, '批量盘点失败', ['error' => $e->getMessage()]);
+        rollbackTransaction();
+        ApiCommon::sendResponse(500, '批量盘点失败', ['error' => $e->getMessage()]);
     }
 }
 
@@ -324,25 +316,22 @@ function handleBatchScan() {
  * 同步盘点数据
  */
 function handleSyncData() {
-    global $api;
-    
-    if (!validateInventoryCheckAPI()) {
+    $user = ApiCommon::authenticate();
+    if (!$user || !validateInventoryCheckPermissions($user)) {
         return;
     }
-    
-    $user = $api->getCurrentUser();
     
     $taskId = $_GET['task_id'] ?? 0;
     $lastSync = $_GET['last_sync'] ?? '1970-01-01 00:00:00';
     
     if (!$taskId) {
-        $api->response(400, '缺少任务ID');
+        ApiCommon::sendResponse(400, '缺少任务ID');
     }
     
     // 验证任务权限
     $task = fetchRow("SELECT * FROM inventory_check_tasks WHERE id = ? AND base_id = ?", [$taskId, $user['base_id']]);
     if (!$task) {
-        $api->response(404, '任务不存在');
+        ApiCommon::sendResponse(404, '任务不存在');
     }
     
     // 获取更新的数据
@@ -369,24 +358,21 @@ function handleSyncData() {
             : 0
     ];
     
-    $api->response(200, '同步成功', $result);
+    ApiCommon::sendResponse(200, '同步成功', $result);
 }
 
 /**
  * 获取包信息
  */
 function handleGetPackageInfo() {
-    global $api;
-    
-    if (!validateInventoryCheckAPI()) {
+    $user = ApiCommon::authenticate();
+    if (!$user || !validateInventoryCheckPermissions($user)) {
         return;
     }
     
-    $user = $api->getCurrentUser();
-    
     $packageCode = $_GET['package_code'] ?? '';
     if (!$packageCode) {
-        $api->response(400, '缺少包号');
+        ApiCommon::sendResponse(400, '缺少包号');
     }
     
     $sql = "SELECT p.id, p.package_code, p.pieces, p.width, p.height, p.entry_date,
@@ -401,28 +387,25 @@ function handleGetPackageInfo() {
     $package = fetchRow($sql, [$packageCode]);
     
     if (!$package) {
-        $api->response(404, '包不存在或不在库存状态');
+        ApiCommon::sendResponse(404, '包不存在或不在库存状态');
     }
     
     // 检查是否属于用户基地
     if ($package['base_name'] != $user['base_name']) {
-        $api->response(403, '无权限访问此包');
+        ApiCommon::sendResponse(403, '无权限访问此包');
     }
     
-    $api->response(200, '获取成功', $package);
+    ApiCommon::sendResponse(200, '获取成功', $package);
 }
 
 /**
  * 提交盘点数据（手动录入）
  */
 function handleSubmitCheck() {
-    global $api;
-    
-    if (!validateInventoryCheckAPI()) {
+    $user = ApiCommon::authenticate();
+    if (!$user || !validateInventoryCheckPermissions($user)) {
         return;
     }
-    
-    $user = $api->getCurrentUser();
     
     $taskId = $_POST['task_id'] ?? 0;
     $packageCode = $_POST['package_code'] ?? '';
@@ -430,14 +413,14 @@ function handleSubmitCheck() {
     $notes = $_POST['notes'] ?? '';
     
     if (!$taskId || !$packageCode || !$checkQuantity) {
-        $api->response(400, '缺少必要参数');
+        ApiCommon::sendResponse(400, '缺少必要参数');
     }
     
     // 验证任务权限
     $task = fetchRow("SELECT * FROM inventory_check_tasks WHERE id = ? AND base_id = ? AND status = 'in_progress'", 
                      [$taskId, $user['base_id']]);
     if (!$task) {
-        $api->response(404, '任务不存在或未开始');
+        ApiCommon::sendResponse(404, '任务不存在或未开始');
     }
     
     // 查找包信息
@@ -447,7 +430,7 @@ function handleSubmitCheck() {
                         [$packageCode]);
     
     if (!$package) {
-        $api->response(404, '包不存在或不在库存状态');
+        ApiCommon::sendResponse(404, '包不存在或不在库存状态');
     }
     
     beginTransaction();
@@ -469,7 +452,7 @@ function handleSubmitCheck() {
         update('inventory_check_cache', $updateData, 'task_id = ? AND package_code = ?', [$taskId, $packageCode]);
         
         // 更新任务进度
-        $newCount = fetchColumn("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        $newCount = fetchOne("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
         update('inventory_check_tasks', ['checked_packages' => $newCount], 'id = ?', [$taskId]);
         
         commitTransaction();
@@ -482,11 +465,11 @@ function handleSubmitCheck() {
             'checked_packages' => $newCount
         ];
         
-        $api->response(200, '提交成功', $result);
+        ApiCommon::sendResponse(200, '提交成功', $result);
         
     } catch (Exception $e) {
         rollbackTransaction();
-        $api->response(500, '提交失败', ['error' => $e->getMessage()]);
+        ApiCommon::sendResponse(500, '提交失败', ['error' => $e->getMessage()]);
     }
 }
 
@@ -504,6 +487,39 @@ function getTaskStatusText($status) {
 }
 
 /**
+ * 获取回滚记录数量
+ */
+function handleGetRollbackCount() {
+    $user = ApiCommon::authenticate();
+    if (!$user || !validateInventoryCheckPermissions($user)) {
+        return;
+    }
+    
+    $taskId = $_POST['task_id'] ?? 0;
+    
+    if (!$taskId) {
+        ApiCommon::sendResponse(400, '缺少任务ID');
+    }
+    
+    // 验证任务存在且属于用户基地
+    $task = fetchRow("SELECT * FROM inventory_check_tasks WHERE id = ? AND base_id = ?", [$taskId, $user['base_id']]);
+    if (!$task) {
+        ApiCommon::sendResponse(404, '任务不存在');
+    }
+    
+    // 获取盘点期间的回滚记录数量
+    $count = fetchOne("
+        SELECT COUNT(*) FROM inventory_check_cache 
+        WHERE task_id = ? AND check_method = 'auto_rollback'
+    ", [$taskId]);
+    
+    ApiCommon::sendResponse(200, '获取成功', [
+        'count' => intval($count),
+        'task_id' => $taskId
+    ]);
+}
+
+/**
  * 获取盘点类型文本
  */
 function getTaskTypeText($type) {
@@ -515,33 +531,14 @@ function getTaskTypeText($type) {
     return $map[$type] ?? $type;
 }
 
-/**
- * 验证盘点API权限
- */
-function validateInventoryCheckAPI() {
-    global $api;
-    
-    // 验证用户登录
-    $user = $api->getCurrentUser();
-    if (!$user) {
-        $api->response(401, '未登录');
-        return false;
-    }
-    
+function validateInventoryCheckPermissions($user) {
     // 验证盘点权限
-    if (!hasInventoryCheckPermission($user)) {
-        $api->response(403, '无权限访问盘点功能');
+    $allowedRoles = ['admin', 'manager'];
+    if (!in_array($user['role'], $allowedRoles)) {
+        ApiCommon::sendResponse(403, '无权限访问盘点功能');
         return false;
     }
-    
     return true;
 }
 
-/**
- * 检查用户是否有盘点权限
- */
-function hasInventoryCheckPermission($user) {
-    // 管理员有只读权限，库管有全权限
-    return in_array($user['role'], ['admin', 'manager']);
-}
 ?>

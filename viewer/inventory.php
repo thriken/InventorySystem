@@ -66,119 +66,21 @@ foreach ($packages as $package) {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
     <script src="../assets/js/datatable-config.js"></script>
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
-        <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="../assets/css/viewer.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
     <link rel="stylesheet" href="../assets/css/datatable-theme.css">
-    <style>
-        .viewer-layout {
-            min-height: 100vh;
-            background-color: #f5f5f5;
-        }
-        .viewer-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px 0;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        .header-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .viewer-container {
-            max-width: 1700px;
-            margin: 0 auto;
-            padding: 30px 20px;
-        }
-        .header-left h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        .nav-links {
-            display: flex;
-            gap: 10px;
-        }
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-link.active {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: rgba(255, 255, 255, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        .summary-info {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            margin: 20px 0;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .summary-grid {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .summary-item {
-            text-align: center;
-            flex: 1;
-        }
-
-        .summary-item .number {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        }
-
-        .summary-item .label {
-            font-size: 14px;
-            opacity: 0.9;
-            font-weight: 500;
-        }
-    </style>
 </head>
 <body class="viewer-layout">
     <header class="viewer-header">
         <div class="header-content">
             <div class="header-left">
-                <h1>库存查询 - <?php echo $baseName; ?></h1>
+                <h1><?php echo APP_NAME; ?> - 库存查询</h1>
             </div>
             <div class="header-right">
                 <div class="nav-links">
@@ -275,20 +177,12 @@ foreach ($packages as $package) {
             </div>
         </div>
     </div>
-    <script>
-$(document).ready(function() {
-    // 初始化DataTable
-    const table = $('#inventoryTable').DataTable();
+
+    <!-- 导出表单 -->
+    <form id="exportForm" method="POST" style="display: none;">
+        <input type="hidden" name="export" value="inventory">
+    </form>
     
-    // 获取URL中的search参数
-    const urlParams = new URLSearchParams(window.location.search);
-    const searchValue = urlParams.get('search');
-    
-    // 如果search参数存在，自动应用到DataTable搜索框
-    if (searchValue) {
-        table.search(searchValue).draw();
-    }
-});
-</script>
+
 </body>
 </html>

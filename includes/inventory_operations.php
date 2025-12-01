@@ -82,6 +82,7 @@ function getTargetRackInfo($targetRackCode, $currentAreaType,$baseName) {
     if (empty($targetRackCode)) {
         return ['success' => false, 'message' => '目标架号不能为空'];
     }
+
     if (empty($baseName)) {
            $sql = "SELECT r.*, b.name as base_name
         FROM storage_racks r 
@@ -96,6 +97,7 @@ function getTargetRackInfo($targetRackCode, $currentAreaType,$baseName) {
         $targetRack = fetchRow($sql, [$targetRackCode, $targetRackCode, $baseName]);
     }
     if (!$targetRack) {
+		
         return ['success' => false, 'message' => '未找到目标架号'];
     }
     
@@ -158,7 +160,7 @@ function getTargetRackInfoByName($targetRackName, $currentAreaType, $baseId) {
 }
 
 function determineTransactionType($fromAreaType, $toAreaType) {
-    if (empty($fromAreaType)) {
+    if (empty($fromAreaType) or $fromAreaType =='null') {
         // 从未分配到任何区域（新包入库）
         switch ($toAreaType) {
             case 'storage':

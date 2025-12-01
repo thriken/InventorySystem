@@ -224,10 +224,10 @@ function handleConfirmImport() {
         }
         
         // 更新任务进度
-        $newCount = fetchColumn("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        $newCount = fetchOne("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
         update('inventory_check_tasks', ['checked_packages' => $newCount], 'id = ?', [$taskId]);
         
-        commit();
+        commitTransaction();
         
         // 删除临时文件
         @unlink($filePath);
@@ -236,7 +236,7 @@ function handleConfirmImport() {
         showImportResult($successCount, $errors, $duplicates, count($data));
         
     } catch (Exception $e) {
-        rollback();
+        rollbackTransaction();
         $error = '导入失败：' . $e->getMessage();
         showImportForm();
     }

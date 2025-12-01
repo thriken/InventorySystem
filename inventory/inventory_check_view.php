@@ -128,26 +128,19 @@
     </div>
 
     <!-- 盘点期间出库处理统计 -->
-    <?php 
-    $rollbackCount = fetchColumn("
-        SELECT COUNT(*) FROM inventory_check_cache 
-        WHERE task_id = ? AND check_method = 'auto_rollback'
-    ", [$task['id']]);
-    
-    if ($rollbackCount > 0): ?>
-    <div class="panel panel-warning no-print">
+    <div class="panel panel-warning no-print" id="rollback-info-panel" style="display: none;">
         <div class="panel-heading">
             <h4><i class="glyphicon glyphicon-time"></i> 盘点期间处理</h4>
         </div>
         <div class="panel-body">
             <div class="alert alert-info">
                 <i class="glyphicon glyphicon-info-sign"></i>
-                <strong>已检测到<?php echo $rollbackCount; ?>个盘点期间的出库记录</strong><br>
-                <small>这些记录已自动回滚到盘点数据中，避免误判为盘亏。</small>
+                <div id="rollback-message">
+                    <strong>正在加载回滚信息...</strong><br>
+                </div>
             </div>
         </div>
     </div>
-    <?php endif; ?>
 
     <!-- 快速操作（仅进行中状态） -->
     <?php if ($task['status'] === 'in_progress'): ?>
@@ -368,6 +361,9 @@
 
 <script>
 $(document).ready(function() {
+    // 加载回滚统计信息
+    loadRollbackCount();
+    
     // 包号自动查询
     $('#packageCode').on('blur', function() {
         var packageCode = $(this).val();
@@ -485,6 +481,39 @@ function applyFilter() {
     });
 }
 
+// 全局变量存储回滚计数
+var currentRollbackCount = 0;
+
+// 加载回滚统计信息
+function loadRollbackCount() {
+    $.ajax({
+        url: '../api/inventory_check.php',
+        method: 'POST',
+        data: {
+            action: 'get_rollback_count',
+            task_id: <?php echo $task['id']; ?>
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.code === 200) {
+                var rollbackCount = response.data.count;
+                currentRollbackCount = rollbackCount; // 存储到全局变量
+                if (rollbackCount > 0) {
+                    $('#rollback-message').html(
+                        '<strong>已检测到' + rollbackCount + '个盘点期间的出库记录</strong><br>' +
+                        '<small>这些记录已自动回滚到盘点数据中，避免误判为盘亏。</small>'
+                    );
+                    $('#rollback-info-panel').show();
+                }
+            }
+        },
+        error: function() {
+            // 加载失败时静默处理，不影响页面其他功能
+            console.log('加载回滚统计失败');
+        }
+    });
+}
+
 function refreshData() {
     location.reload();
 }
@@ -512,9 +541,18 @@ function submitCompleteTask() {
     
     // 确认信息
     var confirmMessage = '确定要完成盘点任务吗？\n\n';
+    confirmMessage += '应盘包数：' + <?php echo $task['total_packages']; ?> + '\n';
+    confirmMessage += '已盘包数：' + <?php echo $task['checked_packages']; ?> + '\n';
+    confirmMessage += '差异数量：' + <?php echo $task['difference_count']; ?> + '\n\n';
+    
+    if (currentRollbackCount > 0) {
+        confirmMessage += '⚠️ 已检测到' + currentRollbackCount + '个盘点期间的出库记录\n';
+        confirmMessage += '✅ 这些记录已自动回滚到盘点数据中\n\n';
+    }
+    
     if (adjustInventory === '1') {
         confirmMessage += '√ 将根据盘点结果自动调整库存数量\n';
-        confirmMessage += '√ 盘盈将增加库存，盘亏将减少库存\n\n';
+        confirmMessage += '√ 盘盈增加库存，盘亏减少库存\n\n';
         confirmMessage += '此操作不可撤销，请再次确认盘点数据！';
     } else {
         confirmMessage += '√ 仅生成盘点报告，不调整库存\n\n';

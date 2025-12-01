@@ -14,6 +14,7 @@ $currentUser = getCurrentUser();
 // 获取所有基地
 $bases = fetchAll("SELECT id, name FROM bases ORDER BY name");
 
+$baseName = fetchOne("SELECT name FROM bases WHERE id = ?", [$currentUser['base_id']]);
 // 处理AJAX请求 - 获取包信息
 if (isset($_GET['action']) && $_GET['action'] === 'get_package_info') {
     $packageCode = trim($_GET['package_code'] ?? '');
@@ -26,7 +27,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_package_info') {
 if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
     $targetRackCode = trim($_GET['target_rack_code'] ?? '');
     $currentAreaType = $_GET['current_area_type'] ?? '';
-    $baseName = $_GET['base_name'] ?? '';
     $result = getTargetRackInfo($targetRackCode, $currentAreaType,$baseName);
     jsonResponse($result);
 }
@@ -39,7 +39,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
                 $packageCode = trim($_POST['package_code'] ?? '');
                 $base_name = trim($_POST['base_name'] ?? '');
                 $RackCode = trim($_POST['target_rack_code'] ?? '');
-                // 优先使用完整的rack_code，如果没有则使用用户输入的简化代码
                 $fullRackCode = trim($_POST['full_rack_code'] ?? '');
                 $targetRackCode = !empty($fullRackCode) ? $fullRackCode : $RackCode;
 
@@ -299,7 +298,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
             <div class="form-group">
                 <label for="target_rack_code">目标架号</label>
                 <div class="input-with-scan">
-                    <input type="text" id="base_name" name="base_name" value="" required readonly hidden >
+                    <input type="text" id="base_name" name="base_name" value="<?php echo $baseName; ?>" required readonly hidden >
                     <input type="text" id="target_rack_code" name="target_rack_code" autocomplete="new-password" required onchange="getTargetInfo()">
                     <button type="button" class="scan-button" onclick="scanBarcode('target_rack_code')">扫描</button>
                 </div>
@@ -312,7 +311,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
             <div class="form-group">
                 <label for="quantity">数量</label>
                 <input type="number" id="quantity" name="quantity" min="0" required autocomplete="new-password">
-                <div style="display: flex; align-items: center; margin-top: 10px;">
+                <div id="alluse_group" style="display: none; align-items: center; margin-top: 10px;">
                     <input type="checkbox" id="alluse" name="alluse" style="margin-right: 8px;">
                     <label for="alluse" style="margin: 0;">全部用完</label>
                 </div>
@@ -392,6 +391,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
             const transactionType = document.getElementById('transaction_type').value;
             const scrapReasonGroup = document.getElementById('scrap_reason_group');
             const notesGroup = document.getElementById('notes_group');
+            const alluseGroup = document.getElementById('alluse_group');
 
             if (transactionType === 'scrap') {
                 if (scrapReasonGroup) {
@@ -409,6 +409,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
                     notesGroup.classList.remove('hidden');
                 } else {
                     notesGroup.classList.add('hidden');
+                }
+            }
+
+            // 控制"全部用完"选项的显示 - 仅在领用出库时显示
+            if (alluseGroup) {
+                if (transactionType === 'usage_out') {
+                    alluseGroup.style.display = 'flex';
+                } else {
+                    alluseGroup.style.display = 'none';
+                    // 同时取消勾选状态
+                    const alluseCheckbox = document.getElementById('alluse');
+                    if (alluseCheckbox && alluseCheckbox.checked) {
+                        alluseCheckbox.checked = false;
+                        alluseCheckbox.dispatchEvent(new Event('change'));
+                    }
                 }
             }
         }
@@ -827,6 +842,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
             setTimeout(() => {
                 initializeCodeReader();
             }, 500);
+            
+            // 初始化控件显示状态
+            toggleScrapReason();
             
             // 初始化"全部用完"复选框处理
             handleAllUseCheckbox();

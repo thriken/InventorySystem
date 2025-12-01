@@ -1,0 +1,234 @@
+/* ========================================
+   Viewer 页面样式
+   ======================================== */
+
+/* ========================================
+   基础布局
+   ======================================== */
+.viewer-layout {
+    min-height: 100vh;
+    background-color: #f5f5f5;
+}
+
+.viewer-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.viewer-container {
+    max-width: 1700px;
+    margin: 0 auto;
+    padding: 30px 20px;
+}
+
+.header-left h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* ========================================
+   导航链接
+   ======================================== */
+.nav-links {
+    display: flex;
+    gap: 10px;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    transition: background 0.3s;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ========================================
+   用户信息
+   ======================================== */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* ========================================
+   汇总信息
+   ======================================== */
+.summary-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    margin: 20px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.summary-grid {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 20px;
+}
+
+.summary-item {
+    text-align: center;
+    flex: 1;
+}
+
+.summary-item .number {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.summary-item .label {
+    font-size: 14px;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+/* ========================================
+   筛选区域
+   ======================================== */
+.filter-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-row {
+    display: flex;
+    gap: 15px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #555;
+}
+
+.filter-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* ========================================
+   状态徽章
+   ======================================== */
+.processing-badge {
+    background: #fff3cd;
+    color: #856404;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.status-in_storage {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-in_processing {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-scrapped {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* ========================================
+   响应式设计
+   ======================================== */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .summary-grid {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .filter-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .filter-group {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .viewer-container {
+        padding: 20px 15px;
+    }
+}

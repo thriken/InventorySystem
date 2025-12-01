@@ -1,7 +1,7 @@
 // DataTables 通用配置
 const defaultDataTableConfig = {
     "language": {
-        "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Chinese.json",
+        "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/Chinese.json",
         "emptyTable": "暂无数据",
         "loadingRecords": "加载中...",
         "processing": "处理中...",
@@ -34,8 +34,8 @@ const defaultDataTableConfig = {
     "dom": '<"row"<"col-sm-6"l><"col-sm-6"f>>rtip',
     "order": [[ 0, "desc" ]], // 默认按第一列降序排列
     "drawCallback": function(settings) {
-        // 重新绑定按钮事件（如果需要）
-        bindTableEvents();
+        // 安全地重新绑定按钮事件（仅在有操作列时）
+        safeBindTableEvents();
     }
 };
 
@@ -121,16 +121,85 @@ const configTemplates = {
     // 库存查询表格配置
     inventory: {
         "order": [[ 9, "desc" ]], // 按入库日期降序排列
+        "dom": 'Bfrtip', // 使用导出按钮布局
+        "buttons": [
+            {
+                "extend": 'excel',
+                "text": '导出 Excel',
+                "className": 'btn btn-success btn-sm',
+                "filename": function() {
+                    const date = new Date().toISOString().slice(0, 10);
+                    return '库存数据_' + date;
+                },
+                "exportOptions": {
+                    "columns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] // 排除状态列
+                }
+            },
+            {
+                "extend": 'csv',
+                "text": '导出 CSV',
+                "className": 'btn btn-info btn-sm',
+                "filename": function() {
+                    const date = new Date().toISOString().slice(0, 10);
+                    return '库存数据_' + date;
+                },
+                "exportOptions": {
+                    "columns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] // 排除状态列
+                }
+            }
+        ],
         "columnDefs": [
             { "className": "text-center", "targets": [0, 1, 2, 5, 6, 7, 8, 10] }, // 包号、名称、简称、颜色、厚度、库位、基地、状态列居中
             { "className": "text-right", "targets": [4] }, // 片数右对齐
             { "type": "date", "targets": [9] } // 日期列
+        ]
+    },
+    
+    // 加工库存表格配置
+    processing: {
+        "order": [[ 10, "desc" ]], // 按使用时间降序排列
+        "dom": 'Bfrtip', // 使用导出按钮布局
+        "buttons": [
+            {
+                "extend": 'excel',
+                "text": '导出 Excel',
+                "className": 'btn btn-success btn-sm',
+                "filename": function() {
+                    const date = new Date().toISOString().slice(0, 10);
+                    return '加工区库存_' + date;
+                },
+                "exportOptions": {
+                    "columns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] // 排除状态列
+                }
+            },
+            {
+                "extend": 'csv',
+                "text": '导出 CSV',
+                "className": 'btn btn-info btn-sm',
+                "filename": function() {
+                    const date = new Date().toISOString().slice(0, 10);
+                    return '加工区库存_' + date;
+                },
+                "exportOptions": {
+                    "columns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] // 排除状态列
+                }
+            }
+        ],
+        "columnDefs": [
+            { "className": "text-center", "targets": [0, 1, 2, 5, 6, 7, 10, 11] }, // 包号、名称、简称、颜色、厚度、库位、基地、状态列居中
+            { "className": "text-right", "targets": [4] }, // 使用片数右对齐
+            { "type": "date", "targets": [10] } // 使用时间列
         ]
     }
 };
 
 // 初始化 DataTable 的通用函数
 function initDataTable(tableId, templateName = null, customConfig = {}) {
+    // 检查是否已经初始化过DataTable，避免重复初始化
+    if ($.fn.dataTable.isDataTable(tableId)) {
+        $(tableId).DataTable().destroy();
+    }
+    
     let config = Object.assign({}, defaultDataTableConfig);
     
     // 如果指定了模板，合并模板配置
@@ -151,29 +220,45 @@ function initDataTable(tableId, templateName = null, customConfig = {}) {
         config.columnDefs = [...config.columnDefs, ...customConfig.columnDefs];
         delete customConfig.columnDefs;
     }
-    config = Object.assign(config, customConfig);
+    
+    // 添加防重复初始化的保护选项
+    config = Object.assign(config, customConfig, {
+        retrieve: true,
+        destroy: true
+    });
     
     return $(tableId).DataTable(config);
 }
 
-// 重新绑定表格事件的函数
-function bindTableEvents() {
-    // 重新绑定删除确认事件
-    $('.btn-delete').off('click').on('click', function(e) {
-        e.preventDefault();
-        if (confirm('确定要删除这条记录吗？此操作不可恢复！')) {
-            // 执行删除操作
-            const deleteUrl = $(this).attr('href') || $(this).data('url');
-            if (deleteUrl) {
-                window.location.href = deleteUrl;
+// 安全地重新绑定表格事件的函数（避免在 viewer 页面出错）
+function safeBindTableEvents() {
+    // 只在有删除按钮时绑定删除事件
+    const $deleteBtns = $('.btn-delete');
+    if ($deleteBtns.length > 0) {
+        $deleteBtns.off('click').on('click', function(e) {
+            e.preventDefault();
+            if (confirm('确定要删除这条记录吗？此操作不可恢复！')) {
+                // 执行删除操作
+                const deleteUrl = $(this).attr('href') || $(this).data('url');
+                if (deleteUrl) {
+                    window.location.href = deleteUrl;
+                }
             }
-        }
-    });
+        });
+    }
     
-    // 重新绑定其他按钮事件
-    $('.btn-edit').off('click').on('click', function(e) {
-        // 编辑按钮事件处理
-    });
+    // 只在有编辑按钮时绑定编辑事件
+    const $editBtns = $('.btn-edit');
+    if ($editBtns.length > 0) {
+        $editBtns.off('click').on('click', function(e) {
+            // 编辑按钮事件处理
+        });
+    }
+}
+
+// 重新绑定表格事件的函数（保留向后兼容）
+function bindTableEvents() {
+    safeBindTableEvents();
 }
 
 // 导出功能
@@ -384,15 +469,31 @@ $(document).ready(function() {
         const template = $(this).data('table');
         const exportName = $(this).data('export') || 'data';
         
-        // 初始化表格
+        // 初始化表格（包含防重复初始化保护）
         initDataTable(tableId, template);
         
-        // 如果需要导出功能
+        // 如果需要导出功能（兼容旧配置）
         if ($(this).data('export')) {
             addExportButtons(tableId, exportName);
         }
     });
     
-    // 绑定初始事件
-    bindTableEvents();
+    // 绑定初始事件（安全版本）
+    safeBindTableEvents();
+    
+    // 处理 URL 搜索参数，自动应用到 DataTable 搜索框
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchValue = urlParams.get('search');
+    
+    if (searchValue) {
+        // 等待表格初始化完成后再应用搜索
+        setTimeout(function() {
+            $('[data-table]').each(function() {
+                const tableId = '#' + $(this).attr('id');
+                if ($.fn.dataTable.isDataTable(tableId)) {
+                    $(tableId).DataTable().search(searchValue).draw();
+                }
+            });
+        }, 100);
+    }
 });

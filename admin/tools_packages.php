@@ -1,4 +1,7 @@
 <?php
+/**
+ * 原片包导入页面 库管员可用
+ */
 require_once '../config/config.php';
 require_once '../includes/auth.php';
 require_once '../includes/functions.php';

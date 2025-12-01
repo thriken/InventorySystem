@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/auth.php';
-
+require_once '../api/ApiCommon.php';
 /**
  * 验证盘点功能查看权限
  * admin（只读）和 manager（完整权限）可以访问
@@ -449,17 +449,16 @@ function requireTaskPermission($taskId, $action = 'view') {
  * 验证API请求权限
  */
 function validateInventoryCheckAPI() {
-    global $api;
-    
-    $user = $api->getCurrentUser();
+
+    $user = ApiCommon::authenticate();
     if (!$user) {
-        $api->response(401, '未认证');
+        ApiCommon::sendResponse(401, '未认证');
         return false;
     }
     
     $allowedRoles = ['admin', 'manager'];
     if (!in_array($user['role'], $allowedRoles)) {
-        $api->response(403, '权限不足');
+        ApiCommon::sendResponse(403, '权限不足');
         return false;
     }
     
