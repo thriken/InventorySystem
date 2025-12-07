@@ -30,8 +30,8 @@ CREATE TABLE `inventory_check_tasks` (
     `difference_count` int(11) NOT NULL DEFAULT 0 COMMENT '差异数量',
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE = MyISAM AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '盘点任务表' ROW_FORMAT = DYNAMIC;
+    PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '盘点任务表';
 
 -- 2. 盘点明细缓存表
 CREATE TABLE `inventory_check_cache` (
@@ -48,10 +48,11 @@ CREATE TABLE `inventory_check_cache` (
     `operator_id` int(11) DEFAULT NULL COMMENT '操作员ID',
     `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '备注信息',
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    UNIQUE KEY `uk_task_package`(`task_id`, `package_code`) USING BTREE,
-    INDEX `idx_package_code`(`package_code`) USING BTREE,
-    INDEX `idx_task_id`(`task_id`) USING BTREE
-) ENGINE = MyISAM CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '盘点明细缓存表' ROW_FORMAT = DYNAMIC;
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_task_package`(`task_id`, `package_code`),
+    KEY `idx_package_code`(`package_code`),
+    KEY `idx_task_id`(`task_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '盘点明细缓存表';
 
 -- 3. 盘点结果汇总表
 CREATE TABLE `inventory_check_results` (
@@ -65,9 +66,10 @@ CREATE TABLE `inventory_check_results` (
     `loss_packages` int(11) NOT NULL DEFAULT 0 COMMENT '盘亏包数',
     `normal_packages` int(11) NOT NULL DEFAULT 0 COMMENT '正常包数',
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    UNIQUE KEY `uk_task_glass`(`task_id`, `glass_type_id`) USING BTREE,
-    INDEX `idx_task_id`(`task_id`) USING BTREE
-) ENGINE = MyISAM CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '盘点结果汇总表' ROW_FORMAT = DYNAMIC;
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_task_glass`(`task_id`, `glass_type_id`),
+    KEY `idx_task_id`(`task_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '盘点结果汇总表';
 
 -- 4. 盘点任务配置表（可选）
 CREATE TABLE `inventory_check_settings` (
@@ -80,13 +82,14 @@ CREATE TABLE `inventory_check_settings` (
     `approval_role` enum('admin','manager') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'admin' COMMENT '审批角色',
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    UNIQUE KEY `uk_base`(`base_id`) USING BTREE
-) ENGINE = MyISAM CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '盘点配置表' ROW_FORMAT = DYNAMIC;
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_base`(`base_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '盘点配置表';
 
 -- 创建索引优化查询性能
-CREATE INDEX `idx_check_cache_task_status` ON `inventory_check_cache`(`task_id`, `check_quantity`, `system_quantity`) USING BTREE;
-CREATE INDEX `idx_results_task_glass` ON `inventory_check_results`(`task_id`, `glass_type_id`) USING BTREE;
-CREATE INDEX `idx_tasks_base_created` ON `inventory_check_tasks`(`base_id`, `created_at`) USING BTREE;
+CREATE INDEX `idx_check_cache_task_status` ON `inventory_check_cache`(`task_id`, `check_quantity`, `system_quantity`);
+CREATE INDEX `idx_results_task_glass` ON `inventory_check_results`(`task_id`, `glass_type_id`);
+CREATE INDEX `idx_tasks_base_created` ON `inventory_check_tasks`(`base_id`, `created_at`);
 
 -- MySQL 5.7 兼容的视图创建
 CREATE VIEW `inventory_check_task_summary` AS
@@ -159,6 +162,3 @@ FROM `bases`, (SELECT @row:=0) AS r;
 
 -- 启用外键检查
 SET FOREIGN_KEY_CHECKS = 1;
-
--- 提交事务
-COMMIT;
