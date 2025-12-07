@@ -1,0 +1,133 @@
+/* 库位架页面特定样式 */
+.add-button-container {
+    position: absolute;
+    right: 100px;
+    margin-bottom: 0;
+}
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    color: inherit;
+    text-decoration: none;
+}
+
+.sortable-header:hover {
+    background-color: #f8f9fa;
+}
+
+.sort-icon {
+    margin-left: 5px;
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.sort-asc, .sort-desc {
+    color: #007bff;
+    opacity: 1;
+}
+
+.tree-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background: #f9f9f9;
+}
+
+.tree-node {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.tree-node:hover {
+    background-color: #e9ecef;
+}
+
+.base-node.active .tree-node {
+    background-color: #007bff;
+    color: white;
+}
+
+.tree-toggle {
+    display: inline-block;
+    width: 20px;
+    font-weight: bold;
+}
+
+.area-list {
+    margin-left: 20px;
+    margin-top: 5px;
+    display: none;
+    transition: all 0.3s ease;
+}
+
+.area-list.show {
+    display: block;
+}
+
+.area-node {
+    padding: 6px 12px;
+    margin: 2px 0;
+    cursor: pointer;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s;
+}
+
+.area-node:hover {
+    background-color: #f8f9fa;
+    border-color: #007bff;
+}
+
+.area-node.selected {
+    background-color: #007bff;
+    color: white;
+    border-color: #0056b3;
+}
+
+.selected-info {
+    display: none;
+    padding: 15px;
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: 4px;
+    margin: 15px 0;
+}
+
+.selected-info.show {
+    display: block;
+}
+
+.code-preview {
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+}
+
+.base-name {
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.base-code {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.area-count {
+    color: #666;
+    font-size: 0.85em;
+    margin-left: 8px;
+}
+
+.area-node.selected .area-count {
+    color: rgba(255, 255, 255, 0.8);
+}
+

@@ -484,7 +484,17 @@ ob_start();
         </tbody>
     </table>
 </div>
+
 <script>
+    $(document).ready(function() {
+    // 初始化返回顶部按钮
+        BackToTop.init({
+            threshold: 200,    // 滚动200px后显示
+            duration: 400,     // 动画400ms
+            icon: '↑'         // 向上箭头
+        });
+    });
+
     function showAddForm() {
         document.getElementById('formContainer').style.display = 'block';
         document.querySelector('input[name="action"]').value = 'add';

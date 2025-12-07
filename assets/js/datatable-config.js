@@ -96,7 +96,6 @@ const configTemplates = {
             { "className": "text-right", "targets": [3, 4, 5, 6] } // 数量列右对齐
         ],
         "footerCallback": function(row, data, start, end, display) {
-            // 计算合计
             const api = this.api();
             const intVal = function(i) {
                 return typeof i === 'string' ?
@@ -104,7 +103,6 @@ const configTemplates = {
                     typeof i === 'number' ? i : 0;
             };
             
-            // 计算各列总和
             for (let i = 3; i <= 6; i++) {
                 const total = api
                     .column(i, { page: 'current' })
@@ -121,7 +119,7 @@ const configTemplates = {
     // 库存查询表格配置
     inventory: {
         "order": [[ 9, "desc" ]], // 按入库日期降序排列
-        "dom": 'Bfrtip', // 使用导出按钮布局
+        "dom": 'lBfrtip',// 包含分页控件和导出按钮
         "buttons": [
             {
                 "extend": 'excel',
@@ -132,50 +130,56 @@ const configTemplates = {
                     return '库存数据_' + date;
                 },
                 "exportOptions": {
-                    "columns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] // 排除状态列
-                }
-            },
-            {
-                "extend": 'csv',
-                "text": '导出 CSV',
-                "className": 'btn btn-info btn-sm',
-                "filename": function() {
-                    const date = new Date().toISOString().slice(0, 10);
-                    return '库存数据_' + date;
-                },
-                "exportOptions": {
-                    "columns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] // 排除状态列
+                    "columns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] // 排除状态列
                 }
             }
         ],
         "columnDefs": [
-            { "className": "text-center", "targets": [0, 1, 2, 5, 6, 7, 8, 10] }, // 包号、名称、简称、颜色、厚度、库位、基地、状态列居中
-            { "className": "text-right", "targets": [4] }, // 片数右对齐
-            { "type": "date", "targets": [9] } // 日期列
-        ]
+            { "className": "text-center", "targets": [0, 1, 2, 5, 6, 7, 8, 11] }, // 包号、名称、简称、颜色、厚度、库位、基地、状态列居中
+            { "className": "text-right", "targets": [4, 5] }, // 片数、面积右对齐
+            { "type": "date", "targets": [10] } // 日期列
+        ],
+        "footerCallback": function(row, data, start, end, display) {
+            const api = this.api();
+            
+            // 移除非数字字符的函数
+            const cleanNumber = function(i) {
+                return typeof i === 'string' ?
+                    parseFloat(i.replace(/[^\d.-]/g, '')) :
+                    typeof i === 'number' ? i : 0;
+            };
+            
+            // 计算片数总和（第4列，索引4）
+            const totalPieces = api
+                .column(4, { page: 'current' }) // 只计算当前页
+                .data()
+                .reduce(function(a, b) {
+                    return cleanNumber(a) + cleanNumber(b);
+                }, 0);
+            
+            // 计算面积总和（第5列，索引5）
+            const totalArea = api
+                .column(5, { page: 'current' }) // 只计算当前页
+                .data()
+                .reduce(function(a, b) {
+                    return cleanNumber(a) + cleanNumber(b);
+                }, 0);
+            
+            // 更新页脚显示
+            $(api.column(4).footer()).html(totalPieces.toLocaleString());
+            $(api.column(5).footer()).html(totalArea.toFixed(4));
+        }
     },
     
     // 加工库存表格配置
     processing: {
         "order": [[ 10, "desc" ]], // 按使用时间降序排列
-        "dom": 'Bfrtip', // 使用导出按钮布局
+        "dom": 'lBfrtip', // 包含分页控件和导出按钮
         "buttons": [
             {
                 "extend": 'excel',
                 "text": '导出 Excel',
                 "className": 'btn btn-success btn-sm',
-                "filename": function() {
-                    const date = new Date().toISOString().slice(0, 10);
-                    return '加工区库存_' + date;
-                },
-                "exportOptions": {
-                    "columns": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] // 排除状态列
-                }
-            },
-            {
-                "extend": 'csv',
-                "text": '导出 CSV',
-                "className": 'btn btn-info btn-sm',
                 "filename": function() {
                     const date = new Date().toISOString().slice(0, 10);
                     return '加工区库存_' + date;
@@ -189,6 +193,16 @@ const configTemplates = {
             { "className": "text-center", "targets": [0, 1, 2, 5, 6, 7, 10, 11] }, // 包号、名称、简称、颜色、厚度、库位、基地、状态列居中
             { "className": "text-right", "targets": [4] }, // 使用片数右对齐
             { "type": "date", "targets": [10] } // 使用时间列
+        ]
+    },
+    
+    // 库位架管理表格配置
+    racks: {
+        "order": [[ 0, "asc" ]], // 按ID升序排列
+        "columnDefs": [
+            { "orderable": false, "targets": [8] }, // 操作列不排序
+            { "className": "text-center", "targets": [0, 5, 6, 7, 8] }, // ID、状态、包数量、创建时间、操作列居中
+            { "className": "no-sort", "targets": [8] } // 操作列添加no-sort类
         ]
     }
 };

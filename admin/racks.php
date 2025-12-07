@@ -114,66 +114,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-
-// 获取筛选参数
-$baseFilter = $_GET['base'] ?? '';
-$areaTypeFilter = $_GET['area_type'] ?? '';
-$statusFilter = $_GET['status'] ?? '';
-$search = trim($_GET['search'] ?? '');
-$sortBy = $_GET['sort'] ?? 'id';
-$sortOrder = $_GET['order'] ?? 'asc';
-
-// 验证排序参数
-$allowedSortFields = ['id', 'code', 'name', 'base_name', 'area_type'];
-if (!in_array($sortBy, $allowedSortFields)) {
-    $sortBy = 'id';
-}
-if (!in_array($sortOrder, ['asc', 'desc'])) {
-    $sortOrder = 'asc';
-}
-
-// 构建查询条件
-$whereConditions = [];
-$params = [];
-
-if (!empty($baseFilter)) {
-    $whereConditions[] = "r.base_id = ?";
-    $params[] = $baseFilter;
-}
-
-if (!empty($areaTypeFilter)) {
-    $whereConditions[] = "r.area_type = ?";
-    $params[] = $areaTypeFilter;
-}
-
-if (!empty($statusFilter)) {
-    $whereConditions[] = "r.status = ?";
-    $params[] = $statusFilter;
-}
-
-if (!empty($search)) {
-    $whereConditions[] = "(r.code LIKE ? OR r.name LIKE ?)";
-    $params[] = '%' . $search . '%';
-    $params[] = '%' . $search . '%';
-}
-
-$whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
-
-// 构建排序子句
-$orderClause = "ORDER BY ";
-if ($sortBy === 'base_name') {
-    $orderClause .= "b.name $sortOrder";
-} else {
-    $orderClause .= "r.$sortBy $sortOrder";
-}
-
-// 获取库位架列表
-$racks = fetchAll("SELECT r.*, b.name as base_name,
+$baseId = $currentUser['base_id'] ?? 0;
+$racksSql = "SELECT r.*, b.name as base_name,
                          (SELECT COUNT(*) FROM glass_packages WHERE current_rack_id = r.id) as package_count
                   FROM storage_racks r 
-                  LEFT JOIN bases b ON r.base_id = b.id 
-                  $whereClause 
-                  $orderClause", $params);
+                  LEFT JOIN bases b ON r.base_id = b.id"; 
+if ($baseId > 0) {
+    $racksSql .= " WHERE r.base_id = ?";
+    $racksParams[] = $baseId;
+}
+$racksSql .= " ORDER BY r.id ASC";
+// 获取库位架列表
+$racks = fetchAll($racksSql , $racksParams);
 
 // 获取基地列表（包含代号）
 $bases = fetchAll("SELECT id, name, code FROM bases ORDER BY name");
@@ -211,257 +163,27 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) 
     $editRecord = fetchRow("SELECT * FROM storage_racks WHERE id = ?", [$editId]);
 }
 
-// 排序链接生成函数
-function getSortUrl($field, $currentSort, $currentOrder)
-{
-    $params = $_GET;
-    $params['sort'] = $field;
 
-    if ($currentSort === $field) {
-        $params['order'] = $currentOrder === 'asc' ? 'desc' : 'asc';
-    } else {
-        $params['order'] = 'asc';
-    }
-
-    return '?' . http_build_query($params);
-}
-
-// 排序图标函数
-function getSortIcon($field, $currentSort, $currentOrder)
-{
-    if ($currentSort !== $field) {
-        return '<i class="sort-icon">⇅</i>';
-    }
-    return $currentOrder === 'asc' ? '<i class="sort-icon sort-asc">↑</i>' : '<i class="sort-icon sort-desc">↓</i>';
-}
 
 ob_start();
 ?>
 
-<style>
-    /* 简化的排序样式 */
-    .sortable-header {
-        cursor: pointer;
-        user-select: none;
-        text-decoration: none;
-        color: inherit;
-    }
 
-    .sortable-header:hover {
-        background-color: #f8f9fa;
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .sort-icon {
-        margin-left: 5px;
-        font-size: 12px;
-        opacity: 0.6;
-    }
-
-    .sort-asc {
-        color: #007bff;
-        opacity: 1;
-    }
-
-    .sort-desc {
-        color: #007bff;
-        opacity: 1;
-    }
-
-    .tree-container {
-        max-height: 300px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 10px;
-        background: #f9f9f9;
-    }
-
-    .base-node {
-        margin-bottom: 5px;
-    }
-
-    .tree-node {
-        padding: 8px 12px;
-        cursor: pointer;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-    }
-
-    .tree-node:hover {
-        background-color: #e9ecef;
-    }
-
-    .base-node.active .tree-node {
-        background-color: #007bff;
-        color: white;
-    }
-
-    .tree-toggle {
-        display: inline-block;
-        width: 20px;
-        font-weight: bold;
-    }
-
-    .base-name {
-        font-weight: bold;
-        margin-right: 8px;
-    }
-
-    .base-code {
-        color: #666;
-        font-size: 0.9em;
-    }
-
-    .area-list {
-        margin-left: 20px;
-        margin-top: 5px;
-        display: none;
-        transition: all 0.3s ease;
-    }
-
-    .area-list.show {
-        display: block;
-    }
-
-    .area-node {
-        padding: 6px 12px;
-        margin: 2px 0;
-        cursor: pointer;
-        border-radius: 4px;
-        background: white;
-        border: 1px solid #e9ecef;
-        transition: all 0.2s;
-    }
-
-    .area-node:hover {
-        background-color: #f8f9fa;
-        border-color: #007bff;
-    }
-
-    .area-node.selected {
-        background-color: #007bff;
-        color: white;
-        border-color: #0056b3;
-    }
-
-    .area-name {
-        font-weight: 500;
-    }
-
-    .area-count {
-        color: #666;
-        font-size: 0.85em;
-        margin-left: 8px;
-    }
-
-    .area-node.selected .area-count {
-        color: rgba(255, 255, 255, 0.8);
-    }
-
-    .selected-info {
-        display: none;
-        padding: 15px;
-        background: #e8f5e8;
-        border: 1px solid #c3e6c3;
-        border-radius: 4px;
-        margin: 15px 0;
-    }
-
-    .selected-info.show {
-        display: block;
-    }
-
-    .code-preview {
-        padding: 10px;
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 4px;
-        font-family: 'Courier New', monospace;
-    }
-
-    .required {
-        color: #e74c3c;
-    }
-</style>
-<div style="margin-bottom: 0px;margin-top:35px;position: absolute;right: 100px;">
+<div class="add-button-container">
     <button type="button" class="btn btn-success" onclick="showAddForm()">新增库位架</button>
 </div>
-<div class="search-form">
-    <form method="GET" action="">
-        <input type="hidden" name="sort" value="<?php echo htmlspecialchars($sortBy); ?>">
-        <input type="hidden" name="order" value="<?php echo htmlspecialchars($sortOrder); ?>">
-        <!-- 新增库位架按钮 -->
-        <div class="search-row-compact">
-            <div class="form-group-compact">
-                <label for="base">基地:</label>
-                <select id="base" name="base" class="form-control-compact">
-                    <option value="">全部基地</option>
-                    <?php foreach ($bases as $base): ?>
-                        <option value="<?php echo $base['id']; ?>" <?php echo $baseFilter == $base['id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($base['name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
 
-            <div class="form-group-compact">
-                <label for="area_type">区域类型:</label>
-                <select id="area_type" name="area_type" class="form-control-compact">
-                    <option value="">全部类型</option>
-                    <?php foreach ($areaTypes as $value => $label): ?>
-                        <option value="<?php echo $value; ?>" <?php echo $areaTypeFilter === $value ? 'selected' : ''; ?>>
-                            <?php echo $label; ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="form-group-compact">
-                <label for="status">状态:</label>
-                <select id="status" name="status" class="form-control-compact">
-                    <option value="">全部状态</option>
-                    <?php foreach ($statusOptions as $value => $label): ?>
-                        <option value="<?php echo $value; ?>" <?php echo $statusFilter === $value ? 'selected' : ''; ?>>
-                            <?php echo $label; ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="form-group-compact">
-                <label for="search">搜索:</label>
-                <input type="text" id="search" name="search" class="form-control-compact"
-                    value="<?php echo htmlspecialchars($search); ?>" placeholder="编码或名称">
-            </div>
-
-            <div class="form-group-compact">
-                <button type="submit" class="btn btn-primary btn-compact">搜索</button>
-                <a href="racks.php" class="btn btn-secondary btn-compact">重置</a>
-            </div>
-        </div>
-    </form>
-</div>
 
 <!-- 库位架数据表格 -->
 <div class="table-container">
-    <table class="table" data-table="racks">
+    <table id="racksTable" class="table" data-table="racks">
         <thead>
             <tr>
-                <th><a href="<?php echo getSortUrl('id', $sortBy, $sortOrder); ?>" class="sortable-header">
-                        ID <?php echo getSortIcon('id', $sortBy, $sortOrder); ?>
-                    </a></th>
+                <th>ID</th>
                 <th>编码</th>
-                <th><a href="<?php echo getSortUrl('name', $sortBy, $sortOrder); ?>" class="sortable-header">
-                        名称 <?php echo getSortIcon('name', $sortBy, $sortOrder); ?>
-                    </a></th>
-                <th><a href="<?php echo getSortUrl('base_name', $sortBy, $sortOrder); ?>" class="sortable-header">
-                        基地 <?php echo getSortIcon('base_name', $sortBy, $sortOrder); ?>
-                    </a></th>
-                <th><a href="<?php echo getSortUrl('area_type', $sortBy, $sortOrder); ?>" class="sortable-header">
-                        区域类型 <?php echo getSortIcon('area_type', $sortBy, $sortOrder); ?>
-                    </a></th>
+                <th>名称</th>
+                <th>基地</th>
+                <th>区域类型</th>
                 <th>状态</th>
                 <th>包数量</th>
                 <th>创建时间</th>
@@ -929,11 +651,21 @@ ob_start();
         // 名称输入框变化事件
         document.getElementById('name').addEventListener('input', updateRackCode);
     });
+
+    $(document).ready(function() {
+        // 初始化返回顶部按钮
+        BackToTop.init({
+            threshold: 200,    // 滚动200px后显示
+            duration: 400,     // 动画400ms
+            icon: '↑'         // 向上箭头
+        });
+    });
+
 </script>
 </body>
 
 </html>
 <?php
 $content = ob_get_clean();
-echo renderAdminLayout('库位架管理', $content, $currentUser, 'racks.php', [], [], $message ?? '', $messageType ?? 'info');
+echo renderAdminLayout('库位架管理', $content, $currentUser, 'racks.php', ['../assets/css/admin/rack.css'], [], $message ?? '', $messageType ?? 'info');
 ?>

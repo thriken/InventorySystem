@@ -38,9 +38,14 @@ $whereConditions[] = "gp.status = 'in_storage'";
 $whereClause = $whereConditions ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
 // 获取库存数据（DataTables将处理分页和搜索）
-$sql = "SELECT gp.*, gt.name as glass_name, gt.short_name, gt.color, gt.thickness,
+$sql = "SELECT gp.*, gt.name as glass_name, gt.short_name, gt.color, ROUND(gt.thickness,0) as thickness,
                sr.code as rack_code, b.name as base_name,
-               gp.width, gp.height, gp.pieces, gp.entry_date
+               ROUND(gp.width,0) as width, ROUND(gp.height,0) as height, gp.pieces, gp.entry_date,
+               CASE 
+                   WHEN gp.width IS NOT NULL AND gp.height IS NOT NULL AND gp.pieces IS NOT NULL
+                   THEN ROUND(gp.width * gp.height * 0.000001 * gp.pieces, 4)
+                   ELSE 0 
+               END as area
         FROM glass_packages gp 
         LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id 
         LEFT JOIN storage_racks sr ON gp.current_rack_id = sr.id 
@@ -65,10 +70,12 @@ foreach ($packages as $package) {
     <title>库存查询 - <?php echo APP_NAME; ?></title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
     <script src="../assets/js/datatable-config.js"></script>
+    <script src="../assets/js/back-to-top.js"></script>
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="../assets/css/viewer.css">
@@ -129,6 +136,7 @@ foreach ($packages as $package) {
                             <th>原片简称</th>
                             <th>规格</th>
                             <th>片数</th>
+                            <th>面积(m²)</th>
                             <th>颜色</th>
                             <th>厚度</th>
                             <th>库位</th>
@@ -137,6 +145,14 @@ foreach ($packages as $package) {
                             <th>状态</th>
                         </tr>
                     </thead>
+                    <tfoot>
+                        <tr>
+                            <th colspan="4">本页合计</th>
+                            <th></th>
+                            <th></th>
+                            <th colspan="6"></th>
+                        </tr>
+                    </tfoot>
                     <tbody>
                         <?php foreach ($packages as $package): ?>
                         <tr>
@@ -146,13 +162,14 @@ foreach ($packages as $package) {
                             <td>
                                 <?php 
                                 if ($package['width'] && $package['height']) {
-                                    echo $package['width'] . '×' . $package['height'] . 'mm';
+                                    echo $package['width'] . '×' . $package['height'] . ' mm';
                                 } else {
                                     echo '-';
                                 }
                                 ?>
                             </td>
                             <td><?php echo number_format($package['pieces']); ?></td>
+                            <td><?php echo number_format($package['area'], 3, '.', ''); ?></td>
                             <td><?php echo htmlspecialchars($package['color'] ?: '-'); ?></td>
                             <td><?php echo $package['thickness'] ? $package['thickness'] . 'mm' : '-'; ?></td>
                             <td><?php echo htmlspecialchars($package['rack_code'] ?: '-'); ?></td>
@@ -183,6 +200,17 @@ foreach ($packages as $package) {
         <input type="hidden" name="export" value="inventory">
     </form>
     
+    <script>
+    // 页面加载完成后初始化返回顶部按钮
+    $(document).ready(function() {
+        // 初始化返回顶部按钮
+        BackToTop.init({
+            threshold: 200,    // 滚动200px后显示
+            duration: 400,     // 动画持续时间400ms
+            icon: '↑'         // 使用向上箭头图标
+        });
+    });
+    </script>
 
 </body>
 </html>

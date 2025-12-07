@@ -77,10 +77,12 @@ foreach ($packages as $package) {
     <title>加工区库存 - <?php echo APP_NAME; ?></title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
     <script src="../assets/js/datatable-config.js"></script>
+    <script src="../assets/js/back-to-top.js"></script>
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="../assets/css/viewer.css">
@@ -188,6 +190,16 @@ foreach ($packages as $package) {
         <input type="hidden" name="export" value="processing">
     </form>
     
-
+    <script>
+    // 页面加载完成后初始化返回顶部按钮
+    $(document).ready(function() {
+        // 初始化返回顶部按钮
+        BackToTop.init({
+            threshold: 200,    // 滚动200px后显示
+            duration: 400,     // 动画持续时间400ms
+            icon: '↑'         // 使用向上箭头图标
+        });
+    });
+    </script>
 </body>
 </html>

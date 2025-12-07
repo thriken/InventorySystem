@@ -11,7 +11,7 @@
 /* 顶部控件样式 */
 .dataTables_length,
 .dataTables_filter {
-    margin-bottom: 15px;
+    margin: 5px 20px 5px 20px;
 }
 
 .dataTables_length {
@@ -180,6 +180,20 @@ table.dataTable tbody tr:hover {
     color: #6c757d !important;
     background-color: #f8f9fa !important;
     border-color: #dee2e6 !important;
+}
+
+/* 页脚样式 */
+table.dataTable tfoot th {
+    background-color: #f8f9fa;
+    border-top: 2px solid #dee2e6;
+    font-weight: bold;
+    color: #495057;
+    text-align: right;
+    padding: 12px 8px;
+}
+
+table.dataTable tfoot th:first-child {
+    text-align: center;
 }
 
 /* 清除浮动 */
