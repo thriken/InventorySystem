@@ -15,6 +15,24 @@ $currentUser = getCurrentUser();
 $message = '';
 $messageType = '';
 
+// 处理URL中的消息参数
+if (isset($_GET['success'])) {
+    switch ($_GET['success']) {
+        case 'add':
+            $message = '包添加成功！';
+            $messageType = 'success';
+            break;
+        case 'edit':
+            $message = '包更新成功！';
+            $messageType = 'success';
+            break;
+        case 'delete':
+            $message = '包删除成功！';
+            $messageType = 'success';
+            break;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $action = $_POST['action'] ?? '';
@@ -73,8 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             // 为新包分配位置顺序号
             assignPackagePosition($newPackageId, $initialRackId);
-            $message = '包添加成功！';
-            $messageType = 'success';
+            
+            // 添加成功后重定向到列表页面
+            header("Location: packages.php?success=add");
+            exit;
         } elseif ($action === 'edit') {
             $id = (int)($_POST['id'] ?? 0);
             $packageCode = trim($_POST['package_code'] ?? '');
@@ -124,8 +144,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 [$packageCode, $glassTypeId, $width, $height, $pieces, $entryDate, $initialRackId, $status, date('Y-m-d H:i:s'), $id]
             );
 
-            $message = '包更新成功！';
-            $messageType = 'success';
+            // 编辑成功后重定向到列表页面
+            header("Location: packages.php?success=edit");
+            exit;
         } elseif ($action === 'delete') {
             $id = (int)($_POST['id'] ?? 0);
 
@@ -141,8 +162,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             query("DELETE FROM glass_packages WHERE id = ?", [$id]);
 
-            $message = '包删除成功！';
-            $messageType = 'success';
+            // 删除成功后重定向到列表页面
+            header("Location: packages.php?success=delete");
+            exit;
         }
     } catch (Exception $e) {
         $message = '错误：' . $e->getMessage();
@@ -161,7 +183,8 @@ $params = [];
 
 // 管理员可以查看所有基地的包，其他角色只能查看所属基地的包
 if ($currentUser['role'] !== 'admin' && $currentUser['base_id']) {
-    $whereConditions[] = "r.base_id = ?";
+    // 库管可以查看未入库的包（current_rack_id 为 NULL）和已入库在所属基地的包
+    $whereConditions[] = "(p.current_rack_id IS NULL OR (r.base_id = ? AND p.current_rack_id IS NOT NULL))";
     $params[] = $currentUser['base_id'];
     // 排除已用完的包
     $whereConditions[] = "p.status != ?";
@@ -193,7 +216,7 @@ $packages = fetchAll("SELECT p.*, g.name as glass_name, g.short_name as glass_sh
                      LEFT JOIN storage_racks r ON p.current_rack_id = r.id
                      LEFT JOIN storage_racks ir ON p.initial_rack_id = ir.id
                      $whereClause
-                     ORDER BY r.code ASC, p.position_order ASC", $params);
+                     ORDER BY r.code ASC, p.position_order ASC, p.package_code ASC", $params);
 
 // 获取原片类型列表
 $glassTypes = fetchAll("SELECT * FROM glass_types WHERE status = 1 ORDER BY name");
@@ -432,7 +455,15 @@ ob_start();
                 <td><?php echo $package['position_order'] ?? '-'; ?></td>
                 <td><?php echo $package['entry_date']; ?></td>
                 <td><?php echo htmlspecialchars($package['initial_rack_code']); ?></td>
-                <td><?php echo htmlspecialchars($package['rack_code']); ?></td>
+                <td>
+                    <?php 
+                    if (empty($package['rack_code'])) {
+                        echo '<span class="status-badge inactive">未入库</span>';
+                    } else {
+                        echo htmlspecialchars($package['rack_code']);
+                    }
+                    ?>
+                </td>
                 <td>
                     <?php
                     $statusLabels = [
