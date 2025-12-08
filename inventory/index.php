@@ -8,6 +8,7 @@ require_once '../includes/auth.php';
 require_once '../includes/db.php';
 require_once '../includes/functions.php';
 require_once '../includes/inventory_check_auth.php';
+require_once '../includes/inventory_operations.php';
 
 // 检查权限：只有库管和管理员可以使用盘点功能
 requireInventoryCheckPermission();
@@ -156,10 +157,9 @@ if ($tableExists) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>库存盘点系统</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="../assets/css/inventory_check.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="inventory-check-container">
@@ -317,7 +317,7 @@ if ($tableExists) {
                                 </td>
                                 <td><?php echo date('Y-m-d H:i', strtotime($task['created_at'])); ?></td>
                                 <td>
-                                    <a href="inventory_check_view.php?id=<?php echo $task['id']; ?>" class="btn btn-sm btn-primary">
+                                    <a href="inventory_check.php?action=view&id=<?php echo $task['id']; ?>" class="btn btn-sm btn-primary">
                                         查看
                                     </a>
                                 </td>
@@ -358,14 +358,7 @@ if ($tableExists) {
 /**
  * 获取任务类型文本
  */
-function getTaskTypeText($type) {
-    $types = [
-        'full' => '全盘',
-        'partial' => '部分盘点',
-        'random' => '抽盘'
-    ];
-    return $types[$type] ?? $type;
-}
+
 
 /**
  * 获取状态文本

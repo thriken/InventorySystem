@@ -3,6 +3,7 @@ require_once '../includes/auth.php';
 require_once '../includes/db.php';
 require_once '../includes/functions.php';
 require_once '../includes/inventory_check_auth.php';
+require_once '../includes/inventory_operations.php';
 
 // 检查权限：只有库管和管理员可以使用盘点功能
 requireInventoryCheckPermission();
@@ -38,6 +39,9 @@ switch ($action) {
         break;
     case 'save_manual':
         handleManualInput();
+        break;
+    case 'get_package_info':
+        handleGetPackageInfo();
         break;
     case 'redirect':
     default:
@@ -731,6 +735,24 @@ function handleCheckPeriodRollback($taskId) {
     }
     
     return $rollbackCount;
+}
+
+/**
+ * 处理获取包信息请求
+ */
+function handleGetPackageInfo() {
+    $packageCode = $_POST['package_code'] ?? '';
+    
+    if (empty($packageCode)) {
+        echo json_encode(['success' => false, 'message' => '包号不能为空']);
+        exit;
+    }
+    
+    // 直接调用inventory_operations.php中已有的getPackageInfo函数
+    $result = getPackageInfo($packageCode);
+    
+    echo json_encode($result);
+    exit;
 }
 
 ?>

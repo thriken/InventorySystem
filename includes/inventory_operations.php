@@ -202,6 +202,20 @@ function determineTransactionType($fromAreaType, $toAreaType) {
 }
 
 /**
+ * 获取盘点类型文本
+ * @param string $type 盘点类型
+ * @return string 中文描述
+ */
+function getTaskTypeText($type) {
+    $types = [
+        'full' => '全盘',
+        'partial' => '部分盘点',
+        'random' => '抽盘'
+    ];
+    return $types[$type] ?? $type;
+}
+
+/**
  * 执行库存流转操作（从admin/transactions.php移植）
  * @param string $packageCode 包号
  * @param string $targetRackCode 目标库位架编码
@@ -595,7 +609,7 @@ function processScrap($package, $targetRack, $quantity, $scrapReason, $currentUs
     // 报废操作
     $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
             quantity, actual_usage, scrap_reason,notes, operator_id, transaction_time) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
     query($sql, [
         $package['id'],
         'scrap',

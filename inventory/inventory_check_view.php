@@ -1,4 +1,13 @@
-<?php include 'header.php'; ?>
+<?php
+// 安全检查：确保 $task 变量存在
+if (!isset($task) || $task === null) {
+    // 如果直接访问此文件，重定向到任务列表
+    header('Location: inventory_check_list.php?error=direct_access_not_allowed');
+    exit;
+}
+
+include 'header.php'; 
+?>
 
 <div class="container-fluid">
     <!-- 页面头部 -->
@@ -369,23 +378,24 @@ $(document).ready(function() {
         var packageCode = $(this).val();
         if (!packageCode) return;
         
+        // 通过AJAX调用后端PHP函数
         $.ajax({
-            url: '../api/inventory_check.php',
-            method: 'GET',
+            url: 'inventory_check.php',
+            method: 'POST',
             data: {
                 action: 'get_package_info',
                 package_code: packageCode
             },
             dataType: 'json',
             success: function(response) {
-                if (response.code === 200) {
+                if (response.success) {
                     $('#systemQuantity').val(response.data.pieces);
                     $('#glassName').val(response.data.glass_name);
                     $('#checkQuantity').focus();
                 } else {
                     $('#systemQuantity').val('');
                     $('#glassName').val('');
-                    alert('包不存在或无权限访问：' + response.message);
+                    alert('包不存在：' + response.message);
                 }
             },
             error: function() {
@@ -398,20 +408,27 @@ $(document).ready(function() {
 });
 
 function showManualInputDialog(packageCode, systemQuantity) {
-    $('#manualInputModal').modal('show');
-    if (packageCode) {
-        $('#packageCode').val(packageCode).prop('readonly', true);
-        $('#systemQuantity').val(systemQuantity);
-        $('#checkQuantity').val(systemQuantity);
-        $('#checkQuantity').focus();
-    } else {
-        $('#packageCode').val('').prop('readonly', false);
-        $('#systemQuantity').val('');
-        $('#glassName').val('');
-        $('#checkQuantity').val('');
-        $('#notes').val('');
-        $('#packageCode').focus();
-    }
+    // 先关闭任何已打开的模态框，防止重复 backdrop
+    $('.modal').modal('hide');
+    
+    // 延迟显示新的模态框，确保 backdrop 被正确清理
+    setTimeout(function() {
+        $('#manualInputModal').modal('show');
+        
+        if (packageCode) {
+            $('#packageCode').val(packageCode).prop('readonly', true);
+            $('#systemQuantity').val(systemQuantity);
+            $('#checkQuantity').val(systemQuantity);
+            $('#checkQuantity').focus();
+        } else {
+            $('#packageCode').val('').prop('readonly', false);
+            $('#systemQuantity').val('');
+            $('#glassName').val('');
+            $('#checkQuantity').val('');
+            $('#notes').val('');
+            $('#packageCode').focus();
+        }
+    }, 100);
 }
 
 function submitManualInput() {
@@ -527,12 +544,60 @@ function confirmComplete() {
 }
 
 function viewDetail(packageCode) {
-    alert('查看包详情：' + packageCode);
-    // 这里可以打开详情对话框或跳转到详情页面
+    // 获取包详细信息
+    $.ajax({
+        url: 'inventory_check.php',
+        method: 'POST',
+        data: {
+            action: 'get_package_info',
+            package_code: packageCode
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                showPackageDetailModal(packageCode, response.data);
+            } else {
+                alert('获取包信息失败：' + response.message);
+            }
+        },
+        error: function() {
+            alert('获取包信息失败，请检查网络连接');
+        }
+    });
+}
+
+function showPackageDetailModal(packageCode, packageData) {
+    // 填充模态框数据
+    $('#detailPackageCode').text(packageCode);
+    $('#detailGlassName').text(packageData.glass_name || '-');
+    $('#detailThickness').text(packageData.thickness ? packageData.thickness + 'mm' : '-');
+    $('#detailBrand').text(packageData.brand || '-');
+    $('#detailColor').text(packageData.color || '-');
+    $('#detailQuantity').text(packageData.pieces || '0');
+    $('#detailDimensions').text(
+        (packageData.width && packageData.height) ? 
+        packageData.width + 'mm × ' + packageData.height + 'mm' : 
+        '-'
+    );
+    $('#detailEntryDate').text(packageData.entry_date || '-');
+    $('#detailRackCode').text(packageData.rack_code || '-');
+    $('#detailBaseName').text(packageData.base_name || '-');
+    
+    // 显示模态框
+    $('.modal').modal('hide');
+    setTimeout(function() {
+        $('#packageDetailModal').modal('show');
+    }, 100);
 }
 
 function showCompleteDialog() {
-    $('#completeTaskModal').modal('show');
+    // 先关闭任何已打开的模态框，防止重复 backdrop
+    $('.modal').modal('hide');
+    
+    // 延迟显示新的模态框，确保 backdrop 被正确清理
+    setTimeout(function() {
+        $('#completeTaskModal').modal('show');
+    }, 100);
 }
 
 function submitCompleteTask() {
@@ -661,17 +726,7 @@ function getStatusText($status) {
     return $texts[$status] ?? $status;
 }
 
-/**
- * 获取任务类型文本
- */
-function getTaskTypeText($type) {
-    $types = [
-        'full' => '全盘',
-        'partial' => '部分盘点',
-        'random' => '抽盘'
-    ];
-    return $types[$type] ?? $type;
-}
+
 ?>
 
 <style>
@@ -680,6 +735,32 @@ function getTaskTypeText($type) {
 }
 .pending-row {
     color: #999;
+}
+
+/* 修复模态框 z-index 问题 */
+.modal {
+    z-index: 1050 !important;
+}
+
+.modal-backdrop {
+    z-index: 1040 !important;
+}
+
+.modal-dialog {
+    z-index: 1060 !important;
+}
+
+.modal-content {
+    z-index: 1070 !important;
+}
+
+/* 确保模态框在所有元素之上 */
+.modal-open .modal {
+    z-index: 1050 !important;
+}
+
+.modal-open .modal-backdrop {
+    z-index: 1040 !important;
 }
 </style>
 
@@ -739,6 +820,75 @@ function getTaskTypeText($type) {
                 </button>
                 <button type="button" class="btn btn-danger" onclick="submitCompleteTask()">
                     <i class="glyphicon glyphicon-ok"></i> 确认完成
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 包详情模态框 -->
+<div class="modal fade" id="packageDetailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">包详细信息</h4>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-bordered table-condensed">
+                            <tr>
+                                <td width="40%"><strong>包号：</strong></td>
+                                <td id="detailPackageCode">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>原片名称：</strong></td>
+                                <td id="detailGlassName">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>厚度：</strong></td>
+                                <td id="detailThickness">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>品牌：</strong></td>
+                                <td id="detailBrand">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>颜色：</strong></td>
+                                <td id="detailColor">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered table-condensed">
+                            <tr>
+                                <td width="40%"><strong>数量：</strong></td>
+                                <td id="detailQuantity">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>尺寸：</strong></td>
+                                <td id="detailDimensions">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>入库日期：</strong></td>
+                                <td id="detailEntryDate">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>库位：</strong></td>
+                                <td id="detailRackCode">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>基地：</strong></td>
+                                <td id="detailBaseName">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">
+                    <i class="glyphicon glyphicon-remove"></i> 关闭
                 </button>
             </div>
         </div>
