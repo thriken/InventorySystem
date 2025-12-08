@@ -13,6 +13,11 @@ require_once '../includes/db.php';
 require_once '../api/ApiCommon.php';
 require_once '../includes/inventory_check_auth.php';
 
+// 确保会话启动
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // 设置API响应头
 ApiCommon::setHeaders();
 ApiCommon::handlePreflight();
@@ -72,7 +77,7 @@ function handleListTasks() {
             ORDER BY created_at DESC";
     
     $tasks = fetchAll($sql, [$baseId]);
-    
+    var_dump($tasks);
     foreach ($tasks as &$task) {
         $task['completion_rate'] = $task['total_packages'] > 0 
             ? round(($task['checked_packages'] / $task['total_packages']) * 100, 2) 

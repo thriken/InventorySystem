@@ -87,23 +87,32 @@ class ApiCommon {
      * 验证Token认证
      */
     public static function authenticate() {
+        // 优先尝试会话认证（用于内部页面调用）
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (isset($_SESSION['user_id'])) {
+            // 使用会话认证
+            $user = fetchRow("SELECT id, username, real_name as name, role, base_id FROM users WHERE id = ?", [$_SESSION['user_id']]);
+            if ($user) {
+                return $user;
+            }
+        }
+        
+        // 备用：Bearer Token认证（用于外部API调用）
         $token = self::getBearerToken();
-        if (!$token) {
-            self::sendResponse(401, '未提供认证令牌');
+        if ($token) {
+            $userId = self::validateApiToken($token);
+            if ($userId) {
+                $user = fetchRow("SELECT id, username, real_name as name, role, base_id FROM users WHERE id = ?", [$userId]);
+                if ($user) {
+                    return $user;
+                }
+            }
         }
         
-        $userId = self::validateApiToken($token);
-        if (!$userId) {
-            self::sendResponse(401, '令牌无效或已过期');
-        }
-        
-        // 获取用户信息
-        $user = fetchRow("SELECT id, username, real_name as name, role, base_id FROM users WHERE id = ?", [$userId]);
-        if (!$user) {
-            self::sendResponse(404, '用户不存在');
-        }
-        
-        return $user;
+        self::sendResponse(401, '认证失败，请重新登录');
     }
     
     /**
