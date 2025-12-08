@@ -21,8 +21,8 @@ function requireInventoryCheckPermission() {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>权限不足</title>
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
+            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
             <style>
                 .error-container {
                     text-align: center;
@@ -139,8 +139,8 @@ function requireInventoryCheckCreatePermission() {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>创建权限不足</title>
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
+            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
             <style>
                 .error-container {
                     text-align: center;
@@ -206,8 +206,8 @@ function requireInventoryCheckCreatePermission() {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>基地信息缺失</title>
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
+            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
             <style>
                 .error-container {
                     text-align: center;
@@ -266,7 +266,7 @@ function requireBasePermission($baseId) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>基地权限不足</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
         <style>
             .error-container {
                 text-align: center;
@@ -317,7 +317,7 @@ function requireTaskPermission($taskId, $action = 'view') {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>任务不存在</title>
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
         </head>
         <body>
             <div class="container text-center" style="padding: 100px 20px;">
@@ -352,13 +352,13 @@ function requireTaskPermission($taskId, $action = 'view') {
                             <meta charset="UTF-8">
                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
                             <title>任务状态错误</title>
-                            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+                            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
                         </head>
                         <body>
                             <div class="container text-center" style="padding: 100px 20px;">
                                 <h1><i class="fa fa-exclamation-triangle"></i> 任务状态错误</h1>
                                 <p>只有已创建的任务才能开始。</p>
-                                <a href="inventory_check_view.php?id=<?php echo $taskId; ?>" class="btn btn-primary">返回任务</a>
+                                <a href="../inventory/inventory_check.php?action=view&id=<?php echo $taskId; ?>" class="btn btn-primary">返回任务</a>
                             </div>
                         </body>
                         </html>
@@ -377,13 +377,13 @@ function requireTaskPermission($taskId, $action = 'view') {
                             <meta charset="UTF-8">
                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
                             <title>任务状态错误</title>
-                            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+                            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
                         </head>
                         <body>
                             <div class="container text-center" style="padding: 100px 20px;">
                                 <h1><i class="fa fa-exclamation-triangle"></i> 任务状态错误</h1>
                                 <p>只有创建或进行中的任务才能取消。</p>
-                                <a href="inventory_check_view.php?id=<?php echo $taskId; ?>" class="btn btn-primary">返回任务</a>
+                                <a href="../inventory/inventory_check.php?action=view&id=<?php echo $taskId; ?>" class="btn btn-primary">返回任务</a>
                             </div>
                         </body>
                         </html>
@@ -402,13 +402,13 @@ function requireTaskPermission($taskId, $action = 'view') {
                             <meta charset="UTF-8">
                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
                             <title>任务状态错误</title>
-                            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+                            <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
                         </head>
                         <body>
                             <div class="container text-center" style="padding: 100px 20px;">
                                 <h1><i class="fa fa-exclamation-triangle"></i> 任务状态错误</h1>
                                 <p>只有进行中的任务才能完成。</p>
-                                <a href="inventory_check_view.php?id=<?php echo $taskId; ?>" class="btn btn-primary">返回任务</a>
+                                <a href="../inventory/inventory_check.php?action=view&id=<?php echo $taskId; ?>" class="btn btn-primary">返回任务</a>
                             </div>
                         </body>
                         </html>
@@ -431,7 +431,7 @@ function requireTaskPermission($taskId, $action = 'view') {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>权限不足</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
     </head>
     <body>
         <div class="container text-center" style="padding: 100px 20px;">

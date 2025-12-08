@@ -338,7 +338,7 @@
 </div>
 
 <!-- 图表脚本 -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
 <script>
 $(document).ready(function() {
     // 差异类型分布图

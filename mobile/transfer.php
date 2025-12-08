@@ -362,7 +362,7 @@ $transactionTypes = [
         }
     </style>
     <!-- 添加二维码扫描库 -->
-    <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/@zxing/library/latest/umd/index.min.js"></script>
 </head>
 
 <body>

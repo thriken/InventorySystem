@@ -93,7 +93,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/mobile.css">
     <!-- 添加二维码扫描库 -->
-    <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/@zxing/library/latest/umd/index.min.js"></script>
     <style>
     /* 只保留scan.php特有的样式 */
     .header {
