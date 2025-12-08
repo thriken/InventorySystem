@@ -210,7 +210,7 @@ $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereCond
 // 获取包列表
 $packages = fetchAll("SELECT p.*, g.name as glass_name, g.short_name as glass_short_name, 
                             r.code as rack_code, r.area_type, ir.code as initial_rack_code , g.brand as glass_brand,g.color as glass_color,
-                            CONCAT(p.width, 'x', p.height) as specification, p.position_order
+                            CONCAT(ROUND(p.width,0), 'x', ROUND(p.height,0)) as specification, p.position_order
                      FROM glass_packages p
                      LEFT JOIN glass_types g ON p.glass_type_id = g.id
                      LEFT JOIN storage_racks r ON p.current_rack_id = r.id
