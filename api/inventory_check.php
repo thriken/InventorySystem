@@ -77,7 +77,6 @@ function handleListTasks() {
             ORDER BY created_at DESC";
     
     $tasks = fetchAll($sql, [$baseId]);
-    var_dump($tasks);
     foreach ($tasks as &$task) {
         $task['completion_rate'] = $task['total_packages'] > 0 
             ? round(($task['checked_packages'] / $task['total_packages']) * 100, 2) 
