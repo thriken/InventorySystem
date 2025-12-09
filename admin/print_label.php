@@ -57,71 +57,74 @@ ob_start();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>打印包标签</title>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="../assets/js/qrcode.min.js"></script>
     <style>
         /* 移除打印样式，改用C-LODOP控制 */
         
         body {
             font-family: Arial, sans-serif;
-            font-size: 10px;
+            font-size: 16px;
             margin: 5mm;
             background: #f5f5f5;
         }
-        
+        /* 开始网页预览打印样式 */
         .label-container {
-            width: 78mm;
-            height: 38mm;
+            width: 156mm;
+            height: 76mm;
             border: 1px solid #ccc;
             background: white;
             page-break-inside: avoid;
-            margin-bottom: 2mm;
+            margin-bottom: 4mm;
             display: flex;
-            padding: 1mm;
+            padding: 2mm;
             box-sizing: border-box;
         }
         
         .label-left {
-            width: 30mm;
+            width: 60mm;
             display: flex;
             flex-direction: column;
             align-items: center;
-            border-right: 1px dashed #ccc;
-            padding-right: 2mm;
+            border-right: 2px dashed #ccc;
+            padding-right: 4mm;
         }
         
         .label-right {
             flex: 1;
-            padding-left: 2mm;
+            padding-left: 4mm;
             display: flex;
             flex-direction: column;
             justify-content: space-evenly;
             font-family: "幼圆", "YouYuan", "微软雅黑", "Microsoft YaHei", sans-serif;
+            font-weight: bold;
+            font-size: 22px;
         }
         
         .qrcode {
-            width: 25mm;
-            height: 25mm;
+            width: 50mm;
+            height: 50mm;
             border: 1px solid #ddd;
             background: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 1mm;
+            margin-bottom: 2mm;
             position: relative;
         }
         
         .qrcode-container {
-            width: 25mm;
-            height: 25mm;
+            margin-top: 4mm;
+            width: 50mm;
+            height: 50mm;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 1mm;
+            margin-bottom: 2mm;
         }
         
         #qrcode {
-            width: 20mm !important;
-            height: 20mm !important;
+            width: 40mm !important;
+            height: 40mm !important;
         }
         
         #qrcode img {
@@ -130,44 +133,27 @@ ob_start();
         }
         
         .print-date {
-            font-size: 6px;
+            font-size: 12px;
             color: #666;
             text-align: center;
         }
         
         .info-row {
-            margin-bottom: 1mm;
-            font-size: 9px;
+            margin-bottom: 2mm;
             line-height: 1.1;
         }
         
         .info-label {
-            font-weight: bold;
             color: #333;
             display: inline-block;
-            min-width: 12mm;
+            min-width: 24mm;
         }
         
         .info-value {
             color: #000;
-            font-weight: normal;
         }
-        
-        .package-code {
-            font-size: 11px;
-            font-weight: bold;
-            color: #000;
-        }
-        
-        .glass-name {
-            font-size: 9px;
-            color: #333;
-            word-wrap: break-word;
-            word-break: break-all;
-            line-height: 1.2;
-            max-width: 100%;
-        }
-        
+        /* 网页预览打印样式结束 */
+        /* 控制面板 */
         .control-panel {
             background: white;
             padding: 15px;
@@ -229,13 +215,14 @@ ob_start();
             
             <div class="label-right">
                 <div class="info-row">
-                    <span class="package-code">包号：<?php echo htmlspecialchars($package['package_code']); ?></span>
+                    <span class="info-label">包号：</span>
+                    <span class="info-value"><?php echo htmlspecialchars($package['package_code']); ?></span>
                 </div>
                 
                 <div class="info-row">
-                    <span class="glass-name">原片：<?php echo htmlspecialchars($package['glass_name']); ?></span>
+                    <span class="info-label">原片：</span>
+                    <span class="info-value"><?php echo htmlspecialchars($package['glass_name']); ?></span>
                 </div>
-                
                 <div class="info-row">
                     <span class="info-label">品牌:</span>
                     <span class="info-value"><?php echo htmlspecialchars($package['glass_brand'] ?: '-'); ?></span>
@@ -264,8 +251,8 @@ ob_start();
                 // 生成每个包的二维码
                 new QRCode(document.getElementById("qrcode-<?php echo $package['id']; ?>"), {
                     text: "<?php echo htmlspecialchars($package['package_code']); ?>",
-                    width: 80,
-                    height: 80,
+                    width: 160,
+                    height: 160,
                     colorDark: "#000000",
                     colorLight: "#ffffff",
                     correctLevel: QRCode.CorrectLevel.H
@@ -354,7 +341,7 @@ ob_start();
                     
                     // 添加二维码（左侧）
                     if (qrData<?php echo $package['id']; ?>) {
-                        LODOP.ADD_PRINT_IMAGE(5, 5, 80, 80, qrData<?php echo $package['id']; ?>);
+                        LODOP.ADD_PRINT_IMAGE(15, 10, 80, 80, qrData<?php echo $package['id']; ?>);
                     }
                     
                     // 添加包编码
@@ -443,7 +430,7 @@ ob_start();
                     const qrData<?php echo $package['id']; ?> = qrCodeData[<?php echo $package['id']; ?>];
                     
                     if (qrData<?php echo $package['id']; ?>) {
-                        LODOP.ADD_PRINT_IMAGE(5, 5, 80, 80, qrData<?php echo $package['id']; ?>);
+                        LODOP.ADD_PRINT_IMAGE(15, 10, 80, 80, qrData<?php echo $package['id']; ?>);
                     }
                     
                     LODOP.ADD_PRINT_TEXT(8, 100, 200, 20, "包号：<?php echo addslashes($package['package_code']); ?>");
