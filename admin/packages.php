@@ -249,6 +249,7 @@ ob_start();
 ?>
 <div>
     <button type="button" class="btn btn-success" onclick="showAddForm()">添加包</button>
+    <button type="button" class="btn btn-info" onclick="printSelectedLabels()">打印选中标签</button>
     <button type="button" class="btn btn-primary" onclick="exportToExcel('packagesTable', '包列表')">导出Excel</button>
     <button type="button" class="btn btn-warning" onclick="exportToPDF('packagesTable', '包列表')">导出PDF</button>
 </div>
@@ -430,6 +431,7 @@ ob_start();
     <table class="table table-striped table-bordered data-table" id="packagesTable" data-table="packages">
         <thead>
             <tr>
+                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
                 <th>包号</th>
                 <th>原片名</th>
                 <th>原片品牌</th>
@@ -446,6 +448,7 @@ ob_start();
         </thead>
         <?php foreach ($packages as $package): ?>
             <tr>
+                <td><input type="checkbox" class="package-checkbox" value="<?php echo $package['id']; ?>"></td>
                 <td><?php echo htmlspecialchars($package['package_code']); ?></td>
                 <td><?php echo htmlspecialchars($package['glass_name']); ?></td>
                 <td><?php echo htmlspecialchars($package['glass_brand']); ?></td>
@@ -477,6 +480,7 @@ ob_start();
                 </td>
                 <td>
                     <a href="?edit=<?php echo $package['id']; ?>" class="btn btn-sm btn-info">编辑</a>
+                    <button onclick="printSingleLabel(<?php echo $package['id']; ?>)" class="btn btn-sm btn-warning" title="打印标签">🏷️</button>
                     <button onclick="deleteRecord(<?php echo $package['id']; ?>)" class="btn btn-sm btn-danger">删除</button>
                 </td>
             </tr>
@@ -547,6 +551,39 @@ ob_start();
             document.body.appendChild(form);
             form.submit();
         }
+    }
+
+    // 全选/取消全选
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.package-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAll.checked;
+        });
+    }
+
+    // 打印选中的标签
+    function printSelectedLabels() {
+        const selectedIds = [];
+        const checkboxes = document.querySelectorAll('.package-checkbox:checked');
+        
+        if (checkboxes.length === 0) {
+            alert('请先选择要打印标签的包');
+            return;
+        }
+        
+        checkboxes.forEach(checkbox => {
+            selectedIds.push(checkbox.value);
+        });
+        
+        const url = `print_label.php?package_ids=${selectedIds.join(',')}`;
+        window.open(url, '_blank');
+    }
+
+    // 打印单个标签
+    function printSingleLabel(packageId) {
+        const url = `print_label.php?package_ids=${packageId}`;
+        window.open(url, '_blank');
     }
     // 多条件筛选功能
     function initMultiFilter() {
