@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>认证 API 文档 - 原片管理系统</title>
+    <title>认证 API 文档</title>
     <style>
         * {
             margin: 0;
@@ -290,6 +290,7 @@
                     <ul>
                         <li><strong>用户登录</strong>：验证用户身份并返回访问令牌</li>
                         <li><strong>令牌验证</strong>：检查令牌有效性并获取用户信息</li>
+                        <li><strong>应用信息</strong>：无需认证获取应用名称和版本信息</li>
                         <li><strong>无会话认证</strong>：基于令牌的无状态认证机制</li>
                         <li><strong>安全性</strong>：密码哈希存储，令牌过期机制</li>
                     </ul>
@@ -367,6 +368,68 @@ Authorization: Bearer {token}
                 <div class="endpoint">
                     <div class="endpoint-header">
                         <span class="method get">GET</span>
+                        <div class="url">?action=appname</div>
+                    </div>
+                    <h4>获取应用信息</h4>
+                    <p>无需认证的应用信息获取接口，返回应用名称和版本信息。</p>
+                    
+                    <h5>📝 请求参数</h5>
+                    <table class="param-table">
+                        <tr>
+                            <th>参数名</th>
+                            <th>类型</th>
+                            <th>必填</th>
+                            <th>描述</th>
+                        </tr>
+                        <tr>
+                            <td><code>action</code></td>
+                            <td>string</td>
+                            <td>否</td>
+                            <td>固定值: <code>appname</code></td>
+                        </tr>
+                    </table>
+                    
+                    <h5>📝 响应示例</h5>
+                    <div class="json-block">
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "app_name": "玻璃仓储管理系统",
+    "version": "1.0.0",
+    "description": "玻璃仓储管理系统"
+  },
+  "timestamp": 1698758400
+}
+                    </div>
+                    
+                    <h5>📋 数据来源说明</h5>
+                    <div class="info-box">
+                        <h4>数据库存储</h4>
+                        <p>应用信息来源于数据库的 <code>settings</code> 表：</p>
+                        <table class="param-table">
+                            <tr>
+                                <th>设置键</th>
+                                <th>描述</th>
+                                <th>默认值</th>
+                            </tr>
+                            <tr>
+                                <td><code>system_name</code></td>
+                                <td>应用名称</td>
+                                <td>"玻璃仓储管理系统"</td>
+                            </tr>
+                            <tr>
+                                <td><code>system_version</code></td>
+                                <td>应用版本</td>
+                                <td>"1.0.0"</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
                         <div class="url">(根路径)</div>
                     </div>
                     <h4>检查登录状态</h4>
@@ -432,6 +495,34 @@ Authorization: Bearer {token}
                         <td>HTTP方法不允许</td>
                     </tr>
                 </table>
+            </div>
+            
+            <div class="section">
+                <h2>🔄 数据源变更</h2>
+                <div class="info-box">
+                    <h4>🎯 重要更新 (v2.1)</h4>
+                    <p>从 v2.1 开始，应用名称和版本信息已从配置文件常量迁移到数据库存储。</p>
+                    
+                    <h5>📋 变更内容</h5>
+                    <ul>
+                        <li><span class="status-badge status-error">删除</span> <code>config.php</code> 中的 <code>APP_NAME</code> 和 <code>APP_VERSION</code> 常量</li>
+                        <li><span class="status-badge status-success">新增</span> 数据库 <code>settings</code> 表存储应用信息</li>
+                        <li><span class="status-badge status-success">新增</span> 所有页面通过函数动态获取应用信息</li>
+                        <li><span class="status-badge status-success">新增</span> 支持管理员在后台动态修改应用名称和版本</li>
+                    </ul>
+                    
+                    <h5>🔧 获取方式</h5>
+                    <div class="json-block">
+// 获取应用名称
+$appName = getAppName();
+
+// 获取应用版本
+$appVersion = getAppVersion();
+
+// 获取完整信息
+$appInfo = getAppInfo();
+                    </div>
+                </div>
             </div>
             
             <div class="section">

@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/admin_nav_config.php';
-
+require_once __DIR__ . '/../includes/app_info.php';
 /**
  * 渲染管理后台左侧边栏
  * @param array $currentUser 当前用户信息
@@ -20,7 +20,7 @@ function renderAdminSidebar($currentUser, $currentPage = '') {
     ?>
     <div class="admin-sidebar">
         <div class="logo">
-            <h2><?php echo APP_NAME; ?></h2>
+            <h2><?php echo getAppName(); ?></h2>
         </div>
         <nav class="admin-nav">
             <ul>
@@ -37,7 +37,7 @@ function renderAdminSidebar($currentUser, $currentPage = '') {
         <div class="admin-sidebar-footer">
             <p>当前用户: <?php echo htmlspecialchars($currentUser['name'] ?: $currentUser['username']); ?></p>
             <p>角色: <?php echo getRoleDisplayName($currentUser['role']); ?></p>
-            <p>版本: <?php echo APP_VERSION; ?></p>
+            <p>版本: <?php echo getAppVersion(); ?></p>
             <a href="../logout.php" class="logout-btn">退出登录</a>
         </div>
     </div>

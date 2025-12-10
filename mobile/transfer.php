@@ -143,7 +143,7 @@ $transactionTypes = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>流转操作 - <?php echo APP_NAME; ?></title>
+    <title>流转操作 - <?php echo getAppName(); ?></title>
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/mobile.css">
     <style>
@@ -436,7 +436,7 @@ $transactionTypes = [
         </div>
     </div>
     <div class="footer">
-        <p>&copy; 2025 <?php echo APP_NAME; ?>. 基地间流转操作</p>
+        <p>&copy; 2025 <?php echo getAppName(); ?>. 基地间流转操作</p>
     </div>
 
     <script>

@@ -1,6 +1,4 @@
 <?php
-define('APP_NAME', '原片库存系统');
-define('APP_VERSION', '1.0.0');
 define('BASE_URL', 'http://' . $_SERVER['HTTP_HOST']);
 define('MOBILE_BREAKPOINT', 768); // 移动设备断点
 

@@ -3,6 +3,7 @@ require_once 'config/config.php';
 require_once 'includes/functions.php';
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
+require_once 'includes/app_info.php';
 
 // 检查用户是否已登录
 $currentUser = getCurrentUser();
@@ -635,7 +636,7 @@ ob_start();
         </div>
     </div>
     <footer>
-        <p>© 2025 <?php echo APP_NAME; ?>版本 <?php echo APP_VERSION; ?> 版权所有</p>
+        <p>© 2025 <?php echo getAppName(); ?>版本 <?php echo getAppVersion(); ?> 版权所有</p>
     </footer>
     <!-- 悬浮提示框 -->
     <div class="tooltip" id="tooltip"></div>

@@ -67,7 +67,7 @@ foreach ($packages as $package) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>库存查询 - <?php echo APP_NAME; ?></title>
+    <title>库存查询 - <?php echo getAppName(); ?></title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -87,7 +87,7 @@ foreach ($packages as $package) {
     <header class="viewer-header">
         <div class="header-content">
             <div class="header-left">
-                <h1><?php echo APP_NAME; ?> - 库存查询</h1>
+                <h1><?php echo getAppName(); ?> - 库存查询</h1>
             </div>
             <div class="header-right">
                 <div class="nav-links">

@@ -89,7 +89,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_target_info') {
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>扫描操作 - <?php echo APP_NAME; ?></title>
+    <title>扫描操作 - <?php echo getAppName(); ?></title>
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/mobile.css">
     <!-- 添加二维码扫描库 -->

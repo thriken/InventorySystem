@@ -2,7 +2,7 @@
 require_once 'config/config.php';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
-
+require_once 'includes/app_info.php';
 $error = '';
 
 // 如果用户已登录，重定向到首页
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录 - <?php echo APP_NAME; ?></title>
+    <title>登录 - <?php echo getAppName(); ?></title>
     <link rel="stylesheet" href="assets/css/main.css">
     <style>
         body {
@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1><?php echo APP_NAME; ?></h1>
+            <h1><?php echo getAppName(); ?></h1>
         </div>
         
         <?php if (!empty($error)): ?>
@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     <div id="footer">
         <p><a href="/down.html">安卓客户端下载</a></p>
-        <p>&copy; 2025 <?php echo APP_NAME; ?>  版本 <?php echo APP_VERSION; ?> 版权所有 <a href="https://beian.miit.gov.cn/" target="_blank">蜀ICP备2025164203号-1</a></p>
+        <p>&copy; 2025 <?php echo getAppName(); ?>  版本 <?php echo getAppVersion(); ?> 版权所有 <a href="https://beian.miit.gov.cn/" target="_blank">蜀ICP备2025164203号-1</a></p>
     </div>
 </body>
 </html>

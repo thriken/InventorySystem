@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/app_info.php';
 
 // 设置响应头为JSON格式
 header('Content-Type: application/json; charset=utf-8');
@@ -24,7 +25,12 @@ switch ($method) {
         handleLogin();
         break;
     case 'GET':
-        handleCheckLogin();
+        // 检查是否有特定的GET参数
+        if (isset($_GET['action']) && $_GET['action'] === 'appname') {
+            handleGetAppName();
+        } else {
+            handleCheckLogin();
+        }
         break;
     default:
         sendResponse(405, '方法不允许');
@@ -73,6 +79,21 @@ function handleLogin() {
     } else {
         sendResponse(401, '用户名或密码错误');
     }
+}
+
+/**
+ * 获取应用名称
+ */
+function handleGetAppName() {
+    // 从数据库获取应用名称和版本
+    $appName = getAppName();
+    $appVersion = getAppVersion();
+    
+    sendResponse(200, '获取成功', [
+        'app_name' => $appName,
+        'version' => $appVersion,
+        'description' => '玻璃仓储管理系统'
+    ]);
 }
 
 /**
@@ -188,6 +209,8 @@ function validateLogin($username, $password) {
     
     return false;
 }
+
+
 
 /**
  * 发送JSON响应

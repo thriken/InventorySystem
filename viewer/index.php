@@ -41,7 +41,7 @@ if ($currentUser['base_id']) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>库存查看 - <?php echo APP_NAME; ?></title>
+    <title>库存查看 - <?php echo getAppName(); ?></title>
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <style>
@@ -226,7 +226,7 @@ if ($currentUser['base_id']) {
         <header class="viewer-header">
             <div class="header-content">
                 <div class="header-left">
-                    <h1 class="system-title"><?php echo APP_NAME; ?></h1>
+                    <h1 class="system-title"><?php echo getAppName(); ?></h1>
                     <h2 class="page-title">库存查看系统</h2>
                 </div>
                 <div class="header-right">

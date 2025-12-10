@@ -23,7 +23,7 @@ $role =  ROLE_NAMES[$currentUser['role']];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>移动端 - <?php echo APP_NAME; ?></title>
+    <title>移动端 - <?php echo getAppName(); ?></title>
     <meta name="format-detection" content="telephone=no">
     <meta name="msapplication-tap-highlight" content="no">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -151,7 +151,7 @@ $role =  ROLE_NAMES[$currentUser['role']];
         </div>
     </div>
     <div class="footer">
-        <?php echo APP_NAME; ?> v<?php echo APP_VERSION; ?> &copy; <?php echo date('Y'); ?>
+        <?php echo getAppName(); ?> v<?php echo getAppVersion(); ?> &copy; <?php echo date('Y'); ?>
     </div>
 </body>
 </html>
