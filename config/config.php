@@ -1,4 +1,11 @@
 <?php
+/**
+ * Version: v1.1.0 
+ * Author: <Wangxin github.com/thriken>
+ * Project: 库存管理系统
+ * description: 此版本主要是增加盘点功能
+ * Summary: 系统配置文件
+ */
 define('BASE_URL', 'http://' . $_SERVER['HTTP_HOST']);
 define('MOBILE_BREAKPOINT', 768); // 移动设备断点
 
@@ -71,4 +78,5 @@ define('ROLE_NAMES',[
     'operator' => '操作员',
     'manager' => '库管'
 ]);
+
 ?>
