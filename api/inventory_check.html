@@ -20,7 +20,7 @@
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -32,13 +32,13 @@
         }
         
         .header h1 {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
         
         .header p {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             opacity: 0.9;
         }
         
@@ -49,297 +49,273 @@
         
         .nav a {
             display: inline-block;
+            margin: 0 10px;
+            padding: 10px 20px;
             background: rgba(255,255,255,0.2);
             color: white;
-            padding: 12px 25px;
-            border-radius: 25px;
             text-decoration: none;
-            font-weight: bold;
-            margin: 0 8px;
+            border-radius: 25px;
             transition: all 0.3s ease;
-            border: 2px solid rgba(255,255,255,0.3);
         }
         
         .nav a:hover {
             background: rgba(255,255,255,0.3);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         
         .content {
             background: white;
             border-radius: 15px;
-            padding: 40px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
         
         .section {
-            margin-bottom: 50px;
+            margin-bottom: 40px;
         }
         
         .section h2 {
             color: #667eea;
-            margin-bottom: 25px;
-            border-bottom: 3px solid #f0f0f0;
-            padding-bottom: 15px;
+            margin-bottom: 20px;
             font-size: 1.8rem;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
         }
         
         .section h3 {
             color: #555;
-            margin: 30px 0 20px 0;
+            margin-bottom: 15px;
+            margin-top: 25px;
             font-size: 1.4rem;
         }
         
         .section h4 {
             color: #666;
-            margin: 20px 0 10px 0;
+            margin-bottom: 10px;
+            margin-top: 20px;
             font-size: 1.2rem;
         }
         
-        .info-box {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        .api-endpoint {
+            background: #f8f9fa;
             border-left: 4px solid #667eea;
             padding: 20px;
             margin: 20px 0;
-            border-radius: 0 8px 8px 0;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border-radius: 0 10px 10px 0;
         }
         
-        .success-box {
-            background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
-            border-left: 4px solid #28a745;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 0 8px 8px 0;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        .method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-right: 10px;
         }
         
-        .warning-box {
-            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
-            border-left: 4px solid #ffc107;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 0 8px 8px 0;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        .method.post {
+            background: #28a745;
+            color: white;
         }
         
-        .error-box {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-            border-left: 4px solid #dc3545;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 0 8px 8px 0;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        .method.get {
+            background: #007bff;
+            color: white;
+        }
+        
+        .url {
+            font-family: 'Courier New', monospace;
+            background: #e9ecef;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 1rem;
+        }
+        
+        .params {
+            margin: 15px 0;
+        }
+        
+        .param {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .param strong {
+            color: #495057;
+            display: inline-block;
+            width: 150px;
         }
         
         .code-block {
-            background: #2d3748;
-            color: #e2e8f0;
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
             border-radius: 8px;
-            padding: 25px;
-            margin: 20px 0;
             overflow-x: auto;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            font-size: 0.9rem;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
         }
         
-        .json-block {
-            background: #1a202c;
-            color: #68d391;
-            border-radius: 8px;
-            padding: 25px;
-            margin: 20px 0;
-            overflow-x: auto;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            font-size: 0.9rem;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        .response-example {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
         }
         
-        .param-table {
+        .table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
             background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         
-        .param-table th, .param-table td {
-            border: 1px solid #e2e8f0;
-            padding: 15px;
+        .table th,
+        .table td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
             text-align: left;
         }
         
-        .param-table th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .table th {
+            background: #667eea;
             color: white;
             font-weight: bold;
         }
         
-        .param-table tr:nth-child(even) {
+        .table tr:nth-child(even) {
             background: #f8f9fa;
         }
         
-        .param-table tr:hover {
-            background: #e3f2fd;
+        .alert {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
         }
         
-        .endpoint {
-            background: white;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        .alert.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
         }
         
-        .endpoint-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
+        .alert.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
         }
         
-        .method {
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .feature-badge {
+            display: inline-block;
             background: #28a745;
             color: white;
-            padding: 5px 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 0.8rem;
-            margin-right: 10px;
-        }
-        
-        .method.get { background: #007bff; }
-        .method.post { background: #28a745; }
-        .method.put { background: #ffc107; color: #333; }
-        .method.delete { background: #dc3545; }
-        
-        .url {
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            background: #f8f9fa;
-            padding: 8px 15px;
-            border-radius: 4px;
-            flex: 1;
-        }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 3px 8px;
+            padding: 2px 8px;
             border-radius: 12px;
             font-size: 0.8rem;
-            font-weight: bold;
-            margin: 0 3px;
+            margin-left: 10px;
         }
         
-        .status-success { background: #d4edda; color: #155724; }
-        .status-error { background: #f8d7da; color: #721c24; }
-        .status-warning { background: #fff3cd; color: #856404; }
+        .new-feature {
+            background: #dc3545;
+        }
         
         .footer {
             text-align: center;
             margin-top: 40px;
-            padding: 20px;
             color: white;
             opacity: 0.8;
-        }
-        
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-            
-            .content {
-                padding: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .nav a {
-                display: block;
-                margin: 5px 0;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 库存盘点 API 文档</h1>
-            <p>原片管理系统 - 完整的库存盘点功能接口</p>
+            <h1>库存盘点 API 文档</h1>
+            <p>完整的库存盘点功能接口，支持扫码盘点、批量处理和库位调整</p>
         </div>
         
         <div class="nav">
-            <a href="index.html">🏠 首页</a>
-            <a href="auth.html">🔐 认证</a>
-            <a href="scan.html">📱 扫码</a>
-            <a href="packages.html">📦 包管理</a>
-            <a href="racks.html">🏗️ 库位</a>
-            <a href="dictionary.html">📚 字典</a>
-            <a href="inventory_check.html" style="background: rgba(255,255,255,0.4);">📊 盘点</a>
-            <a href="apicommon.html">🔧 工具类</a>
+            <a href="#overview">概述</a>
+            <a href="#endpoints">API 端点</a>
+            <a href="#rack-adjustment">库位调整</a>
+            <a href="#examples">使用示例</a>
         </div>
         
         <div class="content">
-            <div class="section">
-                <h2>📋 概述</h2>
-                <div class="info-box">
-                    <h4>🎯 主要功能</h4>
-                    <ul>
-                        <li><strong>盘点任务管理</strong>：创建、查看、管理盘点任务</li>
-                        <li><strong>扫码盘点</strong>：支持单个包和批量包的扫码盘点</li>
-                        <li><strong>手动录入</strong>：支持手动输入盘点数据</li>
-                        <li><strong>数据同步</strong>：实时同步盘点进度和结果</li>
-                        <li><strong>权限控制</strong>：基于角色的访问控制</li>
-                    </ul>
-                </div>
+            <!-- 概述 -->
+            <div id="overview" class="section">
+                <h2>概述</h2>
+                <p><code>inventory_check.php</code> 提供了完整的库存盘点功能 API，支持盘点任务管理、数据录入、同步查询和库位调整等功能。</p>
                 
-                <h3>🔧 基础信息</h3>
-                <table class="param-table">
-                    <tr>
-                        <th>项目</th>
-                        <th>值</th>
-                    </tr>
-                    <tr>
-                        <td>文件路径</td>
-                        <td><code>api/inventory_check.php</code></td>
-                    </tr>
-                    <tr>
-                        <td>Content-Type</td>
-                        <td><code>application/json; charset=utf-8</code></td>
-                    </tr>
-                    <tr>
-                        <td>认证方式</td>
-                        <td>Bearer Token</td>
-                    </tr>
-                    <tr>
-                        <td>权限要求</td>
-                        <td>admin（只读）、manager（完整权限）</td>
-                    </tr>
-                </table>
+                <h3>基础信息</h3>
+                <ul>
+                    <li><strong>文件路径</strong>: <code>api/inventory_check.php</code></li>
+                    <li><strong>Content-Type</strong>: <code>application/json; charset=utf-8</code></li>
+                    <li><strong>认证方式</strong>: Bearer Token</li>
+                    <li><strong>权限要求</strong>: admin（只读）、manager（完整权限）</li>
+                </ul>
                 
-                <h3>🔐 请求头要求</h3>
+                <h3>请求头要求</h3>
                 <div class="code-block">
+GET /api/inventory_check.php HTTP/1.1
 Content-Type: application/json
 Authorization: Bearer {token}
                 </div>
+                
+                <h3>权限说明</h3>
+                <table class="table">
+                    <tr>
+                        <th>角色</th>
+                        <th>权限</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td>admin</td>
+                        <td>只读</td>
+                        <td>只能查看盘点任务，不能创建和修改</td>
+                    </tr>
+                    <tr>
+                        <td>manager</td>
+                        <td>完全权限</td>
+                        <td>可以创建、管理自己基地的盘点任务</td>
+                    </tr>
+                    <tr>
+                        <td>operator</td>
+                        <td>无权限</td>
+                        <td>无法使用盘点功能</td>
+                    </tr>
+                    <tr>
+                        <td>viewer</td>
+                        <td>无权限</td>
+                        <td>无法使用盘点功能</td>
+                    </tr>
+                </table>
             </div>
             
-            <div class="section">
-                <h2>🚀 API 端点</h2>
+            <!-- API 端点 -->
+            <div id="endpoints" class="section">
+                <h2>API 端点</h2>
                 
-                <div class="endpoint">
-                    <div class="endpoint-header">
-                        <span class="method get">GET/POST</span>
-                        <div class="url">?action=list</div>
-                    </div>
-                    <h4>获取任务列表</h4>
+                <!-- 1. 获取任务列表 -->
+                <div class="api-endpoint">
+                    <h3><span class="method get">GET</span> 获取任务列表</h3>
+                    <div class="url">GET/POST ?action=list</div>
                     <p>获取当前用户的盘点任务列表。</p>
                     
-                    <h5>📝 响应示例</h5>
-                    <div class="json-block">
+                    <div class="response-example">
+                        <strong>响应示例:</strong>
+                        <div class="code-block">
 {
   "code": 200,
   "message": "获取成功",
@@ -360,19 +336,19 @@ Authorization: Bearer {token}
     }
   ]
 }
+                        </div>
                     </div>
                 </div>
                 
-                <div class="endpoint">
-                    <div class="endpoint-header">
-                        <span class="method get">GET</span>
-                        <div class="url">?action=get&task_id={id}</div>
-                    </div>
-                    <h4>获取任务详情</h4>
+                <!-- 2. 获取任务详情 -->
+                <div class="api-endpoint">
+                    <h3><span class="method get">GET</span> 获取任务详情</h3>
+                    <div class="url">GET ?action=get&task_id={id}</div>
                     <p>获取指定任务的详细信息和待盘点包列表。</p>
                     
-                    <h5>📝 响应示例</h5>
-                    <div class="json-block">
+                    <div class="response-example">
+                        <strong>响应示例:</strong>
+                        <div class="code-block">
 {
   "code": 200,
   "message": "获取成功",
@@ -397,28 +373,44 @@ Authorization: Bearer {token}
     "completion_rate": 50.0
   }
 }
+                        </div>
                     </div>
                 </div>
                 
-                <div class="endpoint">
-                    <div class="endpoint-header">
-                        <span class="method post">POST</span>
-                        <div class="url">?action=scan</div>
-                    </div>
-                    <h4>扫码盘点单个包</h4>
-                    <p>通过扫码方式盘点单个包。</p>
+                <!-- 3. 扫码盘点单个包 -->
+                <div class="api-endpoint">
+                    <h3><span class="method post">POST</span> 扫码盘点单个包</h3>
+                    <div class="url">POST ?action=scan</div>
+                    <p>通过扫码方式盘点单个包，支持库位调整。</p>
                     
-                    <h5>📝 请求参数</h5>
-                    <div class="json-block">
+                    <h4>请求参数:</h4>
+                    <div class="code-block">
 {
   "task_id": 1,
   "package_code": "G20241101001",
-  "check_quantity": 48
+  "check_quantity": 48,
+  "rack_id": 123
 }
                     </div>
                     
-                    <h5>📝 响应示例</h5>
-                    <div class="json-block">
+                    <div class="params">
+                        <div class="param">
+                            <strong>task_id</strong> (int, 必需): 盘点任务ID
+                        </div>
+                        <div class="param">
+                            <strong>package_code</strong> (string, 必需): 包号
+                        </div>
+                        <div class="param">
+                            <strong>check_quantity</strong> (int, 必需): 盘点数量
+                        </div>
+                        <div class="param">
+                            <strong>rack_id</strong> (int, 可选): 库位ID，如果提供且与原库位不同，则同步更新包的库位
+                        </div>
+                    </div>
+                    
+                    <div class="response-example">
+                        <strong>响应示例:</strong>
+                        <div class="code-block">
 {
   "code": 200,
   "message": "盘点成功",
@@ -428,28 +420,30 @@ Authorization: Bearer {token}
     "system_quantity": 50,
     "check_quantity": 48,
     "difference": -2,
-    "checked_packages": 76
+    "checked_packages": 76,
+    "rack_updates": 1
   }
 }
+                        </div>
                     </div>
                 </div>
                 
-                <div class="endpoint">
-                    <div class="endpoint-header">
-                        <span class="method post">POST</span>
-                        <div class="url">?action=batch_scan</div>
-                    </div>
-                    <h4>批量扫码盘点</h4>
-                    <p>批量处理多个包的盘点数据。</p>
+                <!-- 4. 批量扫码盘点 -->
+                <div class="api-endpoint">
+                    <h3><span class="method post">POST</span> 批量扫码盘点</h3>
+                    <div class="url">POST ?action=batch_scan</div>
+                    <p>批量处理多个包的盘点数据，支持库位调整。</p>
                     
-                    <h5>📝 请求参数</h5>
-                    <div class="json-block">
+                    <h4>请求参数:</h4>
+                    <div class="code-block">
 {
   "task_id": 1,
+  "sync_racks": true,
   "batch_data": [
     {
       "package_code": "G20241101001",
-      "check_quantity": 48
+      "check_quantity": 48,
+      "rack_id": 123
     },
     {
       "package_code": "G20241101002",
@@ -458,171 +452,171 @@ Authorization: Bearer {token}
   ]
 }
                     </div>
-                </div>
-                
-                <div class="endpoint">
-                    <div class="endpoint-header">
-                        <span class="method get">GET</span>
-                        <div class="url">?action=sync&task_id={id}&last_sync={timestamp}</div>
-                    </div>
-                    <h4>同步盘点数据</h4>
-                    <p>获取指定时间后的盘点数据更新。</p>
-                </div>
-                
-                <div class="endpoint">
-                    <div class="endpoint-header">
-                        <span class="method get">GET</span>
-                        <div class="url">?action=get_package_info&package_code={code}</div>
-                    </div>
-                    <h4>获取包信息</h4>
-                    <p>获取指定包的详细信息。</p>
-                </div>
-                
-                <div class="endpoint">
-                    <div class="endpoint-header">
-                        <span class="method post">POST</span>
-                        <div class="url">?action=submit_check</div>
-                    </div>
-                    <h4>手动提交盘点数据</h4>
-                    <p>手动录入盘点数据。</p>
                     
-                    <h5>📝 请求参数</h5>
-                    <div class="json-block">
+                    <div class="params">
+                        <div class="param">
+                            <strong>task_id</strong> (int, 必需): 盘点任务ID
+                        </div>
+                        <div class="param">
+                            <strong>sync_racks</strong> (boolean, 可选): 是否同步库位，默认为false
+                        </div>
+                        <div class="param">
+                            <strong>batch_data</strong> (array, 必需): 批量数据数组
+                        </div>
+                    </div>
+                    
+                    <div class="response-example">
+                        <strong>响应示例:</strong>
+                        <div class="code-block">
+{
+  "code": 200,
+  "message": "批量盘点完成",
+  "data": {
+    "success_count": 2,
+    "total_count": 2,
+    "errors": [],
+    "checked_packages": 77
+  }
+}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 5. 手动提交盘点数据 -->
+                <div class="api-endpoint">
+                    <h3><span class="method post">POST</span> 手动提交盘点数据</h3>
+                    <div class="url">POST ?action=submit_check</div>
+                    <p>手动录入盘点数据，支持库位调整。</p>
+                    
+                    <h4>请求参数:</h4>
+                    <div class="code-block">
 {
   "task_id": 1,
   "package_code": "G20241101001",
   "check_quantity": 48,
+  "rack_id": 123,
   "notes": "包装破损2片"
 }
                     </div>
+                    
+                    <div class="params">
+                        <div class="param">
+                            <strong>task_id</strong> (int, 必需): 盘点任务ID
+                        </div>
+                        <div class="param">
+                            <strong>package_code</strong> (string, 必需): 包号
+                        </div>
+                        <div class="param">
+                            <strong>check_quantity</strong> (int, 必需): 盘点数量
+                        </div>
+                        <div class="param">
+                            <strong>rack_id</strong> (int, 可选): 库位ID，如果提供且与原库位不同，则同步更新包的库位
+                        </div>
+                        <div class="param">
+                            <strong>notes</strong> (string, 可选): 备注
+                        </div>
+                    </div>
+                    
+                    <div class="response-example">
+                        <strong>响应示例:</strong>
+                        <div class="code-block">
+{
+  "code": 200,
+  "message": "提交成功",
+  "data": {
+    "package_code": "G20241101001",
+    "system_quantity": 50,
+    "check_quantity": 48,
+    "difference": -2,
+    "checked_packages": 76,
+    "rack_updates": 1
+  }
+}
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="endpoint">
-                    <div class="endpoint-header">
-                        <span class="method post">POST</span>
-                        <div class="url">?action=get_rollback_count</div>
-                    </div>
-                    <h4>获取回滚记录数量</h4>
+                <!-- 其他端点 -->
+                <div class="api-endpoint">
+                    <h3><span class="method get">GET</span> 获取包信息</h3>
+                    <div class="url">GET ?action=get_package_info&package_code={code}</div>
+                    <p>获取指定包的详细信息。</p>
+                </div>
+                
+                <div class="api-endpoint">
+                    <h3><span class="method get">GET</span> 同步盘点数据</h3>
+                    <div class="url">GET ?action=sync&task_id={id}&last_sync={timestamp}</div>
+                    <p>获取指定时间后的盘点数据更新。</p>
+                </div>
+                
+                <div class="api-endpoint">
+                    <h3><span class="method post">POST</span> 获取回滚记录数量</h3>
+                    <div class="url">POST ?action=get_rollback_count</div>
                     <p>获取指定任务期间自动回滚的记录数量。</p>
                 </div>
             </div>
             
-            <div class="section">
-                <h2>❌ 错误响应</h2>
-                <div class="error-box">
-                    <h4>📋 统一错误格式</h4>
-                    <p>所有错误响应都遵循统一格式：</p>
-                    <div class="json-block">
-{
-  "code": 400,
-  "message": "错误描述",
-  "timestamp": 1701300000
-}
-                    </div>
+            <!-- 库位调整功能 -->
+            <div id="rack-adjustment" class="section">
+                <h2>库位调整功能 <span class="feature-badge new-feature">NEW</span></h2>
+                
+                <div class="alert info">
+                    <strong>新增功能：</strong>v1.1版本新增库位调整功能，支持在盘点过程中同步更新包的库位信息。
                 </div>
                 
-                <h3>🔢 常见错误码</h3>
-                <table class="param-table">
+                <h3>功能说明</h3>
+                <p>盘点API支持在盘点过程中同步调整包的库位，实现盘库和库位校准的一体化操作。</p>
+                
+                <h3>使用规则</h3>
+                <ul>
+                    <li><strong>可选功能</strong>: 库位调整是可选的，不提供<code>rack_id</code>时仅执行盘点操作</li>
+                    <li><strong>条件判断</strong>: 只有当新库位与原库位不同时才执行库位更新</li>
+                    <li><strong>权限验证</strong>: 确保用户有权限操作目标库位</li>
+                    <li><strong>审计记录</strong>: 库位变更会记录在盘点备注中，便于追踪</li>
+                </ul>
+                
+                <h3>响应字段</h3>
+                <ul>
+                    <li><code>rack_updates</code>: 返回成功更新的库位数量，可用于前端提示</li>
+                </ul>
+                
+                <h3>应用场景</h3>
+                <ul>
+                    <li><strong>盘点发现库位错误</strong>: 盘点时发现包实际位置与系统记录不符</li>
+                    <li><strong>库位整理</strong>: 盘点同时进行库位规范化整理</li>
+                    <li><strong>数据校准</strong>: 结合实物盘点修正系统库位数据</li>
+                </ul>
+                
+                <h3>示例对比</h3>
+                <table class="table">
                     <tr>
-                        <th>状态码</th>
-                        <th>说明</th>
+                        <th>场景</th>
+                        <th>传统方式</th>
+                        <th>新API方式</th>
                     </tr>
                     <tr>
-                        <td><span class="status-badge status-warning">400</span></td>
-                        <td>请求参数错误</td>
+                        <td>发现库位错误</td>
+                        <td>先盘点，再手动调整库位</td>
+                        <td>盘点时同步调整库位</td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge status-error">401</span></td>
-                        <td>未认证或令牌无效</td>
+                        <td>操作步骤</td>
+                        <td>2个独立操作</td>
+                        <td>1个一体化操作</td>
                     </tr>
                     <tr>
-                        <td><span class="status-badge status-error">403</span></td>
-                        <td>权限不足</td>
-                    </tr>
-                    <tr>
-                        <td><span class="status-badge status-warning">404</span></td>
-                        <td>资源不存在</td>
-                    </tr>
-                    <tr>
-                        <td><span class="status-badge status-error">500</span></td>
-                        <td>服务器内部错误</td>
+                        <td>数据一致性</td>
+                        <td>可能存在延迟</td>
+                        <td>实时同步</td>
                     </tr>
                 </table>
             </div>
             
-            <div class="section">
-                <h2>🔐 权限说明</h2>
+            <!-- 使用示例 -->
+            <div id="examples" class="section">
+                <h2>使用示例</h2>
                 
-                <h3>👥 角色权限</h3>
-                <table class="param-table">
-                    <tr>
-                        <th>角色</th>
-                        <th>权限</th>
-                        <th>说明</th>
-                    </tr>
-                    <tr>
-                        <td><span class="status-badge status-success">admin</span></td>
-                        <td>只读</td>
-                        <td>只能查看盘点任务，不能创建和修改</td>
-                    </tr>
-                    <tr>
-                        <td><span class="status-badge status-success">manager</span></td>
-                        <td>完全权限</td>
-                        <td>可以创建、管理自己基地的盘点任务</td>
-                    </tr>
-                    <tr>
-                        <td><span class="status-badge status-error">operator</span></td>
-                        <td>无权限</td>
-                        <td>无法使用盘点功能</td>
-                    </tr>
-                    <tr>
-                        <td><span class="status-badge status-error">viewer</span></td>
-                        <td>无权限</td>
-                        <td>无法使用盘点功能</td>
-                    </tr>
-                </table>
-                
-                <h3>🏢 基地权限限制</h3>
-                <div class="warning-box">
-                    <h4>⚠️ 权限规则</h4>
-                    <ul>
-                        <li><strong>admin</strong>：可以访问所有基地的任务</li>
-                        <li><strong>manager</strong>：只能访问自己分配基地的任务</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="section">
-                <h2>📊 数据库表结构</h2>
-                <div class="info-box">
-                    <h4>🗃️ 主要数据表</h4>
-                    <ul>
-                        <li><strong>inventory_check_tasks</strong> - 盘点任务表</li>
-                        <li><strong>inventory_check_cache</strong> - 盘点缓存表</li>
-                        <li><strong>glass_packages</strong> - 玻璃包表</li>
-                        <li><strong>glass_types</strong> - 玻璃类型表</li>
-                        <li><strong>storage_racks</strong> - 库位架表</li>
-                        <li><strong>bases</strong> - 基地表</li>
-                    </ul>
-                </div>
-                
-                <h3>💾 事务处理</h3>
-                <p>涉及数据修改的操作（如盘点、批量盘点）都使用事务确保数据一致性：</p>
-                <div class="code-block">
-beginTransaction();
-try {
-    // 执行操作
-    commitTransaction();
-} catch (Exception $e) {
-    rollbackTransaction();
-}
-                </div>
-            </div>
-            
-            <div class="section">
-                <h2>💡 使用示例</h2>
-                
-                <h3>📱 JavaScript 调用示例</h3>
+                <h3>JavaScript 调用示例</h3>
                 <div class="code-block">
 // 获取任务列表
 const response = await fetch('/api/inventory_check.php?action=list', {
@@ -636,9 +630,29 @@ const result = await response.json();
 if (result.code === 200) {
     console.log('任务列表:', result.data);
 }
+
+// 扫码盘点（带库位调整）
+const scanResponse = await fetch('/api/inventory_check.php?action=scan', {
+    method: 'POST',
+    headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        task_id: 1,
+        package_code: 'G20241101001',
+        check_quantity: 48,
+        rack_id: 123  // 库位调整
+    })
+});
+
+const scanResult = await scanResponse.json();
+if (scanResult.code === 200) {
+    console.log('盘点成功，库位更新数:', scanResult.data.rack_updates);
+}
                 </div>
                 
-                <h3>🐘 PHP 调用示例</h3>
+                <h3>PHP 调用示例</h3>
                 <div class="code-block">
 // 扫码盘点
 $ch = curl_init();
@@ -648,7 +662,8 @@ curl_setopt_array($ch, [
     CURLOPT_POSTFIELDS => json_encode([
         'task_id' => 1,
         'package_code' => 'G20241101001',
-        'check_quantity' => 48
+        'check_quantity' => 48,
+        'rack_id' => 123  // 可选的库位调整
     ]),
     CURLOPT_HTTPHEADER => [
         'Authorization: Bearer ' . $token,
@@ -659,42 +674,60 @@ curl_setopt_array($ch, [
 
 $result = curl_exec($ch);
 $data = json_decode($result, true);
+
+if ($data['code'] === 200) {
+    echo "盘点成功，库位更新数: " . $data['data']['rack_updates'];
+}
+                </div>
+                
+                <h3>错误处理</h3>
+                <div class="alert warning">
+                    <strong>常见错误码：</strong>
+                    <ul>
+                        <li><code>400</code>: 请求参数错误</li>
+                        <li><code>401</code>: 未认证或令牌无效</li>
+                        <li><code>403</code>: 权限不足</li>
+                        <li><code>404</code>: 资源不存在</li>
+                        <li><code>500</code>: 服务器内部错误</li>
+                    </ul>
                 </div>
             </div>
             
+            <!-- 注意事项 -->
             <div class="section">
-                <h2>📝 注意事项</h2>
-                <div class="warning-box">
-                    <h4>⚠️ 重要提醒</h4>
-                    <ul>
-                        <li><strong>认证</strong>：所有 API 调用都需要有效的 Bearer Token</li>
-                        <li><strong>权限</strong>：确保用户具有相应的角色权限</li>
-                        <li><strong>数据验证</strong>：提交前验证必要参数的完整性</li>
-                        <li><strong>错误处理</strong>：正确处理各种错误响应</li>
-                        <li><strong>时间格式</strong>：时间戳使用 ISO 8601 格式</li>
-                        <li><strong>字符编码</strong>：统一使用 UTF-8 编码</li>
-                    </ul>
-                </div>
+                <h2>注意事项</h2>
+                <ul>
+                    <li><strong>认证</strong>: 所有 API 调用都需要有效的 Bearer Token</li>
+                    <li><strong>权限</strong>: 确保用户具有相应的角色权限</li>
+                    <li><strong>数据验证</strong>: 提交前验证必要参数的完整性</li>
+                    <li><strong>错误处理</strong>: 正确处理各种错误响应</li>
+                    <li><strong>时间格式</strong>: 时间戳使用 ISO 8601 格式</li>
+                    <li><strong>字符编码</strong>: 统一使用 UTF-8 编码</li>
+                    <li><strong>库位权限</strong>: 库位调整需要确保目标库位属于用户权限范围内</li>
+                </ul>
                 
-                <h3>📚 版本历史</h3>
-                <table class="param-table">
-                    <tr>
-                        <th>版本</th>
-                        <th>日期</th>
-                        <th>更新内容</th>
-                    </tr>
-                    <tr>
-                        <td><span class="status-badge status-success">v1.0</span></td>
-                        <td>2024-11-30</td>
-                        <td>初始版本，支持基本盘点功能</td>
-                    </tr>
-                </table>
+                <h3>版本历史</h3>
+                <ul>
+                    <li><strong>v1.1</strong> (2024-12-11): 新增库位调整功能
+                        <ul>
+                            <li>所有盘点接口支持库位同步更新</li>
+                            <li>新增库位权限验证和审计记录</li>
+                            <li>完善库位调整的响应统计</li>
+                        </ul>
+                    </li>
+                    <li><strong>v1.0</strong> (2024-11-30): 初始版本，支持基本盘点功能
+                        <ul>
+                            <li>支持扫码盘点、批量盘点、数据同步等功能</li>
+                            <li>完善的权限控制和错误处理机制</li>
+                        </ul>
+                    </li>
+                </ul>
             </div>
         </div>
         
         <div class="footer">
-            <p>📊 原片管理系统 - 库存盘点 API 文档</p>
-            <p>最后更新时间: 2024-11-30</p>
+            <p>&copy; 2024 原片管理系统 - API文档</p>
+            <p>最后更新时间: 2024-12-11</p>
         </div>
     </div>
 </body>

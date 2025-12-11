@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once '../includes/db.php';
 require_once '../api/ApiCommon.php';
 require_once '../includes/inventory_check_auth.php';
+require_once '../includes/inventory_operations.php';
 
 // 确保会话启动
 if (session_status() === PHP_SESSION_NONE) {
@@ -144,6 +145,7 @@ function handleScanPackage() {
     $taskId = $_POST['task_id'] ?? 0;
     $packageCode = $_POST['package_code'] ?? '';
     $checkQuantity = $_POST['check_quantity'] ?? 0;
+    $rackId = $_POST['rack_id'] ?? 0;
     
     if (!$taskId || !$packageCode || !$checkQuantity) {
         ApiCommon::sendResponse(400, '缺少必要参数');
@@ -191,6 +193,28 @@ function handleScanPackage() {
             'operator_id' => $user['id']
         ];
         
+        // 如果指定了新库位且与原库位不同，记录库位调整
+        $rackUpdateCount = 0;
+        if ($rackId && $rackId != $package['current_rack_id']) {
+            // 获取新库位信息
+            $newRack = fetchRow("SELECT code FROM storage_racks WHERE id = ?", [$rackId]);
+            if ($newRack) {
+                // 更新缓存中的库位
+                $updateData['rack_id'] = $rackId;
+                $updateData['notes'] = "盘点时同步更新库位到：" . $newRack['code'];
+                
+                // 同步更新包的实际库位
+                $packageUpdate = update('glass_packages', 
+                    ['current_rack_id' => $rackId], 
+                    'id = ?', 
+                    [$package['id']]);
+                
+                if ($packageUpdate > 0) {
+                    $rackUpdateCount = 1;
+                }
+            }
+        }
+        
         update('inventory_check_cache', $updateData, 'task_id = ? AND package_code = ?', [$taskId, $packageCode]);
         
         // 更新任务进度
@@ -205,7 +229,8 @@ function handleScanPackage() {
             'system_quantity' => $package['pieces'],
             'check_quantity' => $checkQuantity,
             'difference' => $difference,
-            'checked_packages' => $newCount
+            'checked_packages' => $newCount,
+            'rack_updates' => $rackUpdateCount
         ];
         
         ApiCommon::sendResponse(200, '盘点成功', $result);
@@ -227,6 +252,7 @@ function handleBatchScan() {
     
     $taskId = $_POST['task_id'] ?? 0;
     $batchData = $_POST['batch_data'] ?? '';
+    $syncRacks = $_POST['sync_racks'] ?? false;
     
     if (!$taskId || !$batchData) {
         ApiCommon::sendResponse(400, '缺少必要参数');
@@ -253,6 +279,7 @@ function handleBatchScan() {
         foreach ($data as $item) {
             $packageCode = $item['package_code'] ?? '';
             $checkQuantity = $item['check_quantity'] ?? 0;
+            $rackId = $item['rack_id'] ?? 0;
             
             if (!$packageCode || !$checkQuantity) {
                 $errors[] = "包 {$packageCode} 数据不完整";
@@ -290,6 +317,23 @@ function handleBatchScan() {
                 'check_time' => date('Y-m-d H:i:s'),
                 'operator_id' => $user['id']
             ];
+            
+            // 如果指定了新库位且与原库位不同，记录库位调整
+            if ($syncRacks && $rackId && $rackId != $package['current_rack_id']) {
+                // 获取新库位信息
+                $newRack = fetchRow("SELECT code FROM storage_racks WHERE id = ?", [$rackId]);
+                if ($newRack) {
+                    // 更新缓存中的库位
+                    $updateData['rack_id'] = $rackId;
+                    $updateData['notes'] = "盘点时同步更新库位到：" . $newRack['code'];
+                    
+                    // 同步更新包的实际库位
+                    update('glass_packages', 
+                        ['current_rack_id' => $rackId], 
+                        'id = ?', 
+                        [$package['id']]);
+                }
+            }
             
             update('inventory_check_cache', $updateData, 'task_id = ? AND package_code = ?', [$taskId, $packageCode]);
             $successCount++;
@@ -414,6 +458,7 @@ function handleSubmitCheck() {
     $taskId = $_POST['task_id'] ?? 0;
     $packageCode = $_POST['package_code'] ?? '';
     $checkQuantity = $_POST['check_quantity'] ?? 0;
+    $rackId = $_POST['rack_id'] ?? 0;
     $notes = $_POST['notes'] ?? '';
     
     if (!$taskId || !$packageCode || !$checkQuantity) {
@@ -453,6 +498,28 @@ function handleSubmitCheck() {
             'notes' => $notes
         ];
         
+        // 如果指定了新库位且与原库位不同，记录库位调整
+        $rackUpdateCount = 0;
+        if ($rackId && $rackId != $package['current_rack_id']) {
+            // 获取新库位信息
+            $newRack = fetchRow("SELECT code FROM storage_racks WHERE id = ?", [$rackId]);
+            if ($newRack) {
+                // 更新缓存中的库位
+                $updateData['rack_id'] = $rackId;
+                $updateData['notes'] = ($notes ? "$notes\n" : '') . "盘点时同步更新库位到：{$newRack['code']}";
+                
+                // 同步更新包的实际库位
+                $packageUpdate = update('glass_packages', 
+                    ['current_rack_id' => $rackId], 
+                    'id = ?', 
+                    [$package['id']]);
+                
+                if ($packageUpdate > 0) {
+                    $rackUpdateCount = 1;
+                }
+            }
+        }
+        
         update('inventory_check_cache', $updateData, 'task_id = ? AND package_code = ?', [$taskId, $packageCode]);
         
         // 更新任务进度
@@ -466,7 +533,8 @@ function handleSubmitCheck() {
             'system_quantity' => $package['pieces'],
             'check_quantity' => $checkQuantity,
             'difference' => $difference,
-            'checked_packages' => $newCount
+            'checked_packages' => $newCount,
+            'rack_updates' => $rackUpdateCount
         ];
         
         ApiCommon::sendResponse(200, '提交成功', $result);

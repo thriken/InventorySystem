@@ -85,16 +85,23 @@ Authorization: Bearer {token}
 ### 3. 扫码盘点单个包
 **POST** `?action=scan`
 
-通过扫码方式盘点单个包。
+通过扫码方式盘点单个包，支持库位调整。
 
 **请求参数:**
 ```json
 {
   "task_id": 1,
   "package_code": "G20241101001",
-  "check_quantity": 48
+  "check_quantity": 48,
+  "rack_id": 123
 }
 ```
+
+**参数说明:**
+- `task_id` (int, 必需): 盘点任务ID
+- `package_code` (string, 必需): 包号
+- `check_quantity` (int, 必需): 盘点数量
+- `rack_id` (int, 可选): 库位ID，如果提供且与原库位不同，则同步更新包的库位
 
 **响应示例:**
 ```json
@@ -107,7 +114,8 @@ Authorization: Bearer {token}
     "system_quantity": 50,
     "check_quantity": 48,
     "difference": -2,
-    "checked_packages": 76
+    "checked_packages": 76,
+    "rack_updates": 1
   }
 }
 ```
@@ -115,16 +123,18 @@ Authorization: Bearer {token}
 ### 4. 批量扫码盘点
 **POST** `?action=batch_scan`
 
-批量处理多个包的盘点数据。
+批量处理多个包的盘点数据，支持库位调整。
 
 **请求参数:**
 ```json
 {
   "task_id": 1,
+  "sync_racks": true,
   "batch_data": [
     {
       "package_code": "G20241101001",
-      "check_quantity": 48
+      "check_quantity": 48,
+      "rack_id": 123
     },
     {
       "package_code": "G20241101002",
@@ -133,6 +143,14 @@ Authorization: Bearer {token}
   ]
 }
 ```
+
+**参数说明:**
+- `task_id` (int, 必需): 盘点任务ID
+- `sync_racks` (boolean, 可选): 是否同步库位，默认为false
+- `batch_data` (array, 必需): 批量数据数组
+  - `package_code` (string, 必需): 包号
+  - `check_quantity` (int, 必需): 盘点数量
+  - `rack_id` (int, 可选): 库位ID，仅在sync_racks为true时有效
 
 **响应示例:**
 ```json
@@ -209,7 +227,7 @@ Authorization: Bearer {token}
 ### 7. 手动提交盘点数据
 **POST** `?action=submit_check`
 
-手动录入盘点数据。
+手动录入盘点数据，支持库位调整。
 
 **请求参数:**
 ```json
@@ -217,9 +235,17 @@ Authorization: Bearer {token}
   "task_id": 1,
   "package_code": "G20241101001",
   "check_quantity": 48,
+  "rack_id": 123,
   "notes": "包装破损2片"
 }
 ```
+
+**参数说明:**
+- `task_id` (int, 必需): 盘点任务ID
+- `package_code` (string, 必需): 包号
+- `check_quantity` (int, 必需): 盘点数量
+- `rack_id` (int, 可选): 库位ID，如果提供且与原库位不同，则同步更新包的库位
+- `notes` (string, 可选): 备注
 
 **响应示例:**
 ```json
@@ -231,7 +257,8 @@ Authorization: Bearer {token}
     "system_quantity": 50,
     "check_quantity": 48,
     "difference": -2,
-    "checked_packages": 76
+    "checked_packages": 76,
+    "rack_updates": 1
   }
 }
 ```
@@ -364,6 +391,29 @@ $result = curl_exec($ch);
 $data = json_decode($result, true);
 ```
 
+## 库位调整功能
+
+### 功能说明
+
+盘点API支持在盘点过程中同步调整包的库位，实现盘库和库位校准的一体化操作。
+
+### 使用规则
+
+1. **可选功能**: 库位调整是可选的，不提供`rack_id`时仅执行盘点操作
+2. **条件判断**: 只有当新库位与原库位不同时才执行库位更新
+3. **权限验证**: 确保用户有权限操作目标库位
+4. **审计记录**: 库位变更会记录在盘点备注中，便于追踪
+
+### 响应字段
+
+- `rack_updates`: 返回成功更新的库位数量，可用于前端提示
+
+### 应用场景
+
+- **盘点发现库位错误**: 盘点时发现包实际位置与系统记录不符
+- **库位整理**: 盘点同时进行库位规范化整理
+- **数据校准**: 结合实物盘点修正系统库位数据
+
 ## 注意事项
 
 1. **认证**: 所有 API 调用都需要有效的 Bearer Token
@@ -372,8 +422,14 @@ $data = json_decode($result, true);
 4. **错误处理**: 正确处理各种错误响应
 5. **时间格式**: 时间戳使用 ISO 8601 格式
 6. **字符编码**: 统一使用 UTF-8 编码
+7. **库位权限**: 库位调整需要确保目标库位属于用户权限范围内
 
 ## 版本历史
+
+- **v1.1** (2024-12-11): 新增库位调整功能
+  - 所有盘点接口支持库位同步更新
+  - 新增库位权限验证和审计记录
+  - 完善库位调整的响应统计
 
 - **v1.0** (2024-11-30): 初始版本，支持基本盘点功能
 - 支持扫码盘点、批量盘点、数据同步等功能
@@ -381,4 +437,4 @@ $data = json_decode($result, true);
 
 ---
 
-*本文档随 API 更新而维护，最后更新时间: 2024-11-30*
+*本文档随 API 更新而维护，最后更新时间: 2024-12-11*
