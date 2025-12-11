@@ -26,7 +26,7 @@ include 'header.php';
                         <a href="inventory_check_import.php?task_id=<?php echo $task['id']; ?>" class="btn btn-warning">
                             <i class="glyphicon glyphicon-import"></i> Excel导入
                         </a>
-                        <button class="btn btn-success" onclick="showManualInputDialog()">
+                        <button class="btn btn-success" onclick="console.log('=== Button Clicked ==='); showManualInputDialog()">
                             <i class="glyphicon glyphicon-edit"></i> 手动录入
                         </button>
                     <?php endif; ?>
@@ -133,6 +133,20 @@ include 'header.php';
                 </div>
             </div>
             <?php endif; ?>
+            
+            <!-- 库位变更统计 -->
+            <?php 
+            $rackChangeCount = countRackChanges($details);
+            if ($rackChangeCount > 0): 
+            ?>
+            <div class="alert alert-info" style="margin-top: 15px;">
+                <i class="glyphicon glyphicon-info-sign"></i>
+                <strong>库位变更统计：</strong>已发现 <?php echo $rackChangeCount; ?> 个包的实际库位与系统记录不符，已在盘点时记录了实际位置。
+                <?php if (countSyncedRacks($details) > 0): ?>
+                <br>其中 <?php echo countSyncedRacks($details); ?> 个已同步更新到系统。
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -165,7 +179,7 @@ include 'header.php';
                     </button>
                 </div>
                 <div class="col-md-4">
-                    <button class="btn btn-warning btn-block" onclick="showManualInputDialog()">
+                    <button class="btn btn-warning btn-block" onclick="console.log('=== Quick Button Clicked ==='); showManualInputDialog()">
                         <i class="glyphicon glyphicon-edit"></i> 手动录入
                     </button>
                 </div>
@@ -233,6 +247,8 @@ include 'header.php';
                             <th>系统数量</th>
                             <th>盘点数量</th>
                             <th>差异</th>
+                            <th>系统库位</th>
+                            <th>盘点库位</th>
                             <th>盘点方式</th>
                             <th>操作员</th>
                             <th>盘点时间</th>
@@ -250,7 +266,7 @@ include 'header.php';
                         ?>
                         <tr data-status="<?php echo $status; ?>" data-method="<?php echo $detail['check_method']; ?>" data-package="<?php echo htmlspecialchars($detail['package_code']); ?>">
                             <td><?php echo $rowIndex; ?></td>
-                            <td><code><?php echo htmlspecialchars($detail['package_code']); ?></code></td>
+                            <td class="lead"><span class="label label-primary"><?php echo htmlspecialchars($detail['package_code']); ?></span></td>
                             <td><?php echo htmlspecialchars($detail['glass_name']); ?></td>
                             <td class="text-center">
                                 <span class="badge"><?php echo $detail['system_quantity']; ?></span>
@@ -269,6 +285,27 @@ include 'header.php';
                                     </span>
                                 <?php else: ?>
                                     <span class="label label-default">0</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center">
+                                <small class="text-muted">
+                                    <?php echo $detail['current_rack_code'] ?: getPackageCurrentRack($detail['package_code']); ?>
+                                </small>
+                            </td>
+                            <td class="text-center">
+                                <?php if ($detail['rack_id']): ?>
+                                    <?php 
+                                    $rackCode = getRackCodeById($detail['rack_id']);
+                                    $isDifferent = $detail['current_rack_code'] && $rackCode && $detail['current_rack_code'] !== $rackCode;
+                                    ?>
+                                    <span class="label <?php echo $isDifferent ? 'label-warning' : 'label-info'; ?>">
+                                        <?php echo $rackCode; ?>
+                                    </span>
+                                    <?php if ($isDifferent): ?>
+                                        <br><small class="text-warning">库位变更</small>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -328,6 +365,7 @@ include 'header.php';
             <div class="modal-body">
                 <form id="manualInputForm" class="form-horizontal">
                     <input type="hidden" id="taskId" value="<?php echo $task['id']; ?>">
+                    <input type="hidden" id="currentRackId" value="">
                     <div class="form-group">
                         <label class="col-sm-3 control-label">包号 <span class="text-danger">*</span></label>
                         <div class="col-sm-9">
@@ -353,6 +391,31 @@ include 'header.php';
                         </div>
                     </div>
                     <div class="form-group">
+                        <label class="col-sm-3 control-label">系统库位</label>
+                        <div class="col-sm-9">
+                            <input type="text" class="form-control" id="currentRack" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">
+                            盘点库位
+                            <small class="text-muted">（如与系统不符可修改）</small>
+                        </label>
+                        <div class="col-sm-6">
+                            <select class="form-control" id="rackSelect">
+                                <option value="">请选择库位</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" id="syncRackCheckbox">
+                                    同步更新系统库位
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label class="col-sm-3 control-label">备注</label>
                         <div class="col-sm-9">
                             <textarea class="form-control" id="notes" rows="2"></textarea>
@@ -370,13 +433,23 @@ include 'header.php';
 
 <script>
 $(document).ready(function() {
+    console.log('=== Page Ready ===');
+    console.log('jQuery loaded:', typeof $ !== 'undefined');
+    console.log('Bootstrap loaded:', typeof $.fn.modal !== 'undefined');
+    
     // 加载回滚统计信息
     loadRollbackCount();
     
     // 包号自动查询
     $('#packageCode').on('blur', function() {
         var packageCode = $(this).val();
-        if (!packageCode) return;
+        console.log('=== Package Code Input ===');
+        console.log('Package Code entered:', packageCode);
+        
+        if (!packageCode) {
+            console.log('Package Code is empty, skipping query');
+            return;
+        }
         
         // 通过AJAX调用后端PHP函数
         $.ajax({
@@ -388,17 +461,55 @@ $(document).ready(function() {
             },
             dataType: 'json',
             success: function(response) {
+                // 调试输出：查看完整的响应数据
+                console.log('=== Package Info Response ===');
+                console.log('Full response:', response);
+                console.log('Success status:', response.success);
+                console.log('Data:', response.data);
+                
                 if (response.success) {
+                    // 调试输出：查看具体字段值
+                    console.log('=== Package Details ===');
+                    console.log('Pieces:', response.data.pieces);
+                    console.log('Glass Name:', response.data.glass_name);
+                    console.log('Current Rack Code:', response.data.current_rack_code);
+                    console.log('Current Rack ID:', response.data.current_rack_id);
+                    console.log('Base ID:', response.data.base_id);
+                    console.log('Base Name:', response.data.base_name);
+                    
                     $('#systemQuantity').val(response.data.pieces);
                     $('#glassName').val(response.data.glass_name);
+                    $('#currentRack').val(response.data.current_rack_code || '未分配');
+                    $('#currentRackId').val(response.data.current_rack_id || '');
+                    
+                    // 调试输出：查看字段更新情况
+                    console.log('=== Field Updates ===');
+                    console.log('System Quantity set to:', $('#systemQuantity').val());
+                    console.log('Glass Name set to:', $('#glassName').val());
+                    console.log('Current Rack set to:', $('#currentRack').val());
+                    console.log('Current Rack ID set to:', $('#currentRackId').val());
+                    
+                    // 加载可选库位
+                    loadRackOptions(response.data.base_id, response.data.current_rack_id);
+                    
                     $('#checkQuantity').focus();
                 } else {
+                    console.log('=== Error Response ===');
+                    console.log('Error message:', response.message);
                     $('#systemQuantity').val('');
                     $('#glassName').val('');
+                    $('#currentRack').val('');
                     alert('包不存在：' + response.message);
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.log('=== AJAX Error ===');
+                console.log('Status:', status);
+                console.log('Error:', error);
+                console.log('Response Text:', xhr.responseText);
+                console.log('Ready State:', xhr.readyState);
+                console.log('Status Code:', xhr.status);
+                
                 $('#systemQuantity').val('');
                 $('#glassName').val('');
                 alert('查询失败，请检查网络连接');
@@ -407,26 +518,242 @@ $(document).ready(function() {
     });
 });
 
+// 加载库位选项
+function loadRackOptions(baseId, currentRackId) {
+    console.log('=== Load Rack Options ===');
+    console.log('Base ID:', baseId);
+    console.log('Current Rack ID:', currentRackId);
+    
+    if (!baseId) {
+        console.log('No base ID provided, showing empty options');
+        $('#rackSelect').html('<option value="">请选择库位</option>');
+        return;
+    }
+    
+    $.ajax({
+        url: 'inventory_check.php',
+        method: 'POST',
+        data: {
+            action: 'get_rack_options',
+            base_id: baseId
+        },
+        dataType: 'json',
+        success: function(response) {
+            console.log('=== Rack Options Response ===');
+            console.log('Full response:', response);
+            console.log('Success status:', response.success);
+            console.log('Data length:', response.data ? response.data.length : 'null');
+            
+            var options = '<option value="">请选择库位</option>';
+            if (response.success && response.data) {
+                console.log('Processing rack data:');
+                response.data.forEach(function(rack, index) {
+                    console.log('Rack ' + index + ':', rack);
+                    var selected = rack.id == currentRackId ? 'selected' : '';
+                    var areaTypeName = getAreaTypeName(rack.area_type);
+                    var optionText = rack.code + ' (' + areaTypeName + ')';
+                    console.log('Creating option:', optionText, 'selected:', selected);
+                    options += '<option value="' + rack.id + '" ' + selected + '>' + optionText + '</option>';
+                });
+                console.log('Final options HTML:', options);
+            } else {
+                console.log('No rack data received or response failed');
+                console.log('Error message:', response.message);
+            }
+            $('#rackSelect').html(options);
+            console.log('Rack select updated');
+        },
+        error: function(xhr, status, error) {
+            console.log('=== Rack Options AJAX Error ===');
+            console.log('Status:', status);
+            console.log('Error:', error);
+            console.log('Response Text:', xhr.responseText);
+            $('#rackSelect').html('<option value="">加载失败</option>');
+        }
+    });
+}
+
+// 获取区域类型名称
+function getAreaTypeName(areaType) {
+    var names = {
+        'storage': '存储区',
+        'temporary': '临时区',
+        'processing': '加工区',
+        'scrap': '报废区'
+    };
+    return names[areaType] || areaType;
+}
+
 function showManualInputDialog(packageCode, systemQuantity) {
+    console.log('=== Show Manual Input Dialog ===');
+    console.log('Package Code param:', packageCode);
+    console.log('System Quantity param:', systemQuantity);
+    
     // 先关闭任何已打开的模态框，防止重复 backdrop
     $('.modal').modal('hide');
     
     // 延迟显示新的模态框，确保 backdrop 被正确清理
     setTimeout(function() {
+        console.log('=== Showing Modal ===');
+        console.log('jQuery:', typeof $ !== 'undefined');
+        console.log('Bootstrap modal function:', typeof $.fn.modal);
+        console.log('Modal element exists:', $('#manualInputModal').length > 0);
+        
+        if (typeof $ === 'undefined') {
+            console.error('jQuery not loaded!');
+            alert('JavaScript库加载失败，请刷新页面重试');
+            return;
+        }
+        
+        if (typeof $.fn.modal === 'undefined') {
+            console.error('Bootstrap modal not loaded!');
+            alert('Bootstrap模态框功能加载失败，请刷新页面重试');
+            return;
+        }
+        
+        if ($('#manualInputModal').length === 0) {
+            console.error('Modal element not found!');
+            alert('模态框元素不存在，请刷新页面重试');
+            return;
+        }
+        
+        console.log('All checks passed, showing modal...');
         $('#manualInputModal').modal('show');
         
         if (packageCode) {
+            console.log('=== Package Code Provided ===');
+            console.log('Setting package code to readonly:', packageCode);
+            console.log('Setting system quantity:', systemQuantity);
+            
             $('#packageCode').val(packageCode).prop('readonly', true);
             $('#systemQuantity').val(systemQuantity);
             $('#checkQuantity').val(systemQuantity);
-            $('#checkQuantity').focus();
+            
+            // 自动获取包的详细信息
+            setTimeout(function() {
+                console.log('=== Auto-fetching Package Info ===');
+                $.ajax({
+                    url: './inventory_check.php',
+                    method: 'POST',
+                    data: {
+                        action: 'get_package_info',
+                        package_code: packageCode
+                    },
+                    dataType: 'json',
+                    beforeSend: function(xhr) {
+                        console.log('=== AJAX Request Details ===');
+                        console.log('URL: inventory_check.php');
+                        console.log('Method: POST');
+                        console.log('Data:', {
+                            action: 'get_package_info',
+                            package_code: packageCode
+                        });
+                        console.log('Current page URL:', window.location.href);
+                    },
+                    success: function(response) {
+                        console.log('=== Auto Package Info Response ===');
+                        console.log('Full response:', response);
+                        console.log('Success status:', response.success);
+                        console.log('Data:', response.data);
+                        
+                        if (response.success) {
+                            // 调试输出：查看具体字段值
+                            console.log('=== Auto Package Details ===');
+                            console.log('Pieces:', response.data.pieces);
+                            console.log('Glass Name:', response.data.glass_name);
+                            console.log('Current Rack Code:', response.data.current_rack_code);
+                            console.log('Current Rack ID:', response.data.current_rack_id);
+                            console.log('Base ID:', response.data.base_id);
+                            console.log('Base Name:', response.data.base_name);
+                            
+                            $('#glassName').val(response.data.glass_name);
+                            $('#currentRack').val(response.data.current_rack_code || '未分配');
+                            $('#currentRackId').val(response.data.current_rack_id || '');
+                            
+                            // 调试输出：查看字段更新情况
+                            console.log('=== Auto Field Updates ===');
+                            console.log('Glass Name set to:', $('#glassName').val());
+                            console.log('Current Rack set to:', $('#currentRack').val());
+                            console.log('Current Rack ID set to:', $('#currentRackId').val());
+                            
+                            // 加载可选库位
+                            loadRackOptions(response.data.base_id, response.data.current_rack_id);
+                            
+                            $('#checkQuantity').focus();
+                        } else {
+                            console.log('=== Auto Error Response ===');
+                            console.log('Error message:', response.message);
+                            $('#glassName').val('');
+                            $('#currentRack').val('');
+                            alert('包不存在：' + response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.log('=== Auto AJAX Error ===');
+                        console.log('Status:', status);
+                        console.log('Error:', error);
+                        console.log('Response Text (first 200 chars):', xhr.responseText.substring(0, 200));
+                        console.log('Ready State:', xhr.readyState);
+                        console.log('Status Code:', xhr.status);
+                        console.log('Response Headers:', xhr.getAllResponseHeaders());
+                        
+                        // 如果返回HTML，说明是路径或权限问题
+                        if (xhr.responseText && xhr.responseText.trim().startsWith('<!DOCTYPE')) {
+                            console.log('=== HTML Response Detected ===');
+                            console.log('Possible issues:');
+                            console.log('1. Wrong URL path');
+                            console.log('2. PHP error occurred');
+                            console.log('3. Permission denied');
+                            
+                            // 尝试使用绝对路径
+                            console.log('=== Trying Absolute Path ===');
+                            $.ajax({
+                                url: '../inventory/inventory_check.php',
+                                method: 'POST',
+                                data: {
+                                    action: 'get_package_info',
+                                    package_code: packageCode
+                                },
+                                dataType: 'json',
+                                success: function(response) {
+                                    console.log('=== Absolute Path Success ===');
+                                    console.log('Response:', response);
+                                    if (response.success) {
+                                        $('#glassName').val(response.data.glass_name);
+                                        $('#currentRack').val(response.data.current_rack_code || '未分配');
+                                        $('#currentRackId').val(response.data.current_rack_id || '');
+                                        loadRackOptions(response.data.base_id, response.data.current_rack_id);
+                                        $('#checkQuantity').focus();
+                                    }
+                                },
+                                error: function(xhr2, status2, error2) {
+                                    console.log('=== Absolute Path Also Failed ===');
+                                    console.log('Error:', error2);
+                                    console.log('Response:', xhr2.responseText.substring(0, 200));
+                                }
+                            });
+                        }
+                        
+                        $('#glassName').val('');
+                        $('#currentRack').val('');
+                        alert('查询失败，请检查网络连接');
+                    }
+                });
+            }, 200); // 给模态框一点时间完全显示
         } else {
+            console.log('=== No Package Code Provided ===');
+            console.log('Setting up empty form...');
+            
             $('#packageCode').val('').prop('readonly', false);
             $('#systemQuantity').val('');
             $('#glassName').val('');
             $('#checkQuantity').val('');
             $('#notes').val('');
             $('#packageCode').focus();
+            
+            console.log('=== Package Code Field Focused ===');
+            console.log('Package Code element exists:', $('#packageCode').length > 0);
+            console.log('Package Code current value:', $('#packageCode').val());
         }
     }, 100);
 }
@@ -435,6 +762,8 @@ function submitManualInput() {
     var taskId = $('#taskId').val();
     var packageCode = $('#packageCode').val();
     var checkQuantity = $('#checkQuantity').val();
+    var rackId = $('#rackSelect').val();
+    var syncRack = $('#syncRackCheckbox').is(':checked') ? 1 : 0;
     var notes = $('#notes').val();
     
     if (!packageCode || !checkQuantity) {
@@ -442,29 +771,48 @@ function submitManualInput() {
         return;
     }
     
-    $.ajax({
-        url: '../api/inventory_check.php',
-        method: 'POST',
-        data: {
-            action: 'submit_check',
-            task_id: taskId,
-            package_code: packageCode,
-            check_quantity: checkQuantity,
-            notes: notes
-        },
-        dataType: 'json',
-        success: function(response) {
-            if (response.code === 200) {
-                alert('盘点数据提交成功！');
-                location.reload();
-            } else {
-                alert('提交失败：' + response.message);
-            }
-        },
-        error: function() {
-            alert('提交失败，请检查网络连接');
+    var confirmMessage = '确认提交盘点数据吗？\n\n';
+    confirmMessage += '包号：' + packageCode + '\n';
+    confirmMessage += '盘点数量：' + checkQuantity + '\n';
+    
+    if (rackId) {
+        var rackText = $('#rackSelect option:selected').text();
+        confirmMessage += '盘点库位：' + rackText + '\n';
+        if (syncRack) {
+            confirmMessage += '✅ 将同步更新系统库位\n';
         }
+    }
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    // 创建表单并提交到内部方法
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'inventory_check.php?action=save_manual';
+    
+    // 添加隐藏字段
+    var fields = [
+        {name: 'task_id', value: taskId},
+        {name: 'package_code[]', value: packageCode},
+        {name: 'check_quantity[]', value: checkQuantity},
+        {name: 'rack_id[]', value: rackId},
+        {name: 'sync_rack[]', value: syncRack},
+        {name: 'notes[]', value: notes}
+    ];
+    
+    fields.forEach(function(field) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = field.name;
+        input.value = field.value;
+        form.appendChild(input);
     });
+    
+    // 提交表单
+    document.body.appendChild(form);
+    form.submit();
 }
 
 function editPackage(packageCode, systemQuantity) {
@@ -701,6 +1049,67 @@ function showConfirmDialog(adjustInventory, notes, rollbackCount) {
 
 <?php
 /**
+ * 获取包的当前库位
+ */
+function getPackageCurrentRack($packageCode) {
+    static $cache = [];
+    
+    if (!isset($cache[$packageCode])) {
+        $sql = "SELECT r.code 
+                FROM glass_packages p 
+                LEFT JOIN storage_racks r ON p.current_rack_id = r.id 
+                WHERE p.package_code = ?";
+        $result = fetchRow($sql, [$packageCode]);
+        $cache[$packageCode] = $result ? $result['code'] : '未分配';
+    }
+    
+    return $cache[$packageCode];
+}
+
+/**
+ * 根据库位ID获取库位代码
+ */
+function getRackCodeById($rackId) {
+    static $cache = [];
+    
+    if (!isset($cache[$rackId])) {
+        $result = fetchRow("SELECT code FROM storage_racks WHERE id = ?", [$rackId]);
+        $cache[$rackId] = $result ? $result['code'] : '';
+    }
+    
+    return $cache[$rackId];
+}
+
+/**
+ * 统计库位变更数量
+ */
+function countRackChanges($details) {
+    $count = 0;
+    foreach ($details as $detail) {
+        if ($detail['rack_id'] && $detail['current_rack_code']) {
+            $rackCode = getRackCodeById($detail['rack_id']);
+            if ($rackCode && $detail['current_rack_code'] !== $rackCode) {
+                $count++;
+            }
+        }
+    }
+    return $count;
+}
+
+/**
+ * 统计已同步库位的数量
+ */
+function countSyncedRacks($details) {
+    $count = 0;
+    foreach ($details as $detail) {
+        if ($detail['notes'] && strpos($detail['notes'], '盘点时同步更新库位') !== false) {
+            $count++;
+        }
+    }
+    return $count;
+}
+
+/**
  * 获取状态颜色
  */
 function getStatusColor($status) {
@@ -735,6 +1144,34 @@ function getStatusText($status) {
 }
 .pending-row {
     color: #999;
+}
+
+/* 库位相关样式 */
+.rack-changed {
+    background-color: #fff3cd !important;
+}
+
+.checkbox label {
+    font-size: 12px;
+    color: #666;
+}
+
+#rackSelect {
+    font-size: 12px;
+}
+
+.label-warning {
+    background-color: #f0ad4e;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .table th:nth-child(7),
+    .table th:nth-child(8),
+    .table td:nth-child(7),
+    .table td:nth-child(8) {
+        display: none;
+    }
 }
 
 /* 修复模态框 z-index 问题 */

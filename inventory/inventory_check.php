@@ -12,7 +12,7 @@ $pageTitle = '库存盘点管理';
 $user = getCurrentUser();
 $baseId = $user['base_id'];
 
-$action = $_GET['action'] ?? 'redirect';
+$action = $_GET['action'] ?? $_POST['action'] ?? 'redirect';
 
 // 处理各种操作
 switch ($action) {
@@ -43,19 +43,13 @@ switch ($action) {
     case 'get_package_info':
         handleGetPackageInfo();
         break;
+    case 'get_rack_options':
+        handleGetRackOptions();
+        break;
     case 'redirect':
     default:
         // 默认重定向到列表页面，因为列表页面已经是完整的了
         redirect('inventory_check_list.php');
-}
-
-/**
- * 显示任务列表
- */
-function showTaskList() {
-    // 这个函数已经不需要，因为 inventory_check_list.php 自己处理
-    // 直接重定向到列表页面
-    redirect('inventory_check_list.php');
 }
 
 /**
@@ -292,11 +286,14 @@ function showTaskDetails() {
     }
     
     // 获取盘点明细
-    $sql = "SELECT c.*, g.short_name AS glass_name, r.code AS rack_code, u.real_name AS operator_name
+    $sql = "SELECT c.*, g.name AS glass_name, 
+                   r.code AS rack_code, r_current.code AS current_rack_code,
+                   u.real_name AS operator_name
             FROM inventory_check_cache c
             LEFT JOIN glass_packages p ON c.package_id = p.id
             LEFT JOIN glass_types g ON p.glass_type_id = g.id
             LEFT JOIN storage_racks r ON c.rack_id = r.id
+            LEFT JOIN storage_racks r_current ON p.current_rack_id = r_current.id
             LEFT JOIN users u ON c.operator_id = u.id
             WHERE c.task_id = ?
             ORDER BY c.check_time DESC";
@@ -365,6 +362,7 @@ function handleManualInput() {
     $packageCodes = $_POST['package_code'] ?? [];
     $checkQuantities = $_POST['check_quantity'] ?? [];
     $rackIds = $_POST['rack_id'] ?? [];
+    $syncRacks = $_POST['sync_rack'] ?? [];
     $notes = $_POST['notes'] ?? [];
     
     // 验证任务权限
@@ -378,6 +376,7 @@ function handleManualInput() {
     $userId = getCurrentUserId();
     $currentTime = date('Y-m-d H:i:s');
     $updatedCount = 0;
+    $rackUpdateCount = 0;
     
     beginTransaction();
     
@@ -385,6 +384,7 @@ function handleManualInput() {
         foreach ($packageCodes as $index => $packageCode) {
             $checkQuantity = intval($checkQuantities[$index] ?? 0);
             $rackId = intval($rackIds[$index] ?? 0);
+            $syncRack = ($syncRacks[$index] ?? 0) == 1;
             $note = $notes[$index] ?? '';
             
             // 获取系统数量
@@ -405,6 +405,22 @@ function handleManualInput() {
                     'notes' => $note
                 ];
                 
+                if ($rackId && $syncRack) {
+                    // 如果选择了同步库位，在备注中记录
+                    $rackInfo = fetchRow("SELECT code FROM storage_racks WHERE id = ?", [$rackId]);
+                    $updateData['notes'] = ($note ? $note . "\n" : '') . "盘点时同步更新库位到：" . $rackInfo['code'];
+                    
+                    // 同步更新包的实际库位
+                    $packageUpdate = update('glass_packages', 
+                        ['current_rack_id' => $rackId], 
+                        'package_code = ?', 
+                        [$packageCode]);
+                    
+                    if ($packageUpdate > 0) {
+                        $rackUpdateCount++;
+                    }
+                }
+                
                 update('inventory_check_cache', $updateData, 
                        'task_id = ? AND package_code = ?', [$taskId, $packageCode]);
                 
@@ -421,7 +437,12 @@ function handleManualInput() {
         
         commitTransaction();
         
-        redirect("inventory_check.php?action=view&id=$taskId&success=manual_saved&count=$updatedCount");
+        $successMsg = "manual_saved&count=$updatedCount";
+        if ($rackUpdateCount > 0) {
+            $successMsg .= "&rack_updates=$rackUpdateCount";
+        }
+        
+        redirect("inventory_check.php?action=view&id=$taskId&success=$successMsg");
         
     } catch (Exception $e) {
         rollbackTransaction();
@@ -587,7 +608,7 @@ function generateInventoryTransactions($taskId) {
         if ($diff['difference'] > 0) {
             // 盘盈：生成入库记录
             $transactionData = [
-                'record_no' => generateRecordNo('IN'),
+                'record_no' => generateCheckRecordNo('IN'),
                 'operation_type' => 'check_in',
                 'package_id' => $diff['package_id'],
                 'glass_type_id' => $diff['glass_type_id'],
@@ -605,7 +626,7 @@ function generateInventoryTransactions($taskId) {
         } elseif ($diff['difference'] < 0) {
             // 盘亏：生成出库记录
             $transactionData = [
-                'record_no' => generateRecordNo('OUT'),
+                'record_no' => generateCheckRecordNo('OUT'),
                 'operation_type' => 'check_out',
                 'package_id' => $diff['package_id'],
                 'glass_type_id' => $diff['glass_type_id'],
@@ -632,35 +653,7 @@ function getTaskBaseId($taskId) {
     return $task ? $task['base_id'] : null;
 }
 
-/**
- * 生成记录编号
- */
-function generateRecordNo($type) {
-    $prefix = $type == 'IN' ? 'PD' : 'PC';
-    $date = date('Ymd');
-    $sequence = getNextSequence($type);
-    return $prefix . $date . str_pad($sequence, 4, '0', STR_PAD_LEFT);
-}
 
-/**
- * 获取下一个序号
- */
-function getNextSequence($type) {
-    // 使用 inventory_operation_records 表来计数
-    $sql = "SELECT COUNT(*) as count FROM inventory_operation_records 
-            WHERE operation_type = ? AND DATE(created_at) = CURDATE()";
-    $operationType = $type == 'IN' ? 'check_in' : 'check_out';
-    $result = fetchRow($sql, [$operationType]);
-    return ($result ? $result['count'] : 0) + 1;
-}
-
-/**
- * 获取包ID通过包号
- */
-function getPackageId($packageCode) {
-    $package = fetchRow("SELECT id FROM glass_packages WHERE package_code = ?", [$packageCode]);
-    return $package ? $package['id'] : null;
-}
 
 /**
  * 处理盘点期间的出库回滚
@@ -753,6 +746,40 @@ function handleGetPackageInfo() {
     
     echo json_encode($result);
     exit;
+}
+
+/**
+ * 处理获取库位选项请求
+ */
+function handleGetRackOptions() {
+    $baseId = $_POST['base_id'] ?? '';
+    
+    if (!$baseId) {
+        // 如果没有传base_id，则使用当前用户的基地ID
+        $user = getCurrentUser();
+        $baseId = $user['base_id'];
+    }
+    
+    if (!$baseId) {
+        echo json_encode(['success' => false, 'message' => '基地ID不能为空']);
+        exit;
+    }
+    
+    try {
+        $sql = "SELECT sr.id, sr.code, sr.name, sr.area_type 
+                FROM storage_racks sr 
+                WHERE sr.base_id = ? 
+                ORDER BY sr.code";
+        
+        $racks = fetchAll($sql, [$baseId]);
+        
+        echo json_encode(['success' => true, 'data' => $racks]);
+        exit;
+        
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => '获取库位失败：' . $e->getMessage()]);
+        exit;
+    }
 }
 
 ?>
