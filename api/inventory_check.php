@@ -110,7 +110,7 @@ function handleGetTask() {
     
     // 获取待盘点包列表
     $sql = "SELECT c.id as cache_id, c.package_code, c.package_id, c.system_quantity, 
-                   c.check_quantity, c.check_time, p.glass_type_id, g.short_name as glass_name
+                   c.check_quantity, c.check_time, p.glass_type_id, g.name as glass_name
             FROM inventory_check_cache c
             JOIN glass_packages p ON c.package_id = p.id
             JOIN glass_types g ON p.glass_type_id = g.id
@@ -341,7 +341,7 @@ function handleSyncData() {
     // 获取更新的数据
     $sql = "SELECT c.package_code, c.check_quantity, c.system_quantity, c.difference,
                    c.check_time, u.real_name as operator_name,
-                   g.short_name as glass_name
+                   g.name as glass_name
             FROM inventory_check_cache c
             JOIN users u ON c.operator_id = u.id
             JOIN glass_packages p ON c.package_id = p.id
@@ -380,7 +380,7 @@ function handleGetPackageInfo() {
     }
     
     $sql = "SELECT p.id, p.package_code, p.pieces, p.width, p.height, p.entry_date,
-                   g.short_name as glass_name, g.thickness, g.brand, g.color,
+                   g.name as glass_name, g.thickness, g.brand, g.color,
                    r.code as rack_code, b.name as base_name
             FROM glass_packages p
             JOIN glass_types g ON p.glass_type_id = g.id
@@ -478,19 +478,6 @@ function handleSubmitCheck() {
 }
 
 /**
- * 获取任务状态文本
- */
-function getTaskStatusText($status) {
-    $map = [
-        'created' => '已创建',
-        'in_progress' => '进行中',
-        'completed' => '已完成',
-        'cancelled' => '已取消'
-    ];
-    return $map[$status] ?? $status;
-}
-
-/**
  * 获取回滚记录数量
  */
 function handleGetRollbackCount() {
@@ -521,18 +508,6 @@ function handleGetRollbackCount() {
         'count' => intval($count),
         'task_id' => $taskId
     ]);
-}
-
-/**
- * 获取盘点类型文本
- */
-function getTaskTypeText($type) {
-    $map = [
-        'full' => '全盘',
-        'partial' => '部分盘点',
-        'random' => '抽盘'
-    ];
-    return $map[$type] ?? $type;
 }
 
 function validateInventoryCheckPermissions($user) {

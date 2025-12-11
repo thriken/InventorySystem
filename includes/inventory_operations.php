@@ -33,9 +33,9 @@ function getPackageInfo($packageCode) {
     }
     
     $sql = "SELECT gp.id, gp.package_code, gp.pieces, gp.quantity, gp.current_rack_id, gp.status,
-               gt.name as glass_name, gt.thickness, gt.color,
+               gt.name as glass_name, gt.short_name, gt.thickness, gt.color,
                sr.code as current_rack_code, sr.id as current_rack_id,
-               sr.area_type as current_area_type,
+               sr.area_type as current_area_type, sr.base_id,
                b.name as base_name
         FROM glass_packages gp 
         LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id 
@@ -60,11 +60,13 @@ function getPackageInfo($packageCode) {
             'id' => $package['id'],
             'package_code' => $package['package_code'],
             'glass_name' => $package['glass_name'],
+            'short_name' => $package['short_name'],
             'pieces' => (int)$package['pieces'],
             'quantity' => (int)$package['quantity'],
             'current_rack_code' => $package['current_rack_code'] ?? '未分配',
             'current_rack_id' => $package['current_rack_id'],
             'current_area_type' => $package['current_area_type'],
+            'base_id' => $package['base_id'],
             'base_name' => $package['base_name'] ?? '未分配',
             'status' => $status[$package['status']]
         ]
@@ -199,20 +201,6 @@ function determineTransactionType($fromAreaType, $toAreaType) {
         default:
             return ['type' => '', 'name' => '不支持的流转方向'];
     }
-}
-
-/**
- * 获取盘点类型文本
- * @param string $type 盘点类型
- * @return string 中文描述
- */
-function getTaskTypeText($type) {
-    $types = [
-        'full' => '全盘',
-        'partial' => '部分盘点',
-        'random' => '抽盘'
-    ];
-    return $types[$type] ?? $type;
 }
 
 /**
@@ -685,7 +673,8 @@ function getNextPositionOrder($rackId) {
 }
 
 /**
- * 重新整理指定库位架中包的位置顺序号（去除空隙，从1开始连续排列）
+ * 重新整理指定库位架中包的位置顺序号（去除空隙，从1开始连续排列） 
+ * 1是最外面的包，2是第二个包，以此类推，最里面的包顺序号最大
  * @param int $rackId 库位架ID
  * @return bool 操作是否成功
  */
@@ -809,4 +798,70 @@ function validateBasePermissions($currentUser, $package, $fromRack, $targetRack,
         $targetBaseId != $userBaseId) {
         throw new Exception('权限不足：只有目标基地的库管才能将临时区的原片包转移到库存区');
     }
+}
+
+// ==================== 通用工具函数 ====================
+
+/**
+ * 获取盘点类型文本
+ * @param string $type 盘点类型
+ * @return string 中文描述
+ */
+function getTaskTypeText($type) {
+    $types = [
+        'full' => '全盘',
+        'partial' => '部分盘点',
+        'random' => '抽盘'
+    ];
+    return $types[$type] ?? $type;
+}
+
+/**
+ * 获取任务状态文本
+ * @param string $status 任务状态
+ * @return string 中文描述
+ */
+function getTaskStatusText($status) {
+    $map = [
+        'created' => '已创建',
+        'in_progress' => '进行中',
+        'completed' => '已完成',
+        'cancelled' => '已取消'
+    ];
+    return $map[$status] ?? $status;
+}
+
+/**
+ * 获取包ID通过包号
+ * @param string $packageCode 包号
+ * @return int|null 包ID
+ */
+function getPackageId($packageCode) {
+    $package = fetchRow("SELECT id FROM glass_packages WHERE package_code = ?", [$packageCode]);
+    return $package ? $package['id'] : null;
+}
+
+/**
+ * 生成盘点相关的记录编号
+ * @param string $type 类型 IN为盘盈，OUT为盘亏
+ * @return string 记录编号
+ */
+function generateCheckRecordNo($type) {
+    $prefix = $type == 'IN' ? 'PD' : 'PC';
+    $date = date('Ymd');
+    $sequence = getNextCheckSequence($type);
+    return $prefix . $date . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+}
+
+/**
+ * 获取下一个盘点序号
+ * @param string $type 类型
+ * @return int 序号
+ */
+function getNextCheckSequence($type) {
+    $sql = "SELECT COUNT(*) as count FROM inventory_operation_records 
+            WHERE operation_type = ? AND DATE(created_at) = CURDATE()";
+    $operationType = $type == 'IN' ? 'check_in' : 'check_out';
+    $result = fetchRow($sql, [$operationType]);
+    return ($result ? $result['count'] : 0) + 1;
 }
