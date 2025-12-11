@@ -332,7 +332,7 @@ function processTransaction($packageCode, $targetRackCode, $quantity, $transacti
             
             // 移除原库位中的包并重新整理顺序
             if ($package['current_rack_id']) {
-                removePackageAndReorder($package['current_rack_id'], $package['id']);
+                removeFromRack($package['current_rack_id'], $package['id']);
             }
             
             // 为包在新库位中分配位置顺序号
@@ -403,6 +403,9 @@ function processPurchaseIn($package, $targetRack, $notes, $currentUser)
     // 更新包状态和位置
     $sql = "UPDATE glass_packages SET current_rack_id = ?, status = 'in_storage', updated_at = ? WHERE id = ?";
     query($sql, [$targetRack['id'], date('Y-m-d H:i:s'), $package['id']]);
+    
+    // 采购入库位置号处理：新包放在最外面（位置1），现有包位置号递增
+    addToRack($package['id'], $targetRack['id']);
 
     return '采购入库操作成功完成！';
 }
@@ -468,6 +471,9 @@ function processUsageOut($package, $targetRack, $quantity, $scrapReason, $notes,
             // 更新包状态为报废，片数为0
             $sql = "UPDATE glass_packages SET current_rack_id = ?, status = 'scrapped', pieces = 0, updated_at = ? WHERE id = ?";
             query($sql, [$targetRack['id'], date('Y-m-d H:i:s'), $package['id']]);
+            
+            // 离开库存区：重新整理原库位位置号
+            removeFromRack($package['current_rack_id'], $package['id']);
 
             return '整包报废操作成功完成！';
         } else {
@@ -489,6 +495,9 @@ function processUsageOut($package, $targetRack, $quantity, $scrapReason, $notes,
             // 更新包状态为加工中
             $sql = "UPDATE glass_packages SET current_rack_id = ?, status = 'in_processing', updated_at = ? WHERE id = ?";
             query($sql, [$targetRack['id'], date('Y-m-d H:i:s'), $package['id']]);
+            
+            // 离开库存区：重新整理原库位位置号
+            removeFromRack($package['current_rack_id'], $package['id']);
 
             return '整包领用出库操作成功完成！';
         }
@@ -587,6 +596,9 @@ function processReturnIn($package, $targetRack, $quantity, $notes, $currentUser)
         // 更新包状态为库存中，更新剩余片数
         $sql = "UPDATE glass_packages SET current_rack_id = ?, status = 'in_storage', pieces = ?, updated_at = ? WHERE id = ?";
         query($sql, [$targetRack['id'], $quantity, date('Y-m-d H:i:s'), $package['id']]);
+        
+        // 归还入库位置号处理：归还的包放在最外面（位置1），现有包位置号递增
+        addToRack($package['id'], $targetRack['id']);
 
         return '归还入库操作成功完成！';
     }
@@ -652,6 +664,12 @@ function processInventoryCheck($transactionType, $package, $targetRack, $quantit
 
     $sql = "UPDATE glass_packages SET current_rack_id = ?, pieces = ?, updated_at = ? WHERE id = ?";
     query($sql, [$targetRack['id'], $newPieces, date('Y-m-d H:i:s'), $package['id']]);
+    
+    // 盘点操作位置号处理：只有盘盈入库（check_in）才需要调整位置号
+    if ($transactionType === 'check_in') {
+        // 盘盈入库：将包放在最外面（位置1），现有包位置号递增
+        addToRack($package['id'], $targetRack['id']);
+    }
 
     return $message;
 }
@@ -725,23 +743,65 @@ function assignPackagePosition($packageId, $rackId, $reorder = false) {
 }
 
 /**
- * 移除包时重新整理位置顺序号
- * @param int $rackId 库位架ID
- * @param int $removedPackageId 被移除的包ID
+ * 放入库位操作：新包放在最外面（位置1），现有包位置号全部+1
+ * @param int $packageId 包ID
+ * @param int $rackId 目标库位架ID
  * @return bool 操作是否成功
  */
-function removePackageAndReorder($rackId, $removedPackageId) {
+function addToRack($packageId, $rackId) {
+    if (empty($packageId) || empty($rackId)) {
+        return false;
+    }
+    
+    // 先将目标库位中所有现有包的位置号加1（向里移动）
+    $sql = "UPDATE glass_packages SET position_order = position_order + 1, updated_at = ? 
+            WHERE current_rack_id = ? AND id != ?";
+    query($sql, [date('Y-m-d H:i:s'), $rackId, $packageId]);
+    
+    // 将新包设置为位置1（最外面）
+    $sql = "UPDATE glass_packages SET position_order = 1, updated_at = ? WHERE id = ?";
+    query($sql, [date('Y-m-d H:i:s'), $packageId]);
+    
+    return true;
+}
+
+/**
+ * 离开库位操作：移除包后重新整理位置顺序号（消除空隙，连续排列）
+ * @param int $rackId 库位架ID
+ * @param int $packageId 离开的包ID（可选，如果不提供则重新整理整个库位）
+ * @return bool 操作是否成功
+ */
+function removeFromRack($rackId, $packageId = null) {
     if (empty($rackId)) {
         return false;
     }
     
-    // 先将被移除的包的位置设为NULL或0
-    $sql = "UPDATE glass_packages SET position_order = NULL WHERE id = ?";
-    query($sql, [$removedPackageId]);
+    // 如果指定了包ID，先将其位置号设为NULL
+    if ($packageId) {
+        $sql = "UPDATE glass_packages SET position_order = NULL WHERE id = ?";
+        query($sql, [$packageId]);
+    }
     
-    // 重新整理剩余包的位置顺序
-    return reorderPackagePositions($rackId);
+    // 重新整理剩余包的位置顺序（1,2,3...连续排列，无空隙）
+    $sql = "SELECT id FROM glass_packages 
+            WHERE current_rack_id = ? 
+            AND status NOT IN ('used_up', 'scrapped') 
+            AND position_order IS NOT NULL
+            ORDER BY position_order ASC, created_at ASC";
+    $packages = fetchAll($sql, [$rackId]);
+    
+    // 重新分配连续的位置号
+    $position = 1;
+    foreach ($packages as $package) {
+        $updateSql = "UPDATE glass_packages SET position_order = ?, updated_at = ? WHERE id = ?";
+        query($updateSql, [$position, date('Y-m-d H:i:s'), $package['id']]);
+        $position++;
+    }
+    
+    return true;
 }
+
+
 
 /**
  * 验证基地权限
