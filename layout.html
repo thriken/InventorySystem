@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仓库布局演示</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .warehouse-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .warehouse-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .rack {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .rack:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .rack.empty {
+            background-color: #f8f9fa;
+            color: #666;
+        }
+        
+        .rack.occupied {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            border-color: #2196f3;
+        }
+        
+        .rack.warning {
+            background-color: #fff3e0;
+            color: #f57c00;
+            border-color: #ff9800;
+        }
+        
+        .rack-pair-horizontal {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            justify-content: center;
+            width: 90px;  /* 5+40+5+40 = 90px */
+            height: 65px; /* 5+55+5 = 65px */
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        
+        .rack-pair-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: center;
+            justify-content: center;
+            width: 65px;  /* 5+55+5 = 65px */
+            height: 90px; /* 5+40+5+40 = 90px */
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        
+        .rack.horizontal {
+            width: 40px;
+            height: 55px;
+        }
+        
+        .rack.vertical {
+            width: 55px;
+            height: 40px;
+        }
+        
+        .horizontal-racks {
+            width: 40px;
+        }
+        
+        .vertical-racks {
+            width: 55px;
+        }
+        
+        .aisle {
+            background-color: #e8e8e8;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .area-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .layout-config {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .config-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .config-content {
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="warehouse-container">
+        <h1 class="warehouse-title">仓库布局演示系统</h1>
+        
+        <!-- 布局配置显示 -->
+        <div class="layout-config">
+            <div class="config-title">布局配置 (JSON)</div>
+            <div class="config-content" id="configDisplay"></div>
+        </div>
+        
+        <!-- 仓库布局容器 -->
+        <div id="warehouseLayout"></div>
+    </div>
+
+
+    <script>
+        const layoutConfig = {
+  "layoutName": "演示仓库布局",
+  "version": "1.0",
+  "created": "2025-12-11",
+  "dimensions": {
+    "totalWidth": 12,
+    "totalHeight": 8
+  },
+  "areas": [
+    {
+      "id": "main_storage",
+      "name": "主存储区",
+      "type": "main_storage",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "size": {
+        "width": 7,
+        "height": 4
+      },
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "01A",
+            "01B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "02A",
+            "02B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 0,
+          "col": 2,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "03A",
+            "03B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 0,
+          "col": 3,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "04A",
+            "04B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 0,
+          "col": 4,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "05A",
+            "05B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 0,
+          "col": 5,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "06A",
+            "06B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 0,
+          "col": 6,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "07A",
+            "07B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 1,
+          "col": 0,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "08A",
+            "08B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 1,
+          "col": 1,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "09A",
+            "09B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 1,
+          "col": 2,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "10A",
+            "10B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 1,
+          "col": 3,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "11A",
+            "11B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 1,
+          "col": 4,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "12A",
+            "12B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 1,
+          "col": 5,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "13A",
+            "13B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 1,
+          "col": 6,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "14A",
+            "14B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 2,
+          "col": 0,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "15A",
+            "15B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 2,
+          "col": 1,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "16A",
+            "16B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 2,
+          "col": 2,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "17A",
+            "17B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 2,
+          "col": 3,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "18A",
+            "18B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 2,
+          "col": 4,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "19A",
+            "19B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 2,
+          "col": 5,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "20A",
+            "20B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 2,
+          "col": 6,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "21A",
+            "21B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 3,
+          "col": 0,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "22A",
+            "22B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 3,
+          "col": 1,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "23A",
+            "23B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 3,
+          "col": 2,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "24A",
+            "24B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 3,
+          "col": 3,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "25A",
+            "25B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 3,
+          "col": 4,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "26A",
+            "26B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 3,
+          "col": 5,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "27A",
+            "27B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 3,
+          "col": 6,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "28A",
+            "28B"
+          ],
+          "status": "occupied"
+        }
+      ]
+    },
+    {
+      "id": "aisle_1",
+      "name": "主通道",
+      "type": "aisle",
+      "position": {
+        "x": 7,
+        "y": 0
+      },
+      "size": {
+        "width": 2,
+        "height": 6
+      },
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 1,
+          "col": 0,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 1,
+          "col": 1,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 2,
+          "col": 0,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 2,
+          "col": 1,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 3,
+          "col": 0,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 3,
+          "col": 1,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 4,
+          "col": 0,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 4,
+          "col": 1,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 5,
+          "col": 0,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        },
+        {
+          "row": 5,
+          "col": 1,
+          "type": "aisle",
+          "content": "主通道",
+          "colspan": 2,
+          "rowspan": 6
+        }
+      ]
+    },
+    {
+      "id": "aisle_1765452263597",
+      "name": "通道",
+      "type": "aisle",
+      "position": {
+        "x": 0,
+        "y": 4
+      },
+      "size": {
+        "width": 7,
+        "height": 1
+      },
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "type": "aisle",
+          "content": "通道",
+          "colspan": 7,
+          "rowspan": 1
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "type": "aisle",
+          "content": "通道",
+          "colspan": 7,
+          "rowspan": 1
+        },
+        {
+          "row": 0,
+          "col": 2,
+          "type": "aisle",
+          "content": "通道",
+          "colspan": 7,
+          "rowspan": 1
+        },
+        {
+          "row": 0,
+          "col": 3,
+          "type": "aisle",
+          "content": "通道",
+          "colspan": 7,
+          "rowspan": 1
+        },
+        {
+          "row": 0,
+          "col": 4,
+          "type": "aisle",
+          "content": "通道",
+          "colspan": 7,
+          "rowspan": 1
+        },
+        {
+          "row": 0,
+          "col": 5,
+          "type": "aisle",
+          "content": "通道",
+          "colspan": 7,
+          "rowspan": 1
+        },
+        {
+          "row": 0,
+          "col": 6,
+          "type": "aisle",
+          "content": "通道",
+          "colspan": 7,
+          "rowspan": 1
+        }
+      ]
+    },
+    {
+      "id": "main_storage_1765452284606",
+      "name": "1",
+      "type": "main_storage",
+      "position": {
+        "x": 0,
+        "y": 5
+      },
+      "size": {
+        "width": 7,
+        "height": 1
+      },
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "01A",
+            "01B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "02A",
+            "02B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 0,
+          "col": 2,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "03A",
+            "03B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 0,
+          "col": 3,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "04A",
+            "04B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 0,
+          "col": 4,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "05A",
+            "05B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 0,
+          "col": 5,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "06A",
+            "06B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 0,
+          "col": 6,
+          "type": "rack_pair_horizontal",
+          "racks": [
+            "07A",
+            "07B"
+          ],
+          "status": "warning"
+        }
+      ]
+    },
+    {
+      "id": "side_storage_1765452318414",
+      "name": "测试",
+      "type": "side_storage",
+      "position": {
+        "x": 9,
+        "y": 0
+      },
+      "size": {
+        "width": 2,
+        "height": 6
+      },
+      "cells": [
+        {
+          "row": 0,
+          "col": 0,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "21A",
+            "21B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "22A",
+            "22B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 1,
+          "col": 0,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "23A",
+            "23B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 1,
+          "col": 1,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "24A",
+            "24B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 2,
+          "col": 0,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "25A",
+            "25B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 2,
+          "col": 1,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "26A",
+            "26B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 3,
+          "col": 0,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "27A",
+            "27B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 3,
+          "col": 1,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "28A",
+            "28B"
+          ],
+          "status": "empty"
+        },
+        {
+          "row": 4,
+          "col": 0,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "29A",
+            "29B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 4,
+          "col": 1,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "30A",
+            "30B"
+          ],
+          "status": "warning"
+        },
+        {
+          "row": 5,
+          "col": 0,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "31A",
+            "31B"
+          ],
+          "status": "occupied"
+        },
+        {
+          "row": 5,
+          "col": 1,
+          "type": "rack_pair_vertical",
+          "racks": [
+            "32A",
+            "32B"
+          ],
+          "status": "empty"
+        }
+      ]
+    }
+  ]
+}
+    </script>
+    <script>
+        // 布局配置JSON数据
+        const layoutConfig2 = {
+            "layoutName": "演示仓库布局",
+            "version": "1.0",
+            "created": "2025-12-11",
+            "dimensions": {
+                "totalWidth": 12,
+                "totalHeight": 6
+            },
+            "rackSize": {
+                "horizontal": { "width": 40, "height": 55 },
+                "vertical": { "width": 55, "height": 40 }
+            },
+            "spacing": {
+                "betweenAB": 5,
+                "betweenPairs": 20,
+                "betweenRows": 10
+            },
+            "areas": [
+                {
+                    "id": "main_storage",
+                    "name": "主存储区",
+                    "position": { "x": 0, "y": 0 },
+                    "size": { "width": 7, "height": 4 },
+                    "cells": [
+                        {
+                            "row": 0, "col": 0, "type": "rack_pair_horizontal",
+                            "racks": ["01A", "01B"], "status": "occupied"
+                        },
+                        {
+                            "row": 0, "col": 1, "type": "rack_pair_horizontal",
+                            "racks": ["02A", "02B"], "status": "empty"
+                        },
+                        {
+                            "row": 0, "col": 2, "type": "rack_pair_horizontal",
+                            "racks": ["03A", "03B"], "status": "occupied"
+                        },
+                        {
+                            "row": 0, "col": 3, "type": "rack_pair_horizontal",
+                            "racks": ["04A", "04B"], "status": "warning"
+                        },
+                        {
+                            "row": 0, "col": 4, "type": "rack_pair_horizontal",
+                            "racks": ["05A", "05B"], "status": "empty"
+                        },
+                        {
+                            "row": 0, "col": 5, "type": "rack_pair_horizontal",
+                            "racks": ["06A", "06B"], "status": "occupied"
+                        },
+                        {
+                            "row": 0, "col": 6, "type": "rack_pair_horizontal",
+                            "racks": ["07A", "07B"], "status": "empty"
+                        },
+                        {
+                            "row": 1, "col": 0, "type": "rack_pair_horizontal",
+                            "racks": ["08A", "08B"], "status": "occupied"
+                        },
+                        {
+                            "row": 1, "col": 1, "type": "rack_pair_horizontal",
+                            "racks": ["09A", "09B"], "status": "warning"
+                        },
+                        {
+                            "row": 1, "col": 2, "type": "rack_pair_horizontal",
+                            "racks": ["10A", "10B"], "status": "empty"
+                        },
+                        {
+                            "row": 1, "col": 3, "type": "rack_pair_horizontal",
+                            "racks": ["11A", "11B"], "status": "occupied"
+                        },
+                        {
+                            "row": 1, "col": 4, "type": "rack_pair_horizontal",
+                            "racks": ["12A", "12B"], "status": "empty"
+                        },
+                        {
+                            "row": 1, "col": 5, "type": "rack_pair_horizontal",
+                            "racks": ["13A", "13B"], "status": "occupied"
+                        },
+                        {
+                            "row": 1, "col": 6, "type": "rack_pair_horizontal",
+                            "racks": ["14A", "14B"], "status": "warning"
+                        },
+                        {
+                            "row": 3, "col": 1, "type": "rack_pair_horizontal_reverse",
+                            "racks": ["15A", "15B"], "status": "empty"
+                        },
+                        {
+                            "row": 3, "col": 2, "type": "rack_pair_horizontal_reverse",
+                            "racks": ["16A", "16B"], "status": "occupied"
+                        },
+                        {
+                            "row": 3, "col": 3, "type": "rack_pair_horizontal_reverse",
+                            "racks": ["17A", "17B"], "status": "warning"
+                        },
+                        {
+                            "row": 3, "col": 4, "type": "rack_pair_horizontal_reverse",
+                            "racks": ["18A", "18B"], "status": "empty"
+                        },
+                        {
+                            "row": 3, "col": 5, "type": "rack_pair_horizontal_reverse",
+                            "racks": ["19A", "19B"], "status": "occupied"
+                        },
+                        {
+                            "row": 3, "col": 6, "type": "rack_pair_horizontal_reverse",
+                            "racks": ["20A", "20B"], "status": "empty"
+                        }
+                    ]
+                },
+                {
+                    "id": "aisle_1",
+                    "name": "主通道",
+                    "position": { "x": 7, "y": 0 },
+                    "size": { "width": 2, "height": 6 },
+                    "cells": [
+                        {
+                            "row": 0, "col": 0, "type": "aisle",
+                            "content": "主通道", "colspan": 2, "rowspan": 6
+                        }
+                    ]
+                },
+                {
+                    "id": "side_storage",
+                    "name": "侧存储区",
+                    "position": { "x": 9, "y": 0 },
+                    "size": { "width": 3, "height": 6 },
+                    "cells": [
+                        {
+                            "row": 0, "col": 0, "type": "rack_pair_vertical",
+                            "racks": ["21A", "21B"], "status": "occupied"
+                        },
+                        {
+                            "row": 1, "col": 0, "type": "rack_pair_vertical",
+                            "racks": ["22A", "22B"], "status": "empty"
+                        },
+                        {
+                            "row": 2, "col": 0, "type": "rack_pair_vertical",
+                            "racks": ["23A", "23B"], "status": "warning"
+                        },
+                        {
+                            "row": 3, "col": 0, "type": "rack_pair_vertical",
+                            "racks": ["24A", "24B"], "status": "occupied"
+                        },
+                        {
+                            "row": 4, "col": 0, "type": "rack_pair_vertical",
+                            "racks": ["25A", "25B"], "status": "empty"
+                        },
+                        {
+                            "row": 0, "col": 1, "type": "rack_pair_vertical",
+                            "racks": ["26A", "26B"], "status": "empty"
+                        },
+                        {
+                            "row": 1, "col": 1, "type": "rack_pair_vertical",
+                            "racks": ["27A", "27B"], "status": "occupied"
+                        },
+                        {
+                            "row": 2, "col": 1, "type": "rack_pair_vertical",
+                            "racks": ["28A", "28B"], "status": "warning"
+                        },
+                        {
+                            "row": 3, "col": 1, "type": "rack_pair_vertical",
+                            "racks": ["29A", "29B"], "status": "empty"
+                        },
+                        {
+                            "row": 4, "col": 1, "type": "rack_pair_vertical",
+                            "racks": ["30A", "30B"], "status": "occupied"
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // 创建分离的网格布局
+        function createGrid() {
+            const layout = document.getElementById('warehouseLayout');
+            layout.innerHTML = '';
+            layout.style.display = 'flex';
+            layout.style.gap = '20px';
+
+            // 创建三个独立区域
+            const mainStorageArea = createMainStorageArea();
+            const aisleArea = createAisleArea();
+            const sideStorageArea = createSideStorageArea();
+
+            layout.appendChild(mainStorageArea);
+            layout.appendChild(aisleArea);
+            layout.appendChild(sideStorageArea);
+        }
+
+        // 创建主存储区（左侧横向库位）
+        function createMainStorageArea() {
+            const container = document.createElement('div');
+            container.style.display = 'grid';
+            container.style.gridTemplateColumns = 'repeat(7, 90px)'; // 每个横向库位90px宽
+            container.style.gridTemplateRows = 'repeat(4, 65px)'; // 每个横向库位65px高
+            container.style.gap = '10px';
+
+            // 创建4x7的网格
+            const grid = Array(4).fill(null).map(() => Array(7).fill(null));
+
+            // 填充主存储区数据
+            layoutConfig.areas[0].cells.forEach(cell => {
+                if (cell.row < grid.length && cell.col < grid[0].length) {
+                    grid[cell.row][cell.col] = cell;
+                }
+            });
+
+            // 渲染网格
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 7; col++) {
+                    const cell = grid[row][col];
+                    const cellDiv = document.createElement('div');
+                    cellDiv.style.minHeight = '65px';
+                    cellDiv.style.border = '1px solid #eee';
+                    cellDiv.style.borderRadius = '4px';
+                    cellDiv.style.padding = '5px';
+                    cellDiv.style.backgroundColor = '#fafafa';
+
+                    if (cell) {
+                        cellDiv.appendChild(renderCell(cell));
+                    } else {
+                        cellDiv.style.visibility = 'hidden';
+                    }
+
+                    container.appendChild(cellDiv);
+                }
+            }
+
+            return container;
+        }
+
+        // 创建通道区域（中间）
+        function createAisleArea() {
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.flexDirection = 'column';
+            container.style.justifyContent = 'center';
+            container.style.minWidth = '120px';
+            container.style.padding = '20px 0';
+            
+            const aisleDiv = document.createElement('div');
+            aisleDiv.style.background = 'linear-gradient(to right, #f0f0f0, #e0e0e0, #f0f0f0)';
+            aisleDiv.style.borderRadius = '8px';
+            aisleDiv.style.padding = '20px';
+            aisleDiv.style.textAlign = 'center';
+            aisleDiv.style.color = '#666';
+            aisleDiv.style.fontWeight = 'bold';
+            aisleDiv.style.fontSize = '16px';
+            aisleDiv.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.1)';
+            aisleDiv.textContent = '主通道';
+
+            container.appendChild(aisleDiv);
+            return container;
+        }
+
+        // 创建侧存储区（右侧纵向库位）
+        function createSideStorageArea() {
+            const container = document.createElement('div');
+            container.style.display = 'grid';
+            container.style.gridTemplateColumns = 'repeat(2, 65px)'; // 每个纵向库位65px宽
+            container.style.gridTemplateRows = 'repeat(5, 90px)'; // 每个纵向库位90px高
+            container.style.gap = '10px';
+
+            // 创建5x2的网格
+            const grid = Array(5).fill(null).map(() => Array(2).fill(null));
+
+            // 填充侧存储区数据
+            layoutConfig.areas[2].cells.forEach(cell => {
+                if (cell.row < grid.length && cell.col < grid[0].length) {
+                    grid[cell.row][cell.col] = cell;
+                }
+            });
+
+            // 渲染网格
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col < 2; col++) {
+                    const cell = grid[row][col];
+                    const cellDiv = document.createElement('div');
+                    cellDiv.style.minHeight = '90px';
+                    cellDiv.style.border = '1px solid #eee';
+                    cellDiv.style.borderRadius = '4px';
+                    cellDiv.style.padding = '5px';
+                    cellDiv.style.backgroundColor = '#fafafa';
+
+                    if (cell) {
+                        cellDiv.appendChild(renderCell(cell));
+                    } else {
+                        cellDiv.style.visibility = 'hidden';
+                    }
+
+                    container.appendChild(cellDiv);
+                }
+            }
+
+            return container;
+        }
+
+        // 渲染单元格
+        function renderCell(cell) {
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.justifyContent = 'center';
+            container.style.alignItems = 'center';
+            container.style.height = '100%';
+
+            switch (cell.type) {
+                case 'rack_pair_horizontal':
+                    container.appendChild(createRackPair(cell.racks, 'horizontal', cell.status));
+                    break;
+                case 'rack_pair_horizontal_reverse':
+                    container.appendChild(createRackPair(cell.racks, 'horizontal-reverse', cell.status));
+                    break;
+                case 'rack_pair_vertical':
+                    container.appendChild(createRackPair(cell.racks, 'vertical', cell.status));
+                    break;
+                case 'aisle':
+                    container.innerHTML = `<div style="width: 100%; height: 100%;"></div>`;
+                    break;
+            }
+
+            return container;
+        }
+
+        // 创建库位对
+        function createRackPair(racks, orientation, status) {
+            const pair = document.createElement('div');
+            
+            if (orientation === 'horizontal') {
+                pair.className = 'rack-pair-horizontal';
+                racks.forEach(rack => {
+                    pair.appendChild(createRack(rack, 'horizontal', status));
+                });
+            } else if (orientation === 'horizontal-reverse') {
+                pair.className = 'rack-pair-horizontal';
+                // BA顺序
+                racks.reverse().forEach(rack => {
+                    pair.appendChild(createRack(rack, 'horizontal', status));
+                });
+            } else if (orientation === 'vertical') {
+                pair.className = 'rack-pair-vertical';
+                racks.forEach(rack => {
+                    pair.appendChild(createRack(rack, 'vertical', status));
+                });
+            }
+
+            return pair;
+        }
+
+        // 创建单个库位
+        function createRack(rackId, orientation, status) {
+            const rack = document.createElement('div');
+            rack.className = `rack ${orientation} ${status}`;
+            rack.textContent = rackId;
+            rack.title = `库位: ${rackId}`;
+            
+            // 根据状态设置颜色
+            if (status === 'occupied') {
+                rack.style.backgroundColor = '#e3f2fd';
+                rack.style.borderColor = '#2196f3';
+                rack.style.color = '#1976d2';
+            } else if (status === 'warning') {
+                rack.style.backgroundColor = '#fff3e0';
+                rack.style.borderColor = '#ff9800';
+                rack.style.color = '#f57c00';
+            } else {
+                rack.style.backgroundColor = '#f8f9fa';
+                rack.style.borderColor = '#ddd';
+                rack.style.color = '#666';
+            }
+
+            return rack;
+        }
+
+        // 显示配置信息
+        function displayConfig() {
+            const configDisplay = document.getElementById('configDisplay');
+            configDisplay.textContent = JSON.stringify(layoutConfig, null, 2);
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            displayConfig();
+            createGrid();
+        });
+
+        // 响应式调整
+        window.addEventListener('resize', function() {
+            createGrid();
+        });
+    </script>
+</body>
+</html>

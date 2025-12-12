@@ -145,6 +145,55 @@ function renderRack($rackCode, $rackInventory, $highlightRacks, $rackType = 'sto
     return $html;
 }
 
+/**
+ * 渲染垂直库位HTML
+ * @param string $rackCode 库位编码
+ * @param array $rackInventory 库位库存数据
+ * @param array $highlightRacks 高亮库位数组
+ * @return string 垂直库位HTML
+ */
+function renderVerticalRack($rackCode, $rackInventory, $highlightRacks, $rackType = 'storage') {
+    $hasInventory = isset($rackInventory[$rackCode]) && $rackInventory[$rackCode]['package_count'] > 0;
+    $isHighlighted = in_array($rackCode, $highlightRacks);
+    // 确定实际的库位类型
+    $actualRackType = $rackType;
+    if (isset($rackInventory[$rackCode]) && $rackInventory[$rackCode]['area_type']) {
+        $actualRackType = $rackInventory[$rackCode]['area_type'];
+    }
+    $html = '<div class="rack ' . $actualRackType . ' rack-vertical' . ($hasInventory ? ' has-inventory' : '') . ($isHighlighted ? ' highlighted' : '') . '" ';
+    $html .= 'data-rack="' . $rackCode . '" ';
+    $html .= 'data-area-type="' . $actualRackType . '" ';
+    if ($hasInventory) {
+        $data = $rackInventory[$rackCode];
+        $html .= 'data-packages="' . $data['package_count'] . '" ';
+        $html .= 'data-pieces="' . $data['total_pieces'] . '" ';
+        $html .= 'data-types="' . htmlspecialchars($data['glass_types']) . '" ';
+        $html .= 'data-colors="' . htmlspecialchars($data['colors']) . '" ';
+        $html .= 'data-thicknesses="' . htmlspecialchars($data['thicknesses']) . '" ';
+        $html .= 'data-dimensions="' . htmlspecialchars($data['dimensions']) . '" ';
+        $html .= 'data-codes="' . htmlspecialchars($data['package_codes']) . '" ';
+        $html .= 'data-area="' . number_format($data['total_area_sqm'], 2) . '" ';
+    }
+    $html .= '>' . $rackCode . '</div>';
+    return $html;
+}
+
+/**
+ * 渲染垂直库位对HTML
+ * @param string $rackCodeA A库位编码
+ * @param string $rackCodeB B库位编码
+ * @param array $rackInventory 库位库存数据
+ * @param array $highlightRacks 高亮库位数组
+ * @return string 垂直库位对HTML
+ */
+function renderVerticalRackPair($rackCodeA, $rackCodeB, $rackInventory, $highlightRacks, $rackType = 'storage') {
+    $html = '<div class="vertical-rack-pair">';
+    $html .= renderVerticalRack($rackCodeA, $rackInventory, $highlightRacks, $rackType);
+    $html .= renderVerticalRack($rackCodeB, $rackInventory, $highlightRacks, $rackType);
+    $html .= '</div>';
+    return $html;
+}
+
 // 处理AJAX请求
 if (isset($_POST['ajax']) && $_POST['ajax'] === 'get_base_data') {
     header('Content-Type: application/json');
@@ -360,6 +409,8 @@ ob_start();
             color: white !important;
             animation: pulse 1.5s infinite;
         }
+        
+        
         .rack {
             width: 45px;
             height: 55px;
@@ -417,7 +468,53 @@ ob_start();
             font-weight: bolder;
             box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
         }
+        /* 垂直库位样式 */
+        .rack-vertical {
+            width: 55px;
+            height: 40px;
+            display: flex;
+            flex-direction: column;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
         
+        .vertical-rack-pair {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+        }
+        
+        .vertical-rack-pair .rack {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        
+        /* 垂直库位组样式 */
+        .vertical-rack-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        
+        .vertical-rack-group-horizontal {
+            display: flex;
+            flex-direction: row;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }

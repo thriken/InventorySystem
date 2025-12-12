@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仓库布局设计器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background-color: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
+        .header h1 { font-size: 24px; margin-bottom: 10px; }
+        .main-content { display: flex; min-height: 600px; }
+        .control-panel { width: 350px; background-color: #f8f9fa; padding: 20px; border-right: 1px solid #e0e0e0; overflow-y: auto; }
+        .preview-panel { flex: 1; padding: 20px; }
+        .section { margin-bottom: 25px; }
+        .section-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 5px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; font-size: 14px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1); }
+        .size-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.3s ease; }
+        .btn-primary { background-color: #667eea; color: white; }
+        .btn-primary:hover { background-color: #5a67d8; }
+        .btn-secondary { background-color: #48bb78; color: white; }
+        .btn-secondary:hover { background-color: #38a169; }
+        .btn-danger { background-color: #f56565; color: white; }
+        .btn-danger:hover { background-color: #e53e3e; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-group .btn { flex: 1; }
+        .preview-area { border: 2px dashed #ddd; border-radius: 8px; padding: 20px; background-color: #fafafa; min-height: 400px; }
+        .message { padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; display: none; }
+        .message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .message.show { display: block; }
+        .area-item { background-color: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-bottom: 10px; cursor: move; }
+        .area-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .area-item-title { font-weight: bold; color: #333; }
+        .area-item-remove { color: #f56565; cursor: pointer; font-weight: bold; }
+        .area-item-details { font-size: 12px; color: #666; }
+        
+        /* 布局网格样式 */
+        .layout-grid-container { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .layout-grid { display: grid; gap: 2px; background-color: #e0e0e0; padding: 2px; border-radius: 4px; position: relative; }
+        .grid-cell { background-color: white; border: 1px solid #ddd; min-height: 30px; position: relative; cursor: pointer; }
+        .grid-cell:hover { background-color: #f0f8ff; }
+        .grid-cell.selected { background-color: #e3f2fd; border-color: #2196f3; }
+        .grid-cell.occupied { background-color: #f5f5f5; }
+        
+        /* 分区样式 */
+        .partition { background-color: rgba(33, 150, 243, 0.2); border: 2px solid #2196f3; border-radius: 4px; position: absolute; z-index: 10; cursor: move; user-select: none; }
+        .partition:hover { border-color: #1976d2; background-color: rgba(33, 150, 243, 0.3); }
+        .partition.selected { border-color: #1565c0; background-color: rgba(33, 150, 243, 0.4; }
+        .partition-label { position: absolute; top: 5px; left: 5px; background: #2196f3; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .resize-handle { position: absolute; width: 10px; height: 10px; background: #2196f3; border: 2px solid white; border-radius: 50%; cursor: nwse-resize; }
+        .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+        .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+        
+        /* 步骤样式 */
+        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .step { flex: 1; text-align: center; padding: 10px; border-radius: 4px; font-weight: bold; }
+        .step.active { background-color: #667eea; color: white; }
+        .step.completed { background-color: #48bb78; color: white; }
+        .step.pending { background-color: #e0e0e0; color: #666; }
+        
+        /* 库位设置样式 */
+        .rack-settings { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px; }
+        .rack-preview { background-color: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-top: 10px; min-height: 100px; display: flex; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏭 仓库布局设计器</h1>
+            <p>自定义设计您的仓库布局配置</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="control-panel">
+                <div id="message" class="message"></div>
+                
+                <!-- 步骤指示器 -->
+                <div class="step-indicator">
+                    <div class="step active" id="step1">1. 布局分区</div>
+                    <div class="step pending" id="step2">2. 库位设置</div>
+                </div>
+                
+                <!-- 步骤1: 布局分区 -->
+                <div id="step1Content">
+                    <div class="section">
+                        <div class="section-title">基本信息</div>
+                        <div class="form-group">
+                            <label for="layoutName">布局名称</label>
+                            <input type="text" id="layoutName" value="A基地布局" placeholder="输入布局名称">
+                        </div>
+                        <div class="form-group">
+                            <label for="baseData">基地数据</label>
+                            <select id="baseData" onchange="loadBaseData()">
+                                <option value="demo">演示数据</option>
+                                <option value="baseA">A基地 (56库位)</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">库位统计</div>
+                        <div id="rackStats" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                                <div>🔧 加工位：<span id="processCount">4</span> 个</div>
+                                <div>📦 存储位：<span id="storageCount">26</span> 个</div>
+                                <div>🔄 临时区：<span id="tempCount">1</span> 个</div>
+                                <div>🗑️ 报废区：<span id="wasteCount">1</span> 个</div>
+                                <div>📊 总库位：<span id="totalCount">32</span> 个</div>
+                                <div>📍 空余位：<span id="emptyCount">24</span> 个</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">库位池</div>
+                        <div class="form-group">
+                            <label>库位类型筛选</label>
+                            <select id="rackTypeFilter" onchange="filterRacks()">
+                                <option value="all">全部库位</option>
+                                <option value="process">加工位 (单库位)</option>
+                                <option value="storage">存储位 (AB双库位)</option>
+                                <option value="temp">临时区</option>
+                                <option value="waste">报废区</option>
+                            </select>
+                        </div>
+                        <div id="rackPool" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px; background: white;">
+                            <div style="color: #999; text-align: center; padding: 20px;">加载基地数据后显示库位</div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">布局网格</div>
+                        <div class="size-inputs">
+                            <div class="form-group">
+                                <label for="gridWidth">网格宽度</label>
+                                <input type="number" id="gridWidth" value="12" min="6" max="20" onchange="createLayoutGrid()">
+                            </div>
+                            <div class="form-group">
+                                <label for="gridHeight">网格高度</label>
+                                <input type="number" id="gridHeight" value="8" min="4" max="15" onchange="createLayoutGrid()">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="showGrid" checked onchange="toggleGrid()"> 显示网格线
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>拖拽模式</label>
+                            <div class="btn-group">
+                                <button class="btn btn-primary" id="dragModePlace" onclick="setDragMode('place')">放置库位</button>
+                                <button class="btn btn-secondary" id="dragModeRemove" onclick="setDragMode('remove')">移除库位</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="nextStep()">下一步 → 区域设置</button>
+                        <button class="btn btn-secondary" onclick="autoLayout()">智能布局</button>
+                        <button class="btn btn-danger" onclick="resetAll()">重置</button>
+                    </div>
+                </div>
+                
+                <!-- 步骤2: 区域设置 -->
+                <div id="step2Content" style="display: none;">
+                    <div class="section">
+                        <div class="section-title">布局确认与优化</div>
+                        <div class="form-group">
+                            <label>当前布局统计</label>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                                <div id="layoutStats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                                    <div>📦 已放置库位：<span id="placedRackCount">0</span> 个</div>
+                                    <div>📊 布局利用率：<span id="layoutUtilization">0</span>%</div>
+                                    <div>🔧 加工位：<span id="placedProcessCount">0</span> 个</div>
+                                    <div>📦 存储位：<span id="placedStorageCount">0</span> 个</div>
+                                    <div>🔄 临时区：<span id="placedTempCount">0</span> 个</div>
+                                    <div>🗑️ 报废区：<span id="placedWasteCount">0</span> 个</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>布局建议</label>
+                            <div id="layoutSuggestions" style="background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffeaa7;">
+                                <div style="color: #856404;">📋 布局优化建议：</div>
+                                <ul style="margin: 10px 0 0 20px; color: #856404; font-size: 14px;">
+                                    <li>加工位建议放置在左侧，便于操作</li>
+                                    <li>存储位建议集中放置，提高空间利用率</li>
+                                    <li>临时区和报废区建议放置在边缘位置</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">布局调整</div>
+                        <div class="form-group">
+                            <label>快速操作</label>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary" onclick="optimizeLayout()">优化布局</button>
+                                <button class="btn btn-secondary" onclick="clearLayout()">清空布局</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>区域命名</label>
+                            <textarea id="areaNames" style="width: 100%; height: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" placeholder="为不同区域命名，例如：&#10;左侧区域：加工位&#10;中央区域：存储区&#10;底部区域：临时区/报废区"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" onclick="prevStep()">← 上一步</button>
+                        <button class="btn btn-primary" onclick="generatePreview()">生成最终预览</button>
+                        <button class="btn btn-primary" onclick="exportConfig()">导出配置</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="preview-panel">
+                <h3 style="margin-bottom: 15px;">📐 布局预览</h3>
+                <div class="preview-area" id="previewArea">
+                    <div style="text-align: center; color: #999; padding: 50px;">
+                        <p>🎨 点击"生成预览"查看您的布局设计</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h4>配置JSON</h4>
+                    <textarea id="configOutput" style="width: 100%; height: 200px; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" readonly placeholder="配置将在这里显示..."></textarea>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="copyConfig()">复制配置</button>
+                        <button class="btn btn-secondary" onclick="downloadConfig()">下载配置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let partitions = [];
+        let currentStep = 1;
+        let currentConfig = {};
+        let selectedPartition = null;
+        let isCreatingPartition = false;
+        let partitionStart = null;
+        let isDragging = false;
+        let isResizing = false;
+        let dragMode = 'place'; // 'place' or 'remove'
+        let rackPool = []; // 所有可用库位
+        let placedRacks = []; // 已放置的库位
+        let baseData = {}; // 基地数据
+
+        // 基地数据
+        const baseDatabase = {
+            baseA: {
+                name: "A基地",
+                totalRacks: 56,
+                racks: [
+                    // 加工位 1-4 (单库位)
+                    { id: "001", type: "process", name: "加工位-1", category: "single" },
+                    { id: "002", type: "process", name: "加工位-2", category: "single" },
+                    { id: "003", type: "process", name: "加工位-3", category: "single" },
+                    { id: "004", type: "process", name: "加工位-4", category: "single" },
+                    // 存储位 5-30 (AB双库位)
+                    { id: "005", type: "storage", name: "存储位-5", category: "pair", pairId: "005A,005B" },
+                    { id: "006", type: "storage", name: "存储位-6", category: "pair", pairId: "006A,006B" },
+                    { id: "007", type: "storage", name: "存储位-7", category: "pair", pairId: "007A,007B" },
+                    { id: "008", type: "storage", name: "存储位-8", category: "pair", pairId: "008A,008B" },
+                    { id: "009", type: "storage", name: "存储位-9", category: "pair", pairId: "009A,009B" },
+                    { id: "010", type: "storage", name: "存储位-10", category: "pair", pairId: "010A,010B" },
+                    { id: "011", type: "storage", name: "存储位-11", category: "pair", pairId: "011A,011B" },
+                    { id: "012", type: "storage", name: "存储位-12", category: "pair", pairId: "012A,012B" },
+                    { id: "013", type: "storage", name: "存储位-13", category: "pair", pairId: "013A,013B" },
+                    { id: "014", type: "storage", name: "存储位-14", category: "pair", pairId: "014A,014B" },
+                    { id: "015", type: "storage", name: "存储位-15", category: "pair", pairId: "015A,015B" },
+                    { id: "016", type: "storage", name: "存储位-16", category: "pair", pairId: "016A,016B" },
+                    { id: "017", type: "storage", name: "存储位-17", category: "pair", pairId: "017A,017B" },
+                    { id: "018", type: "storage", name: "存储位-18", category: "pair", pairId: "018A,018B" },
+                    { id: "019", type: "storage", name: "存储位-19", category: "pair", pairId: "019A,019B" },
+                    { id: "020", type: "storage", name: "存储位-20", category: "pair", pairId: "020A,020B" },
+                    { id: "021", type: "storage", name: "存储位-21", category: "pair", pairId: "021A,021B" },
+                    { id: "022", type: "storage", name: "存储位-22", category: "pair", pairId: "022A,022B" },
+                    { id: "023", type: "storage", name: "存储位-23", category: "pair", pairId: "023A,023B" },
+                    { id: "024", type: "storage", name: "存储位-24", category: "pair", pairId: "024A,024B" },
+                    { id: "025", type: "storage", name: "存储位-25", category: "pair", pairId: "025A,025B" },
+                    { id: "026", type: "storage", name: "存储位-26", category: "pair", pairId: "026A,026B" },
+                    { id: "027", type: "storage", name: "存储位-27", category: "pair", pairId: "027A,027B" },
+                    { id: "028", type: "storage", name: "存储位-28", category: "pair", pairId: "028A,028B" },
+                    { id: "029", type: "storage", name: "存储位-29", category: "pair", pairId: "029A,029B" },
+                    { id: "030", type: "storage", name: "存储位-30", category: "pair", pairId: "030A,030B" },
+                    // 临时区
+                    { id: "TEMP-01", type: "temp", name: "临时区-1", category: "area", visible: false },
+                    // 报废区
+                    { id: "WASTE-01", type: "waste", name: "报废区-1", category: "area" }
+                ]
+            }
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDefaultConfig();
+            loadBaseData();
+            createLayoutGrid();
+        });
+
+        // 加载默认配置
+        function loadDefaultConfig() {
+            currentConfig = {
+                layoutName: "A基地布局",
+                version: "1.0",
+                created: new Date().toISOString().split('T')[0],
+                dimensions: { totalWidth: 12, totalHeight: 8 },
+                racks: [],
+                areas: []
+            };
+        }
+
+        // 加载基地数据
+        function loadBaseData() {
+            const baseSelect = document.getElementById('baseData').value;
+            
+            if (baseSelect === 'demo') {
+                // 演示数据
+                rackPool = generateDemoRacks();
+                updateRackStats();
+            } else if (baseSelect === 'baseA') {
+                // A基地数据
+                baseData = baseDatabase.baseA;
+                rackPool = [...baseData.racks];
+                updateRackStats();
+                showMessage('A基地数据加载成功', 'success');
+            } else {
+                // 自定义
+                rackPool = [];
+                showMessage('请手动添加库位数据', 'success');
+            }
+            
+            updateRackPool();
+        }
+
+        // 生成演示数据
+        function generateDemoRacks() {
+            const demoRacks = [];
+            for (let i = 1; i <= 8; i++) {
+                demoRacks.push({
+                    id: String(i).padStart(3, '0'),
+                    type: i <= 2 ? 'process' : 'storage',
+                    name: i <= 2 ? `加工位-${i}` : `存储位-${i}`,
+                    category: i <= 2 ? 'single' : 'pair',
+                    pairId: i > 2 ? `${String(i).padStart(3, '0')}A,${String(i).padStart(3, '0')}B` : null
+                });
+            }
+            demoRacks.push({ id: "TEMP-01", type: "temp", name: "临时区-1", category: "area" });
+            demoRacks.push({ id: "WASTE-01", type: "waste", name: "报废区-1", category: "area" });
+            return demoRacks;
+        }
+
+        // 更新库位统计
+        function updateRackStats() {
+            const stats = {
+                process: rackPool.filter(r => r.type === 'process').length,
+                storage: rackPool.filter(r => r.type === 'storage').length,
+                temp: rackPool.filter(r => r.type === 'temp').length,
+                waste: rackPool.filter(r => r.type === 'waste').length,
+                total: rackPool.length,
+                empty: rackPool.filter(r => !placedRacks.find(p => p.id === r.id)).length
+            };
+            
+            document.getElementById('processCount').textContent = stats.process;
+            document.getElementById('storageCount').textContent = stats.storage;
+            document.getElementById('tempCount').textContent = stats.temp;
+            document.getElementById('wasteCount').textContent = stats.waste;
+            document.getElementById('totalCount').textContent = stats.total;
+            document.getElementById('emptyCount').textContent = stats.empty;
+        }
+
+        // 更新库位池显示
+        function updateRackPool(filter = 'all') {
+            const poolDiv = document.getElementById('rackPool');
+            let filteredRacks = rackPool;
+            
+            if (filter !== 'all') {
+                filteredRacks = rackPool.filter(rack => rack.type === filter);
+            }
+            
+            let html = '';
+            filteredRacks.forEach(rack => {
+                const isPlaced = placedRacks.find(p => p.id === rack.id);
+                const typeColors = {
+                    'process': '#ff9800',
+                    'storage': '#2196f3', 
+                    'temp': '#9c27b0',
+                    'waste': '#f44336'
+                };
+                const typeIcons = {
+                    'process': '🔧',
+                    'storage': '📦',
+                    'temp': '🔄',
+                    'waste': '🗑️'
+                };
+                
+                html += '<div class="area-item" style="cursor: grab; opacity: ' + (isPlaced ? '0.5' : '1') + '; border-left: 4px solid ' + typeColors[rack.type] + ';" onclick="selectRackFromPool(\'' + rack.id + '\')" draggable="true" ondragstart="dragRack(event, \'' + rack.id + '\')">';
+                html += '<div class="area-item-header"><span class="area-item-title">' + typeIcons[rack.type] + ' ' + rack.name + '</span><span style="font-size: 12px; color: ' + (isPlaced ? '#999' : '#666') + ';">' + (isPlaced ? '已放置' : rack.id) + '</span></div>';
+                html += '<div class="area-item-details">类型: ' + rack.category + ' | ' + (rack.pairId || '单库位') + '</div>';
+                html += '</div>';
+            });
+            
+            if (filteredRacks.length === 0) {
+                html = '<div style="text-align: center; color: #999; padding: 20px;">该类型暂无库位</div>';
+            }
+            
+            poolDiv.innerHTML = html;
+        }
+
+        // 筛选库位
+        function filterRacks() {
+            const filter = document.getElementById('rackTypeFilter').value;
+            updateRackPool(filter);
+        }
+
+        // 从库位池选择库位
+        function selectRackFromPool(rackId) {
+            const rack = rackPool.find(r => r.id === rackId);
+            if (rack && !placedRacks.find(p => p.id === rackId)) {
+                // 设置拖拽模式
+                setDragMode('place');
+                showMessage('已选择库位: ' + rack.name + '，点击网格放置', 'success');
+            } else if (placedRacks.find(p => p.id === rackId)) {
+                showMessage('该库位已放置', 'error');
+            }
+        }
+
+        // 设置拖拽模式
+        function setDragMode(mode) {
+            dragMode = mode;
+            document.getElementById('dragModePlace').className = mode === 'place' ? 'btn btn-primary' : 'btn btn-secondary';
+            document.getElementById('dragModeRemove').className = mode === 'remove' ? 'btn btn-primary' : 'btn btn-secondary';
+            showMessage(mode === 'place' ? '放置模式：点击网格放置库位' : '移除模式：点击网格移除库位', 'success');
+        }
+
+        // 拖拽库位
+        function dragRack(event, rackId) {
+            event.dataTransfer.setData('rackId', rackId);
+        }
+
+        // 智能布局
+        function autoLayout() {
+            if (rackPool.length === 0) {
+                showMessage('请先加载基地数据', 'error');
+                return;
+            }
+            
+            // 清空现有布局
+            placedRacks = [];
+            
+            // 按类型分组布局
+            const width = currentConfig.dimensions.totalWidth;
+            const height = currentConfig.dimensions.totalHeight;
+            let currentPos = { x: 0, y: 0 };
+            
+            // 1. 放置加工位（优先左侧）
+            const processRacks = rackPool.filter(r => r.type === 'process');
+            processRacks.forEach((rack, index) => {
+                if (currentPos.x >= width - 1) {
+                    currentPos.x = 0;
+                    currentPos.y += 2;
+                }
+                if (currentPos.y < height) {
+                    placedRacks.push({
+                        ...rack,
+                        position: { x: currentPos.x, y: currentPos.y },
+                        size: { width: 1, height: 1 }
+                    });
+                    currentPos.x += 1;
+                }
+            });
+            
+            // 2. 放置存储位（AB双库位）
+            currentPos.x = 0;
+            currentPos.y += 1;
+            const storageRacks = rackPool.filter(r => r.type === 'storage');
+            storageRacks.forEach((rack, index) => {
+                if (currentPos.x >= width - 2) {
+                    currentPos.x = 0;
+                    currentPos.y += 2;
+                }
+                if (currentPos.y < height) {
+                    placedRacks.push({
+                        ...rack,
+                        position: { x: currentPos.x, y: currentPos.y },
+                        size: { width: 2, height: 1 }
+                    });
+                    currentPos.x += 2;
+                }
+            });
+            
+            // 3. 放置临时区和报废区（底部）
+            const specialRacks = rackPool.filter(r => r.type === 'temp' || r.type === 'waste');
+            currentPos.x = 0;
+            currentPos.y = height - 1;
+            specialRacks.forEach(rack => {
+                if (currentPos.x < width - 3) {
+                    placedRacks.push({
+                        ...rack,
+                        position: { x: currentPos.x, y: currentPos.y },
+                        size: { width: 3, height: 1 }
+                    });
+                    currentPos.x += 3;
+                }
+            });
+            
+            renderPlacedRacks();
+            updateRackStats();
+            showMessage('智能布局完成', 'success');
+        }
+
+        // 创建布局网格
+        function createLayoutGrid() {
+            const width = parseInt(document.getElementById('gridWidth').value);
+            const height = parseInt(document.getElementById('gridHeight').value);
+            const previewArea = document.getElementById('previewArea');
+            
+            currentConfig.dimensions = { totalWidth: width, totalHeight: height };
+            
+            let html = '<div class="layout-grid-container">';
+            html += '<h3>布局设计网格 (' + dragMode === 'place' ? '点击放置库位' : '点击移除库位' + ')</h3>';
+            html += '<div class="layout-grid" id="layoutGrid" style="grid-template-columns: repeat(' + width + ', 40px); grid-template-rows: repeat(' + height + ', 40px);" ondrop="dropRack(event)" ondragover="allowDrop(event)">';
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    html += '<div class="grid-cell" data-x="' + x + '" data-y="' + y + '" onclick="handleGridClick(' + x + ', ' + y + ')" ondragover="allowDrop(event)" ondrop="dropRackOnCell(event, ' + x + ', ' + y + ')"></div>';
+                }
+            }
+            
+            html += '</div>';
+            html += '</div>';
+            
+            previewArea.innerHTML = html;
+            renderPlacedRacks();
+            
+            // 更新配置
+            currentConfig.dimensions = { totalWidth: width, totalHeight: height };
+        }
+
+        // 处理网格点击
+        function handleGridClick(x, y) {
+            if (dragMode === 'place') {
+                // 放置模式 - 选择要放置的库位
+                const unplacedRack = rackPool.find(rack => !placedRacks.find(p => p.id === rack.id));
+                if (unplacedRack) {
+                    placeRack(unplacedRack, x, y);
+                } else {
+                    showMessage('没有可放置的库位', 'error');
+                }
+            } else if (dragMode === 'remove') {
+                // 移除模式 - 移除该位置的库位
+                const rackIndex = placedRacks.findIndex(r => 
+                    x >= r.position.x && x < r.position.x + r.size.width &&
+                    y >= r.position.y && y < r.position.y + r.size.height
+                );
+                if (rackIndex !== -1) {
+                    removeRack(rackIndex);
+                }
+            }
+        }
+
+        // 放置库位
+        function placeRack(rack, x, y) {
+            // 检查位置是否可用
+            const isOccupied = placedRacks.some(r => {
+                return !(x >= r.position.x + r.size.width || 
+                        x + rack.size.width <= r.position.x ||
+                        y >= r.position.y + r.size.height ||
+                        y + rack.size.height <= r.position.y);
+            });
+            
+            if (isOccupied) {
+                showMessage('该位置已被占用', 'error');
+                return;
+            }
+            
+            // 检查边界
+            if (x + rack.size.width > currentConfig.dimensions.totalWidth || 
+                y + rack.size.height > currentConfig.dimensions.totalHeight) {
+                showMessage('超出布局边界', 'error');
+                return;
+            }
+            
+            placedRacks.push({
+                ...rack,
+                position: { x: x, y: y },
+                size: rack.size || { width: rack.category === 'pair' ? 2 : 1, height: 1 }
+            });
+            
+            renderPlacedRacks();
+            updateRackStats();
+            updateRackPool(document.getElementById('rackTypeFilter').value);
+            showMessage('库位放置成功: ' + rack.name, 'success');
+        }
+
+        // 移除库位
+        function removeRack(index) {
+            const rack = placedRacks[index];
+            placedRacks.splice(index, 1);
+            renderPlacedRacks();
+            updateRackStats();
+            updateRackPool(document.getElementById('rackTypeFilter').value);
+            showMessage('库位移除成功: ' + rack.name, 'success');
+        }
+
+        // 渲染已放置的库位
+        function renderPlacedRacks() {
+            const grid = document.getElementById('layoutGrid');
+            if (!grid) return;
+            
+            // 清除现有库位显示
+            const existingRacks = grid.querySelectorAll('.placed-rack');
+            existingRacks.forEach(r => r.remove());
+            
+            const cellSize = 42; // 40px + 2px gap
+            
+            placedRacks.forEach(rack => {
+                const div = document.createElement('div');
+                div.className = 'placed-rack';
+                div.id = 'placed-' + rack.id;
+                
+                // 根据库位类型设置样式
+                const typeColors = {
+                    'process': '#ff9800',
+                    'storage': '#2196f3',
+                    'temp': '#9c27b0',
+                    'waste': '#f44336'
+                };
+                
+                const color = typeColors[rack.type] || '#666';
+                const width = rack.size.width * cellSize - 4;
+                const height = cellSize - 4;
+                
+                div.style.cssText = `
+                    position: absolute;
+                    left: ${rack.position.x * cellSize}px;
+                    top: ${rack.position.y * cellSize}px;
+                    width: ${width}px;
+                    height: ${height}px;
+                    background-color: ${color}20;
+                    border: 2px solid ${color};
+                    border-radius: 4px;
+                    z-index: 10;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 12px;
+                    font-weight: bold;
+                    color: ${color};
+                `;
+                
+                div.textContent = rack.id;
+                div.title = rack.name;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    if (dragMode === 'remove') {
+                        const index = placedRacks.findIndex(r => r.id === rack.id);
+                        removeRack(index);
+                    }
+                };
+                
+                grid.appendChild(div);
+            });
+        }
+
+        // 拖拽相关函数
+        function allowDrop(event) {
+            event.preventDefault();
+        }
+
+        function dropRack(event) {
+            event.preventDefault();
+            // 处理拖拽到网格外的情况
+        }
+
+        function dropRackOnCell(event, x, y) {
+            event.preventDefault();
+            const rackId = event.dataTransfer.getData('rackId');
+            const rack = rackPool.find(r => r.id === rackId);
+            
+            if (rack && !placedRacks.find(p => p.id === rackId)) {
+                placeRack(rack, x, y);
+            }
+        }
+
+        // 开始创建分区
+        function startCreatingPartition() {
+            if (partitions.length >= 6) {
+                showMessage('最多支持6个分区', 'error');
+                return;
+            }
+            isCreatingPartition = true;
+            showMessage('在网格上拖拽创建分区', 'success');
+        }
+
+        // 开始分区拖拽
+        function startPartitionDrag(event, x, y) {
+            if (!isCreatingPartition) return;
+            
+            event.preventDefault();
+            partitionStart = { x: x, y: y };
+            isDragging = true;
+            
+            document.addEventListener('mousemove', handlePartitionDrag);
+            document.addEventListener('mouseup', endPartitionDrag);
+        }
+
+        // 处理分区拖拽
+        function handlePartitionDrag(event) {
+            if (!isDragging || !partitionStart) return;
+            
+            const grid = document.getElementById('layoutGrid');
+            const rect = grid.getBoundingClientRect();
+            const cellSize = 32; // 30px + 2px gap
+            
+            const endX = Math.min(Math.max(0, Math.floor((event.clientX - rect.left) / cellSize)), currentConfig.dimensions.totalWidth - 1);
+            const endY = Math.min(Math.max(0, Math.floor((event.clientY - rect.top) / cellSize)), currentConfig.dimensions.totalHeight - 1);
+            
+            // 显示预览
+            updatePartitionPreview(partitionStart.x, partitionStart.y, endX, endY);
+        }
+
+        // 结束分区拖拽
+        function endPartitionDrag(event) {
+            if (!isDragging || !partitionStart) return;
+            
+            const grid = document.getElementById('layoutGrid');
+            const rect = grid.getBoundingClientRect();
+            const cellSize = 32;
+            
+            const endX = Math.min(Math.max(0, Math.floor((event.clientX - rect.left) / cellSize)), currentConfig.dimensions.totalWidth - 1);
+            const endY = Math.min(Math.max(0, Math.floor((event.clientY - rect.top) / cellSize)), currentConfig.dimensions.totalHeight - 1);
+            
+            // 创建分区
+            createPartition(partitionStart.x, partitionStart.y, endX, endY);
+            
+            // 清理
+            isDragging = false;
+            partitionStart = null;
+            isCreatingPartition = false;
+            document.removeEventListener('mousemove', handlePartitionDrag);
+            document.removeEventListener('mouseup', endPartitionDrag);
+            
+            // 清除预览
+            clearPartitionPreview();
+        }
+
+        // 创建分区
+        function createPartition(startX, startY, endX, endY) {
+            const x = Math.min(startX, endX);
+            const y = Math.min(startY, endY);
+            const width = Math.abs(endX - startX) + 1;
+            const height = Math.abs(endY - startY) + 1;
+            
+            if (width < 1 || height < 1) {
+                showMessage('分区太小，请重新拖拽', 'error');
+                return;
+            }
+            
+            const partition = {
+                id: 'partition_' + Date.now(),
+                name: '分区' + (partitions.length + 1),
+                position: { x: x, y: y },
+                size: { width: width, height: height },
+                rackSettings: {
+                    arrangement: 'horizontal',
+                    startNum: 1,
+                    prefix: ''
+                }
+            };
+            
+            partitions.push(partition);
+            renderPartitions();
+            updatePartitionsList();
+            showMessage('分区创建成功', 'success');
+        }
+
+        // 渲染分区
+        function renderPartitions() {
+            const grid = document.getElementById('layoutGrid');
+            if (!grid) return;
+            
+            // 清除现有分区
+            const existingPartitions = grid.querySelectorAll('.partition');
+            existingPartitions.forEach(p => p.remove());
+            
+            const cellSize = 32; // 30px + 2px gap
+            
+            partitions.forEach((partition, index) => {
+                const div = document.createElement('div');
+                div.className = 'partition';
+                div.id = partition.id;
+                div.style.left = (partition.position.x * cellSize) + 'px';
+                div.style.top = (partition.position.y * cellSize) + 'px';
+                div.style.width = (partition.size.width * cellSize - 4) + 'px';
+                div.style.height = (partition.size.height * cellSize - 4) + 'px';
+                
+                // 添加标签
+                const label = document.createElement('div');
+                label.className = 'partition-label';
+                label.textContent = partition.name;
+                div.appendChild(label);
+                
+                // 添加调整大小手柄
+                ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+                    const handle = document.createElement('div');
+                    handle.className = 'resize-handle ' + pos;
+                    handle.onmousedown = (e) => startResize(e, index, pos);
+                    div.appendChild(handle);
+                });
+                
+                // 添加点击选择
+                div.onclick = (e) => {
+                    if (!e.target.classList.contains('resize-handle')) {
+                        selectPartition(index);
+                    }
+                };
+                
+                grid.appendChild(div);
+            });
+        }
+
+        // 选择分区
+        function selectPartition(index) {
+            // 清除之前的选择
+            document.querySelectorAll('.partition').forEach(p => p.classList.remove('selected'));
+            
+            // 选择当前分区
+            const partition = document.getElementById(partitions[index].id);
+            if (partition) {
+                partition.classList.add('selected');
+                selectedPartition = index;
+            }
+        }
+
+        // 删除选中的分区
+        function deleteSelectedPartition() {
+            if (selectedPartition === null) {
+                showMessage('请先选择要删除的分区', 'error');
+                return;
+            }
+            
+            partitions.splice(selectedPartition, 1);
+            selectedPartition = null;
+            renderPartitions();
+            updatePartitionsList();
+            showMessage('分区已删除', 'success');
+        }
+
+        // 更新分区列表
+        function updatePartitionsList() {
+            const list = document.getElementById('partitionsList');
+            const count = document.getElementById('partitionCount');
+            
+            count.textContent = partitions.length;
+            list.innerHTML = '';
+            
+            partitions.forEach((partition, index) => {
+                const item = document.createElement('div');
+                item.className = 'area-item';
+                item.style.cursor = 'pointer';
+                item.innerHTML = '<div class="area-item-header"><span class="area-item-title">' + partition.name + '</span></div><div class="area-item-details">位置: (' + partition.position.x + ', ' + partition.position.y + ') | 尺寸: ' + partition.size.width + '×' + partition.size.height + '</div>';
+                item.onclick = () => selectPartition(index);
+                list.appendChild(item);
+            });
+        }
+
+        // 步骤控制
+        function nextStep() {
+            if (currentStep === 1 && placedRacks.length === 0) {
+                showMessage('请至少放置一个库位', 'error');
+                return;
+            }
+            
+            currentStep = 2;
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step1').classList.add('completed');
+            document.getElementById('step2').classList.remove('pending');
+            document.getElementById('step2').classList.add('active');
+            
+            document.getElementById('step1Content').style.display = 'none';
+            document.getElementById('step2Content').style.display = 'block';
+            
+            updateLayoutStats();
+            showMessage('进入布局确认阶段', 'success');
+        }
+
+        function prevStep() {
+            currentStep = 1;
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step2').classList.add('pending');
+            document.getElementById('step1').classList.remove('completed');
+            document.getElementById('step1').classList.add('active');
+            
+            document.getElementById('step2Content').style.display = 'none';
+            document.getElementById('step1Content').style.display = 'block';
+        }
+
+        // 更新布局统计
+        function updateLayoutStats() {
+            const totalCells = currentConfig.dimensions.totalWidth * currentConfig.dimensions.totalHeight;
+            const usedCells = placedRacks.reduce((sum, rack) => sum + (rack.size.width * rack.size.height), 0);
+            const utilization = Math.round((usedCells / totalCells) * 100);
+            
+            const stats = {
+                total: placedRacks.length,
+                process: placedRacks.filter(r => r.type === 'process').length,
+                storage: placedRacks.filter(r => r.type === 'storage').length,
+                temp: placedRacks.filter(r => r.type === 'temp').length,
+                waste: placedRacks.filter(r => r.type === 'waste').length
+            };
+            
+            document.getElementById('placedRackCount').textContent = stats.total;
+            document.getElementById('layoutUtilization').textContent = utilization;
+            document.getElementById('placedProcessCount').textContent = stats.process;
+            document.getElementById('placedStorageCount').textContent = stats.storage;
+            document.getElementById('placedTempCount').textContent = stats.temp;
+            document.getElementById('placedWasteCount').textContent = stats.waste;
+        }
+
+        // 优化布局
+        function optimizeLayout() {
+            if (placedRacks.length === 0) {
+                showMessage('请先放置一些库位', 'error');
+                return;
+            }
+            
+            // 简单的优化算法：按类型重新排列
+            const width = currentConfig.dimensions.totalWidth;
+            const optimizedRacks = [];
+            let currentPos = { x: 0, y: 0 };
+            
+            // 按优先级排序：process > storage > temp > waste
+            const sortedRacks = [...placedRacks].sort((a, b) => {
+                const priority = { 'process': 1, 'storage': 2, 'temp': 3, 'waste': 4 };
+                return priority[a.type] - priority[b.type];
+            });
+            
+            sortedRacks.forEach(rack => {
+                if (currentPos.x + rack.size.width > width) {
+                    currentPos.x = 0;
+                    currentPos.y += 2;
+                }
+                
+                optimizedRacks.push({
+                    ...rack,
+                    position: { x: currentPos.x, y: currentPos.y }
+                });
+                
+                currentPos.x += rack.size.width;
+            });
+            
+            placedRacks = optimizedRacks;
+            renderPlacedRacks();
+            updateLayoutStats();
+            showMessage('布局优化完成', 'success');
+        }
+
+        // 清空布局
+        function clearLayout() {
+            if (confirm('确定要清空当前布局吗？')) {
+                placedRacks = [];
+                renderPlacedRacks();
+                updateRackStats();
+                updateRackPool(document.getElementById('rackTypeFilter').value);
+                showMessage('布局已清空', 'success');
+            }
+        }
+
+        // 生成预览 - 基于实际库位布局
+        function generatePreview() {
+            updateConfig();
+            const previewArea = document.getElementById('previewArea');
+            const areaNames = document.getElementById('areaNames').value;
+            
+            let html = '<div style="background-color: white; padding: 20px; border-radius: 8px;">';
+            html += '<h3 style="margin-bottom: 15px; color: #333;">📊 最终布局预览</h3>';
+            
+            // 创建库位布局
+            html += createRackLayoutHtml();
+            html += '</div>';
+            
+            // 添加配置显示区域
+            html += '<div style="margin-top: 30px; background-color: #f8f9fa; padding: 15px; border-radius: 8px;">';
+            html += '<h4 style="margin-bottom: 10px; color: #333;">📝 布局配置信息</h4>';
+            
+            if (areaNames) {
+                html += '<div style="background-color: #17a2b8; color: white; padding: 10px; border-radius: 4px; font-size: 14px; margin-bottom: 10px;"><strong>区域命名：</strong><br><pre style="white-space: pre-wrap; margin: 5px 0;">' + areaNames + '</pre></div>';
+            }
+            
+            // 按类型统计
+            const typeGroups = {};
+            placedRacks.forEach(rack => {
+                if (!typeGroups[rack.type]) {
+                    typeGroups[rack.type] = [];
+                }
+                typeGroups[rack.type].push(rack);
+            });
+            
+            const typeNames = {
+                'process': '🔧 加工位',
+                'storage': '📦 存储位', 
+                'temp': '🔄 临时区',
+                'waste': '🗑️ 报废区'
+            };
+            
+            Object.keys(typeGroups).forEach(type => {
+                html += '<div style="background-color: #2196f3; color: white; padding: 10px; border-radius: 4px; font-size: 14px; margin-bottom: 10px;"><strong>' + typeNames[type] + '</strong><br>';
+                typeGroups[type].forEach(rack => {
+                    html += rack.name + ' (位置: ' + rack.position.x + ',' + rack.position.y + ') | ';
+                });
+                html = html.slice(0, -3); // 移除最后的 " | "
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            
+            previewArea.innerHTML = html;
+            document.getElementById('configOutput').value = JSON.stringify(currentConfig, null, 2);
+            showMessage('最终预览生成成功', 'success');
+        }
+
+        // 创建库位布局HTML
+        function createRackLayoutHtml() {
+            let html = '<div style="display: grid; grid-template-columns: repeat(' + currentConfig.dimensions.totalWidth + ', 50px); grid-template-rows: repeat(' + currentConfig.dimensions.totalHeight + ', 50px); gap: 5px; background-color: #f0f0f0; padding: 20px; border-radius: 8px;">';
+            
+            // 创建空的网格
+            const grid = Array(currentConfig.dimensions.totalHeight).fill(null).map(() => 
+                Array(currentConfig.dimensions.totalWidth).fill(null)
+            );
+            
+            // 填充已放置的库位
+            placedRacks.forEach(rack => {
+                for (let y = 0; y < rack.size.height; y++) {
+                    for (let x = 0; x < rack.size.width; x++) {
+                        const gridX = rack.position.x + x;
+                        const gridY = rack.position.y + y;
+                        if (gridX < currentConfig.dimensions.totalWidth && gridY < currentConfig.dimensions.totalHeight) {
+                            grid[gridY][gridX] = { ...rack, cellX: x, cellY: y };
+                        }
+                    }
+                }
+            });
+            
+            // 渲染网格
+            for (let y = 0; y < currentConfig.dimensions.totalHeight; y++) {
+                for (let x = 0; x < currentConfig.dimensions.totalWidth; x++) {
+                    const cell = grid[y][x];
+                    const typeColors = {
+                        'process': '#ff9800',
+                        'storage': '#2196f3',
+                        'temp': '#9c27b0', 
+                        'waste': '#f44336'
+                    };
+                    
+                    if (cell) {
+                        const color = typeColors[cell.type] || '#666';
+                        let content = cell.id;
+                        
+                        // 对于双库位，显示A/B
+                        if (cell.category === 'pair' && cell.pairId) {
+                            const pairIds = cell.pairId.split(',');
+                            content = pairIds[cell.cellX] || cell.id;
+                        }
+                        
+                        html += '<div style="background-color: ' + color + '20; border: 2px solid ' + color + '; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: ' + color + '; cursor: pointer;" title="' + cell.name + '">' + content + '</div>';
+                    } else {
+                        html += '<div style="background-color: white; border: 1px dashed #ddd; border-radius: 4px;"></div>';
+                    }
+                }
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        // 创建分区HTML - 基于新的分区系统
+        function createPartitionAreaHtml() {
+            let html = '<div style="display: flex; gap: 20px; flex-wrap: wrap;">';
+            
+            partitions.forEach(partition => {
+                const width = partition.size.width * 90; // 每个库位对90px宽
+                const height = partition.size.height * 65; // 每个库位对65px高
+                
+                html += '<div style="border: 2px solid #2196f3; border-radius: 8px; padding: 10px; background-color: #f8f9fa;">';
+                html += '<h4 style="margin-bottom: 10px; color: #2196f3;">' + partition.name + '</h4>';
+                html += '<div style="display: grid; grid-template-columns: repeat(' + partition.size.width + ', 90px); grid-template-rows: repeat(' + partition.size.height + ', 65px); gap: 10px;">';
+                
+                const grid = Array(partition.size.height).fill(null).map(() => Array(partition.size.width).fill(null));
+                const cells = generateCellsForPartition(partition);
+                
+                cells.forEach(cell => {
+                    if (cell.row < grid.length && cell.col < grid[0].length) {
+                        grid[cell.row][cell.col] = cell;
+                    }
+                });
+
+                for (let row = 0; row < partition.size.height; row++) {
+                    for (let col = 0; col < partition.size.width; col++) {
+                        const cell = grid[row][col];
+                        html += '<div style="min-height: 65px; border: 1px solid #eee; border-radius: 4px; padding: 5px; background-color: #fafafa;">';
+                        if (cell && cell.type !== 'empty') {
+                            html += renderCellHtml(cell);
+                        } else {
+                            html += '<div style="visibility: hidden; height: 100%;"><\/div>';
+                        }
+                        html += '<\/div>';
+                    }
+                }
+                
+                html += '<\/div>';
+                html += '<\/div>';
+            });
+            
+            html += '<\/div>';
+            return html;
+        }
+
+        // 渲染单元格HTML - 复制layout.html的逻辑
+        function renderCellHtml(cell) {
+            let html = '<div style="display: flex; justify-content: center; align-items: center; height: 100%;">';
+            
+            if (cell.type === 'rack_pair_horizontal') {
+                html += createRackPairHtml(cell.racks, 'horizontal', cell.status);
+            } else if (cell.type === 'rack_pair_vertical') {
+                html += createRackPairHtml(cell.racks, 'vertical', cell.status);
+            } else if (cell.type === 'aisle') {
+                html += '<div style="width: 100%; height: 100%;"><\/div>';
+            }
+            
+            html += '<\/div>';
+            return html;
+        }
+
+        // 创建库位对HTML - 复制layout.html的逻辑
+        function createRackPairHtml(racks, orientation, status) {
+            let html = '<div style="display: ';
+            if (orientation === 'horizontal') {
+                html += 'flex; gap: 5px; align-items: center; justify-content: center; width: 90px; height: 55px; padding: 5px;">';
+            } else if (orientation === 'vertical') {
+                html += 'flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; width: 55px; height: 40px; padding: 5px;">';
+            }
+            
+            racks.forEach(rack => {
+                html += createRackHtml(rack, orientation, status);
+            });
+            
+            html += '<\/div>';
+            return html;
+        }
+
+        // 创建单个库位HTML - 复制layout.html的逻辑
+        function createRackHtml(rackId, orientation, status) {
+            let html = '<div style="';
+            
+            // 基础样式
+            html += 'display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; border-radius: 4px; border: 1px solid; cursor: pointer; transition: all 0.3s ease; box-sizing: border-box;';
+            
+            // 方向样式
+            if (orientation === 'horizontal') {
+                html += 'width: 40px; height: 55px;';
+            } else if (orientation === 'vertical') {
+                html += 'width: 55px; height: 40px;';
+            }
+            
+            // 状态颜色
+            if (status === 'occupied') {
+                html += 'background-color: #e3f2fd; color: #1976d2; border-color: #2196f3;';
+            } else if (status === 'warning') {
+                html += 'background-color: #fff3e0; color: #f57c00; border-color: #ff9800;';
+            } else {
+                html += 'background-color: #f8f9fa; color: #666; border-color: #ddd;';
+            }
+            
+            html += '" title="库位: ' + rackId + '">' + rackId + '<\/div>';
+            return html;
+        }
+
+        // 更新配置
+        function updateConfig() {
+            currentConfig = {
+                layoutName: document.getElementById('layoutName').value,
+                version: "1.0",
+                created: new Date().toISOString().split('T')[0],
+                dimensions: currentConfig.dimensions,
+                baseInfo: baseData,
+                racks: placedRacks.map(rack => ({
+                    ...rack,
+                    status: ['empty', 'occupied', 'warning'][Math.floor(Math.random() * 3)]
+                })),
+                areaNames: document.getElementById('areaNames').value,
+                statistics: {
+                    totalRacks: rackPool.length,
+                    placedRacks: placedRacks.length,
+                    utilization: Math.round((placedRacks.reduce((sum, rack) => sum + (rack.size.width * rack.size.height), 0) / (currentConfig.dimensions.totalWidth * currentConfig.dimensions.totalHeight)) * 100),
+                    typeDistribution: {
+                        process: placedRacks.filter(r => r.type === 'process').length,
+                        storage: placedRacks.filter(r => r.type === 'storage').length,
+                        temp: placedRacks.filter(r => r.type === 'temp').length,
+                        waste: placedRacks.filter(r => r.type === 'waste').length
+                    }
+                }
+            };
+        }
+
+        // 辅助函数：更新分区预览
+        function updatePartitionPreview(startX, startY, endX, endY) {
+            // 这里可以添加拖拽时的视觉预览
+            // 为了简化，暂时不实现
+        }
+
+        // 辅助函数：清除分区预览
+        function clearPartitionPreview() {
+            // 清除拖拽预览
+        }
+
+        // 辅助函数：调整分区大小
+        function startResize(event, partitionIndex, handle) {
+            event.stopPropagation();
+            isResizing = true;
+            // 这里实现调整大小的逻辑
+            // 为了简化，暂时不实现完整的拖拽调整
+        }
+
+        // 辅助函数：切换网格显示
+        function toggleGrid() {
+            const showGrid = document.getElementById('showGrid').checked;
+            const grid = document.getElementById('layoutGrid');
+            if (grid) {
+                grid.style.gap = showGrid ? '2px' : '0px';
+            }
+        }
+
+        // 导出配置
+        function exportConfig() {
+            updateConfig();
+            const configText = JSON.stringify(currentConfig, null, 2);
+            document.getElementById('configOutput').value = configText;
+            showMessage('配置已导出', 'success');
+        }
+
+        // 复制配置
+        function copyConfig() {
+            const configOutput = document.getElementById('configOutput');
+            configOutput.select();
+            document.execCommand('copy');
+            showMessage('配置已复制到剪贴板', 'success');
+        }
+
+        // 下载配置文件
+        function downloadConfig() {
+            updateConfig();
+            const configText = JSON.stringify(currentConfig, null, 2);
+            const blob = new Blob([configText], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'warehouse_layout_' + currentConfig.layoutName + '_' + Date.now() + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showMessage('配置文件已下载', 'success');
+        }
+
+        // 重置所有
+        function resetAll() {
+            if (confirm('确定要重置所有配置吗？')) {
+                loadDefaultConfig();
+                rackPool = [];
+                placedRacks = [];
+                baseData = {};
+                selectedPartition = null;
+                currentStep = 1;
+                dragMode = 'place';
+                
+                // 重置步骤显示
+                document.getElementById('step1').classList.add('active');
+                document.getElementById('step1').classList.remove('completed');
+                document.getElementById('step2').classList.add('pending');
+                document.getElementById('step2').classList.remove('active');
+                document.getElementById('step1Content').style.display = 'block';
+                document.getElementById('step2Content').style.display = 'none';
+                
+                // 重置表单
+                document.getElementById('layoutName').value = 'A基地布局';
+                document.getElementById('baseData').value = 'demo';
+                document.getElementById('gridWidth').value = '12';
+                document.getElementById('gridHeight').value = '8';
+                document.getElementById('areaNames').value = '';
+                
+                // 重新加载数据和网格
+                loadBaseData();
+                createLayoutGrid();
+                updateRackStats();
+                
+                // 重置拖拽模式
+                setDragMode('place');
+                
+                // 清空预览
+                document.getElementById('configOutput').value = '';
+                showMessage('已重置为默认配置', 'success');
+            }
+        }
+
+        // 显示消息
+        function showMessage(text, type) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = 'message ' + type + ' show';
+            setTimeout(() => { message.classList.remove('show'); }, 3000);
+        }
+    </script>
+</body>
+</html>

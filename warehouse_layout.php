@@ -127,7 +127,7 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
         <div id="stockarea2" class="top-storage-area">
             <div class="storage-row" style="display: flex; gap: 8px; margin-bottom: 20px; justify-content: center;">
                 <!-- 左侧区域：24A24B 到 12A12B -->
-                <div style="display: flex; gap: 3px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                <div style="display: flex; gap: 20px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
                     <?php
                     for ($num = 24; $num >= 12; $num--) {
                         echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
@@ -144,7 +144,7 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
                 </div>
                 
                 <!-- 右侧区域：11A11B 到 8A8B -->
-                <div id="stockarea3" style="display: flex; gap: 3px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                <div id="stockarea3" style="display: flex; gap: 20px; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
                     <?php
                     for ($num = 11; $num >= 8; $num--) {
                         echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
@@ -193,7 +193,7 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
                 </div>  
                     
                 <!-- 中间库存区：7B7A 到 5B5A -->
-                <div id="stockarea1" class="middle-storage" style="display: flex; gap: 10px; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
+                <div id="stockarea1" class="middle-storage" style="display: flex; gap: 20px; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
                     <?php
                     for ($num = 7; $num >= 5; $num--) {
                         echo '<div class="rack-pair">';
@@ -251,11 +251,170 @@ function renderOtherBaseLayout($baseId, $rackInventory, $highlightRacks) {
     return ob_get_clean();
 }
 
+
+/**
+ * 渲染金鱼基地布局 (base_id = 3)
+ */
+function renderJinyuBaseLayout( $rackInventory, $highlightRacks) {
+    ob_start();
+    ?>
+    <div class="warehouse-layout" style="padding: 20px; border: #ffc107 solid 3px; border-radius: 15px; position: relative; min-width: 1400px;">
+        
+        <div style="display: flex; justify-content: space-between;">
+            
+            <!-- 左侧：加工位1-4 -->
+            <div style="width: 200px; display: flex; flex-direction: column; gap: 40px; padding-top: 100px;">
+                <div class="processing-group" style="display: flex; flex-direction: column; gap: 20px;">
+                    <?php
+                    echo renderRack('1', $rackInventory, $highlightRacks);
+                    echo renderRack('2', $rackInventory, $highlightRacks);
+                    ?>
+                </div>
+                
+                <div style="height: 60px;"></div> <!-- 间隔 -->
+                
+                <div class="processing-group" style="display: flex; flex-direction: column; gap: 20px;">
+                    <?php
+                    echo renderRack('3', $rackInventory, $highlightRacks);
+                    echo renderRack('4', $rackInventory, $highlightRacks);
+                    ?>
+                </div>
+            </div>
+
+            <!-- 中间区域：A+B 库位和 B+A 库位 -->
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; padding: 0 40px;">
+                
+                <!-- 上方 A+B 区域 -->
+                <div class="top-racks" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px;">
+                    <!-- 第一行: 24-21 -->
+                    <div style="display: flex; gap: 20px; justify-content: center;">
+                        <?php
+                        for ($i = 20; $i <= 22; $i++) {
+                             echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
+                             echo renderRack($i . 'A', $rackInventory, $highlightRacks);
+                             echo renderRack($i . 'B', $rackInventory, $highlightRacks);
+                             echo '</div>';
+                        }
+                        ?>
+                    </div>
+                    <!-- 第二行: 20-18 -->
+                    <div style="display: flex; gap: 20px; justify-content: center;">
+                        <?php
+                        for ($i = 16; $i <= 19; $i++) {
+                             echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
+                             echo renderRack($i . 'A', $rackInventory, $highlightRacks);
+                             echo renderRack($i . 'B', $rackInventory, $highlightRacks);
+                             echo '</div>';
+                        }
+                        ?>
+                    </div>
+                </div>
+
+                <!-- 上方过道箭头 -->
+                <div style="width: 100%; display: flex; align-items: center; margin: 20px 0;">
+                        <div style="width:100%; border: 1px solid #666; height: 40px; display: flex; align-items: center; justify-content: center; position: relative;">
+                             <span style="font-weight: bold; font-size: 18px;">过道</span>
+                             <div style="position: absolute; right: -20px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 20px solid transparent; border-bottom: 20px solid transparent; border-left: 20px solid #fff; border-left-color: inherit;"></div>
+                        </div>
+                        <div style="width: 0; height: 0; border-top: 20px solid transparent; border-bottom: 20px solid transparent; border-left: 20px solid #666;"></div>
+                    </div>
+
+                <!-- 下方 B+A 区域 -->
+                <div class="bottom-racks" style="display: flex; flex-direction: column; gap: 15px; margin-top: 40px;">
+                    <!-- 第一组: 17-14 -->
+                    <div style="display: flex; gap: 20px; justify-content: center;">
+                        <?php
+                        for ($i = 15; $i >= 12; $i--) {
+                             echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
+                             echo renderRack($i . 'B', $rackInventory, $highlightRacks);
+                             echo renderRack($i . 'A', $rackInventory, $highlightRacks);
+                             echo '</div>';
+                        }
+                        ?>
+                    </div>
+                    
+                    <!-- 立柱隔断 -->
+                    <div style="border: 1px solid #666;  text-align: center;  background:rgb(19, 12, 12);color:#fff">立柱隔断</div>
+
+                    <!-- 下方过道箭头 -->
+                    <div style="width: 100%; display: flex; align-items: center; margin: 20px 0;">
+                        <div style="flex: 1; border: 1px solid #666; height: 40px; display: flex; align-items: center; justify-content: center; position: relative;">
+                             <span style="font-weight: bold; font-size: 18px;">过道</span>
+                             <div style="position: absolute; right: -20px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 20px solid transparent; border-bottom: 20px solid transparent; border-left: 20px solid #fff; border-left-color: inherit;"></div>
+                        </div>
+                        <div style="width: 0; height: 0; border-top: 20px solid transparent; border-bottom: 20px solid transparent; border-left: 20px solid #666;"></div>
+                    </div>
+
+                    <!-- 第二组: 13-10 -->
+                    <div style="display: flex; gap: 20px; justify-content: center;">
+                        <?php
+                        for ($i = 11; $i >= 8; $i--) {
+                             echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
+                             echo renderRack($i . 'B', $rackInventory, $highlightRacks);
+                             echo renderRack($i . 'A', $rackInventory, $highlightRacks);
+                             echo '</div>';
+                        }
+                        ?>
+                    </div>
+                    <!-- 第三组: 9-7 -->
+                    <div style="display: flex; gap: 20px; justify-content: center;">
+                         <?php
+                        for ($i = 7; $i >= 5; $i--) {
+                             echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
+                             echo renderRack($i . 'B', $rackInventory, $highlightRacks);
+                             echo renderRack($i . 'A', $rackInventory, $highlightRacks);
+                             echo '</div>';
+                        }
+                        ?>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 右侧通道及纵向库位 -->
+            <div style="display: flex; gap: 20px;">
+                <!-- 垂直通道箭头 -->
+                 <div style="width: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
+                    <div style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 20px solid #666;"></div>
+                    <div style="width: 2px; height: 100%; background: #666;"></div>
+                    <div style="background: #fff; padding: 10px 0; z-index: 1; writing-mode: vertical-rl; font-weight: bold; font-size: 18px;">通道</div>
+                    <div style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 20px solid #666;"></div>
+                 </div>
+
+                 <!-- 纵向库位 A+B (Vertical) -->
+                 <div class="vertical-rack-group">
+                    <?php
+                    for ($i = 24; $i < 27; $i++) {
+                         $code = ($i < 10) ? '0' . $i : $i;
+                        echo renderVerticalRackPair($code . 'A', $code . 'B', $rackInventory, $highlightRacks);
+                    }
+                    ?>
+                 </div>
+                 <div class="vertical-rack-group">
+                    <?php
+                    for ($i = 27; $i <= 30; $i++) {
+                         $code = ($i < 10) ? '0' . $i : $i;
+                        echo renderVerticalRackPair($code . 'A', $code . 'B', $rackInventory, $highlightRacks);
+                    }
+                    ?>
+                 </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <?php
+    return ob_get_clean();
+}
+
 // 根据当前基地ID渲染对应布局
 if ($base_id == 1) {
     echo renderXinyiBaseLayout($rackInventory, $highlightRacks);
 } elseif ($base_id == 2) {
     echo renderXinfengBaseLayout($rackInventory, $highlightRacks);
+} elseif ($base_id == 3) {
+    echo renderJinyuBaseLayout($rackInventory, $highlightRacks);
 } else {
     echo renderOtherBaseLayout($base_id, $rackInventory, $highlightRacks);
 }
