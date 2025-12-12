@@ -91,10 +91,18 @@ function validateRequiredFields($data, $requiredFields) {
     }
     
     if (!empty($missingFields)) {
-        jsonResponse([
-            'error' => '缺少必填字段',
-            'missing_fields' => $missingFields
-        ], 400);
+        // 使用统一的响应格式
+        if (class_exists('ApiCommon')) {
+            ApiCommon::sendResponse(400, '缺少必填字段', [
+                'missing_fields' => $missingFields
+            ]);
+        } else {
+            // 备用方案：保持向后兼容
+            jsonResponse([
+                'error' => '缺少必填字段',
+                'missing_fields' => $missingFields
+            ], 400);
+        }
     }
 }
 
