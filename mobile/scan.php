@@ -4,6 +4,7 @@ require_once '../includes/auth.php';
 require_once '../includes/functions.php';
 require_once '../includes/db.php';
 require_once '../includes/inventory_operations.php'; // 引入公共业务逻辑
+require_once '../includes/app_info.php';
 
 // 要求用户登录
 requireLogin();

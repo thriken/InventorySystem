@@ -3,6 +3,7 @@ require_once '../config/config.php';
 require_once '../includes/auth.php';
 require_once '../includes/functions.php';
 require_once '../includes/db.php';
+require_once '../includes/app_info.php';
 
 // 要求用户登录
 requireLogin();
@@ -108,7 +109,7 @@ $role =  ROLE_NAMES[$currentUser['role']];
 </head>
 <body>
     <div class="header">
-        <h1><?php echo APP_NAME; ?> - 移动端</h1>
+        <h1><?php echo getAppName(); ?> - 移动端</h1>
         <div class="user-info">
             <?php echo htmlspecialchars($baseName); ?>
             <?php echo htmlspecialchars($role); ?>
