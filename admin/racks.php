@@ -63,6 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $message = '库位架添加成功！编码：' . $code;
             $messageType = 'success';
+            // 操作成功后重定向以避免重复提交
+            header('Location: racks.php?success=1&message=' . urlencode('库位架添加成功！编码：' . $code));
+            exit();
         } elseif ($action === 'edit') {
             $id = (int)($_POST['id'] ?? 0);
             $name = trim($_POST['name'] ?? '');
@@ -90,6 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $message = '库位架更新成功！编码：' . $code;
             $messageType = 'success';
+            // 操作成功后重定向以避免重复提交
+            header('Location: racks.php?success=1&message=' . urlencode('库位架更新成功！编码：' . $code));
+            exit();
         } elseif ($action === 'delete') {
             $id = (int)($_POST['id'] ?? 0);
 
@@ -107,6 +113,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $message = '库位架删除成功！';
             $messageType = 'success';
+            // 操作成功后重定向以避免重复提交
+            header('Location: racks.php?success=1&message=' . urlencode('库位架删除成功！'));
+            exit();
         }
     } catch (Exception $e) {
         $message = '错误：' . $e->getMessage();
@@ -114,7 +123,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// 处理重定向后的成功消息
+if (isset($_GET['success']) && $_GET['success'] == '1' && isset($_GET['message'])) {
+    $message = urldecode($_GET['message']);
+    $messageType = 'success';
+}
+
 $baseId = $currentUser['base_id'] ?? 0;
+$racksParams = []; // 初始化参数数组
 $racksSql = "SELECT r.*, b.name as base_name,
                          (SELECT COUNT(*) FROM glass_packages WHERE current_rack_id = r.id) as package_count
                   FROM storage_racks r 
@@ -311,7 +327,8 @@ ob_start();
 <!-- 检查是否有编辑记录，如果有则自动弹出编辑表单 -->
 <?php if ($editRecord): ?>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        // 立即执行，不要等待DOMContentLoaded
+        (function() {
             // 设置表单为编辑模式
             document.getElementById('formTitle').textContent = '编辑库位架';
             document.getElementById('formAction').value = 'edit';
@@ -330,7 +347,7 @@ ob_start();
 
             // 显示模态框
             document.getElementById('formContainer').style.display = 'flex';
-        });
+        })();
     </script>
 <?php endif; ?>
 <script>
@@ -601,6 +618,11 @@ ob_start();
     }
     // 添加事件监听器
     document.addEventListener('DOMContentLoaded', function() {
+        // 确保模态框在页面加载时是关闭的（除非有编辑操作）
+        <?php if (!$editRecord): ?>
+            document.getElementById('formContainer').style.display = 'none';
+        <?php endif; ?>
+        
         // 基地节点点击事件
         document.querySelectorAll('.base-node').forEach(node => {
             const toggle = node.querySelector('.tree-toggle');
