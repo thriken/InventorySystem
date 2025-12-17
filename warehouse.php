@@ -33,13 +33,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == '1' && isset($_GET['search'])) {
     $searchQuery = trim($_GET['search']);
     
     if (!empty($searchQuery)) {
-        $searchSql = "SELECT DISTINCT short_name, color, brand 
+        $searchSql = "SELECT DISTINCT short_name,name, color, brand 
                       FROM glass_types 
-                      WHERE short_name LIKE ? OR color LIKE ? OR brand LIKE ?
-                      ORDER BY short_name, color, brand";
+                      WHERE short_name LIKE ? OR name LIKE ? OR color LIKE ? OR brand LIKE ?
+                      ORDER BY short_name, name, color, brand";
         
         $searchParam = "%$searchQuery%";
-        $suggestions = fetchAll($searchSql, [$searchParam, $searchParam, $searchParam]);
+        $suggestions = fetchAll($searchSql, [$searchParam, $searchParam, $searchParam, $searchParam]);
         
         header('Content-Type: application/json');
         echo json_encode($suggestions);
@@ -104,10 +104,10 @@ function getHighlightRacks($baseId, $searchType) {
                   JOIN glass_packages gp ON sr.id = gp.current_rack_id
                   JOIN glass_types gt ON gp.glass_type_id = gt.id
                   WHERE sr.base_id = ? AND (gp.status = 'in_storage' OR  gp.status = 'in_processing')
-                  AND (gt.short_name LIKE ? OR gt.color LIKE ? OR gt.thickness LIKE ?)";
+                  AND (gt.short_name LIKE ? OR gt.name LIKE ? OR gt.color LIKE ? OR gt.thickness LIKE ?)";
     
     $searchParam = '%' . $searchType . '%';
-    $results = fetchAll($searchSql, [$baseId, $searchParam, $searchParam, $searchParam]);
+    $results = fetchAll($searchSql, [$baseId, $searchParam, $searchParam, $searchParam, $searchParam]);
     
     return array_column($results, 'name');
 }

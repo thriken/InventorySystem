@@ -105,8 +105,8 @@ function handleGetRacks() {
     
     if ($rackName) {
         $where[] = "(sr.name LIKE ? OR sr.code LIKE ?)";
-        $params[] = "%{$rackName}%";
-        $params[] = "%{$rackName}%";
+        $params[] = "{$rackName}";
+        $params[] = "{$rackName}";
     }
     
     $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -217,21 +217,18 @@ function handleGetRackId() {
     $params = [];
     
     if ($baseId) {
-        $where[] = "base_id = ?";
+        $where[] = "base_id = ? ";
         $params[] = $baseId;
     }
     
     if ($rackCode) {
-        // 支持模糊匹配库位编码（如：8A 可以匹配 XF-N-8A）
-        $where[] = "(code LIKE ? OR code LIKE ?)";
-        $params[] = $rackCode;                    // 精确匹配（如：8A）
-        $params[] = "%{$rackCode}";               // 模糊匹配（如：%8A% 可以匹配 XF-N-8A）
+        $where[] = "(code = ? )";
+        $params[] = $rackCode;
     }
     
     if ($rackName) {
-        // 支持模糊匹配库名称
-        $where[] = "name LIKE ?";
-        $params[] = "%{$rackName}%";
+        $where[] = "name LIKE ? ";
+        $params[] = $rackName;           // 包含匹配，更宽松
     }
     
     if (empty($where)) {
