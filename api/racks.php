@@ -2,35 +2,36 @@
 /**
  * 库位信息获取API
  * 为安卓APP提供库位架信息查询接口
+ * 
+ * 支持的接口：
+ * 1. GET /api/racks.php - 获取库位列表（默认）
+ * 2. GET /api/racks.php?action=get_rack_id&rack_code=xxx - 模糊查找库位（支持8A或XF-N-8A格式）
+ * 3. GET /api/racks.php?action=get_rack_id&rack_name=xxx - 模糊查找库名称
+ * 
+ * 注意：get_rack_id接口支持模糊匹配，可能返回单个结果或多个匹配结果
+ * 统一使用 ApiCommon 类进行认证、响应处理和工具函数调用
  */
 
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../api/ApiCommon.php';
 
-// 设置响应头为JSON格式
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-
-// 处理预检请求
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+// 设置响应头和处理预检请求
+ApiCommon::setHeaders();
+ApiCommon::handlePreflight();
 
 // 验证令牌并获取用户信息
-$token = getBearerToken();
-$userId = validateApiToken($token);
+$token = ApiCommon::getBearerToken();
+$userId = ApiCommon::validateApiToken($token);
 if (!$userId) {
-    sendResponse(401, '认证失败');
+    ApiCommon::sendResponse(401, '认证失败');
     return;
 }
 
 // 获取用户信息（包含base_id）
 $user = fetchRow("SELECT id, username, real_name as name, role, base_id FROM users WHERE id = ?", [$userId]);
 if (!$user) {
-    sendResponse(404, '用户不存在');
+    ApiCommon::sendResponse(404, '用户不存在');
     return;
 }
 
@@ -40,10 +41,15 @@ $method = $_SERVER['REQUEST_METHOD'];
 // API路由
 switch ($method) {
     case 'GET':
-        handleGetRacks();
+        $action = $_GET['action'] ?? 'list';
+        if ($action === 'get_rack_id') {
+            handleGetRackId();
+        } else {
+            handleGetRacks();
+        }
         break;
     default:
-        sendResponse(405, '方法不允许');
+        ApiCommon::sendResponse(405, '方法不允许');
         break;
 }
 
@@ -57,8 +63,8 @@ function handleGetRacks() {
     $id = isset($_GET['id']) ? intval($_GET['id']) : null;
     $baseId = isset($_GET['base_id']) ? intval($_GET['base_id']) : null;
     $rackName = isset($_GET['rack_name']) ? trim($_GET['rack_name']) : null;
-    $areaType = isset($_GET['area_type']) ? $_GET['area_type'] : null;
-    $status = isset($_GET['status']) ? $_GET['status'] : null;
+    $areaType = $_GET['area_type'] ?? null;
+    $status = $_GET['status'] ?? null;
     $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
     $pageSize = isset($_GET['page_size']) ? min(100, max(1, intval($_GET['page_size']))) : 20;
     
@@ -69,7 +75,7 @@ function handleGetRacks() {
     
     // 如果提供了rack_name参数，则必须提供base_id
     if ($rackName && !$baseId) {
-        sendResponse(400, '使用库位架名称查询时必须提供base_id参数');
+        ApiCommon::sendResponse(400, '使用库位架名称查询时必须提供base_id参数');
         return;
     }
     
@@ -95,12 +101,6 @@ function handleGetRacks() {
     if ($status && in_array($status, ['normal', 'maintenance', 'full'])) {
         $where[] = "sr.status = ?";
         $params[] = $status;
-    }
-    
-    if ($rackName) {
-        $where[] = "(sr.name LIKE ? OR sr.code LIKE ?)";
-        $params[] = "%{$rackName}%";
-        $params[] = "%{$rackName}%";
     }
     
     if ($rackName) {
@@ -179,7 +179,7 @@ function handleGetRacks() {
         ];
     }
     
-    sendResponse(200, '获取成功', [
+    ApiCommon::sendResponse(200, '获取成功', [
         'racks' => $formattedRacks,
         'pagination' => [
             'page' => $page,
@@ -191,70 +191,95 @@ function handleGetRacks() {
 }
 
 /**
- * 从请求头获取Bearer令牌
+ * 根据库位编码或名称获取库位ID
  */
-function getBearerToken() {
-    $headers = null;
+function handleGetRackId() {
+    global $user;
     
-    if (isset($_SERVER['Authorization'])) {
-        $headers = trim($_SERVER['Authorization']);
-    } elseif (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        $headers = trim($_SERVER['HTTP_AUTHORIZATION']);
-    } elseif (function_exists('apache_request_headers')) {
-        $requestHeaders = apache_request_headers();
-        $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
-        
-        if (isset($requestHeaders['Authorization'])) {
-            $headers = trim($requestHeaders['Authorization']);
-        }
+    // 获取查询参数
+    $rackCode = isset($_GET['rack_code']) ? trim($_GET['rack_code']) : null;
+    $rackName = isset($_GET['rack_name']) ? trim($_GET['rack_name']) : null;
+    $baseId = isset($_GET['base_id']) ? intval($_GET['base_id']) : null;
+    
+    // 必须提供rack_code或rack_name其中一个
+    if (!$rackCode && !$rackName) {
+        ApiCommon::sendResponse(400, '必须提供rack_code或rack_name参数');
+        return;
     }
     
-    if ($headers && preg_match('/Bearer\s(.*)/', $headers, $matches)) {
-        return $matches[1];
+    // 如果没有提供base_id，则使用当前用户的base_id
+    if (!$baseId && $user && isset($user['base_id'])) {
+        $baseId = intval($user['base_id']);
     }
     
-    return null;
-}
-
-/**
- * 验证API令牌（简化版）
- */
-function validateApiToken($token) {
+    // 构建查询条件
+    $where = [];
+    $params = [];
+    
+    if ($baseId) {
+        $where[] = "base_id = ?";
+        $params[] = $baseId;
+    }
+    
+    if ($rackCode) {
+        // 支持模糊匹配库位编码（如：8A 可以匹配 XF-N-8A）
+        $where[] = "(code LIKE ? OR code LIKE ?)";
+        $params[] = $rackCode;                    // 精确匹配（如：8A）
+        $params[] = "%{$rackCode}";               // 模糊匹配（如：%8A% 可以匹配 XF-N-8A）
+    }
+    
+    if ($rackName) {
+        // 支持模糊匹配库名称
+        $where[] = "name LIKE ?";
+        $params[] = "%{$rackName}%";
+    }
+    
+    if (empty($where)) {
+        ApiCommon::sendResponse(400, '缺少查询条件');
+        return;
+    }
+    
+    // 构建SQL查询 - 限制返回10个结果，避免数据过多
+    $sql = "SELECT id, code, name, base_id, area_type, status FROM storage_racks WHERE " . implode(' AND ', $where) . " LIMIT 10";
+    
     try {
-        $tokenData = json_decode(base64_decode($token), true);
+        $results = fetchAll($sql, $params);
         
-        if (!$tokenData || !isset($tokenData['user_id']) || !isset($tokenData['expires_at'])) {
-            return false;
+        if (count($results) === 0) {
+            ApiCommon::sendResponse(404, '未找到匹配的库位');
+        } elseif (count($results) === 1) {
+            // 只有一个结果，直接返回库位ID
+            $result = $results[0];
+            ApiCommon::sendResponse(200, '库位查找成功', [
+                'rack_id' => intval($result['id']),
+                'rack_code' => $result['code'],
+                'rack_name' => $result['name'],
+                'base_id' => intval($result['base_id']),
+                'area_type' => $result['area_type'],
+                'status' => $result['status'],
+                'match_type' => 'exact'  // 单个结果标记为精确匹配
+            ]);
+        } else {
+            // 多个结果，返回匹配列表供用户选择
+            $formattedResults = [];
+            foreach ($results as $result) {
+                $formattedResults[] = [
+                    'rack_id' => intval($result['id']),
+                    'rack_code' => $result['code'],
+                    'rack_name' => $result['name'],
+                    'base_id' => intval($result['base_id']),
+                    'area_type' => $result['area_type'],
+                    'status' => $result['status']
+                ];
+            }
+            
+            ApiCommon::sendResponse(200, '找到多个匹配的库位，请选择', [
+                'matches' => $formattedResults,
+                'total_matches' => count($results),
+                'match_type' => 'multiple'  // 标记为多匹配结果
+            ]);
         }
-        
-        // 检查是否过期
-        if (time() > $tokenData['expires_at']) {
-            return false;
-        }
-        
-        return $tokenData['user_id'];
     } catch (Exception $e) {
-        return false;
+        ApiCommon::sendResponse(500, '查询失败：' . $e->getMessage());
     }
 }
-
-/**
- * 发送JSON响应
- */
-function sendResponse($code, $message, $data = null) {
-    http_response_code($code);
-    
-    $response = [
-        'code' => $code,
-        'message' => $message,
-        'timestamp' => time()
-    ];
-    
-    if ($data !== null) {
-        $response['data'] = $data;
-    }
-    
-    echo json_encode($response, JSON_UNESCAPED_UNICODE);
-    exit();
-}
-?>

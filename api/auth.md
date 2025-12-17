@@ -106,6 +106,23 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ## 🔧 技术实现
 
+### 统一响应格式
+
+本接口使用 `ApiCommon` 类提供统一的响应格式和认证机制：
+
+```php
+// 统一的响应格式
+ApiCommon::sendResponse($code, $message, $data);
+
+// 统一的认证处理
+$token = ApiCommon::getBearerToken();
+$userId = ApiCommon::validateApiToken($token);
+
+// 统一的请求头设置
+ApiCommon::setHeaders();
+ApiCommon::handlePreflight();
+```
+
 ### Token 生成机制
 
 ```php
@@ -121,10 +138,31 @@ function generateApiToken($userId) {
 
 ### Token 验证流程
 
-1. 从请求头提取Bearer Token
-2. Base64解码并JSON解析
+1. 从请求头提取Bearer Token（使用 `ApiCommon::getBearerToken()`）
+2. Base64解码并JSON解析（使用 `ApiCommon::validateApiToken()`）
 3. 验证用户ID和过期时间
 4. 返回用户信息或发送错误响应
+
+### 响应格式标准化
+
+所有接口响应都遵循统一格式：
+
+```json
+{
+    "code": 200,
+    "message": "操作成功",
+    "timestamp": 1698758400,
+    "data": {
+        // 具体数据内容
+    }
+}
+```
+
+**优点**：
+- 🎯 **格式统一**: 所有接口响应格式一致
+- 🔒 **安全统一**: 统一的认证和权限验证
+- 🛠️ **维护简单**: 减少重复代码，便于维护
+- 📱 **兼容性好**: 支持多种认证方式（会话+Token）
 
 ## 📊 数据结构
 
@@ -320,5 +358,6 @@ $appInfo = getAppInfo();
 
 ---
 
-*最后更新: 2025-12-09*  
-*版本: 2.1*
+*最后更新: 2025-12-17*  
+*版本: 2.2*  
+*维护团队: 原片管理系统开发组*

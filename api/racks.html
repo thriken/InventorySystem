@@ -276,10 +276,12 @@
         </div>
         
         <div class="content">
+            <!-- 接口1: 库位列表查询 -->
             <div class="api-section">
                 <div class="api-header">
                     <span class="method-badge">GET</span>
                     <span class="endpoint">/api/racks.php</span>
+                    <span style="margin-left: 15px; color: #666; font-size: 0.9rem;">查询库位架列表</span>
                 </div>
                 
                 <div class="description">
@@ -299,11 +301,25 @@
                     </thead>
                     <tbody>
                         <tr>
+                            <td>id</td>
+                            <td>int</td>
+                            <td>否</td>
+                            <td>库位架ID精确查询</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
                             <td>base_id</td>
                             <td>int</td>
                             <td>否</td>
                             <td>基地ID精确查询</td>
                             <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>rack_name</td>
+                            <td>string</td>
+                            <td>否</td>
+                            <td>库位架名称模糊查询（需配合base_id）</td>
+                            <td>A区</td>
                         </tr>
                         <tr>
                             <td>area_type</td>
@@ -347,12 +363,22 @@ GET /api/racks.php?base_id=1&page=1&page_size=20<br>
 <span class="comment">// 查询库存区的库位架</span><br>
 GET /api/racks.php?area_type=storage&status=normal<br>
 <br>
+<span class="comment">// 按名称模糊查询库位架</span><br>
+GET /api/racks.php?rack_name=A区&base_id=1<br>
+<br>
 <span class="comment">// 查询所有正常状态的库位架</span><br>
 GET /api/racks.php?status=normal&page=1&page_size=50
                 </div>
                 
                 <h3>响应示例</h3>
-                <div class="code-block">
+                <div class="example-tabs">
+                    <button class="example-tab active" onclick="showResponseExample('list')">列表查询</button>
+                    <button class="example-tab" onclick="showResponseExample('single')">单个匹配</button>
+                    <button class="example-tab" onclick="showResponseExample('multiple')">多个匹配</button>
+                </div>
+                
+                <div id="list-response" class="example-content active">
+                    <div class="code-block">
 {
     <span class="key">"code"</span>: <span class="number">200</span>,
     <span class="key">"message"</span>: <span class="string">"获取成功"</span>,
@@ -384,6 +410,58 @@ GET /api/racks.php?status=normal&page=1&page_size=50
         }
     }
 }
+                    </div>
+                </div>
+                
+                <div id="single-response" class="example-content">
+                    <div class="code-block">
+{
+    <span class="key">"code"</span>: <span class="number">200</span>,
+    <span class="key">"message"</span>: <span class="string">"库位查找成功"</span>,
+    <span class="key">"timestamp"</span>: <span class="number">1698765432</span>,
+    <span class="key">"data"</span>: {
+        <span class="key">"rack_id"</span>: <span class="number">15</span>,
+        <span class="key">"rack_code"</span>: <span class="string">"XF-N-8A"</span>,
+        <span class="key">"rack_name"</span>: <span class="string">"新丰8A库位"</span>,
+        <span class="key">"base_id"</span>: <span class="number">2</span>,
+        <span class="key">"area_type"</span>: <span class="string">"storage"</span>,
+        <span class="key">"status"</span>: <span class="string">"normal"</span>,
+        <span class="key">"match_type"</span>: <span class="string">"exact"</span>
+    }
+}
+                    </div>
+                </div>
+                
+                <div id="multiple-response" class="example-content">
+                    <div class="code-block">
+{
+    <span class="key">"code"</span>: <span class="number">200</span>,
+    <span class="key">"message"</span>: <span class="string">"找到多个匹配的库位，请选择"</span>,
+    <span class="key">"timestamp"</span>: <span class="number">1698765432</span>,
+    <span class="key">"data"</span>: {
+        <span class="key">"matches"</span>: [
+            {
+                <span class="key">"rack_id"</span>: <span class="number">15</span>,
+                <span class="key">"rack_code"</span>: <span class="string">"XF-N-8A"</span>,
+                <span class="key">"rack_name"</span>: <span class="string">"新丰8A库位"</span>,
+                <span class="key">"base_id"</span>: <span class="number">2</span>,
+                <span class="key">"area_type"</span>: <span class="string">"storage"</span>,
+                <span class="key">"status"</span>: <span class="string">"normal"</span>
+            },
+            {
+                <span class="key">"rack_id"</span>: <span class="number">28</span>,
+                <span class="key">"rack_code"</span>: <span class="string">"A-8A"</span>,
+                <span class="key">"rack_name"</span>: <span class="string">"A区8A库位"</span>,
+                <span class="key">"base_id"</span>: <span class="number">1</span>,
+                <span class="key">"area_type"</span>: <span class="string">"storage"</span>,
+                <span class="key">"status"</span>: <span class="string">"normal"</span>
+            }
+        ],
+        <span class="key">"total_matches"</span>: <span class="number">2</span>,
+        <span class="key">"match_type"</span>: <span class="string">"multiple"</span>
+    }
+}
+                    </div>
                 </div>
                 
                 <h3>数据结构说明</h3>
@@ -440,6 +518,88 @@ GET /api/racks.php?status=normal&page=1&page_size=50
                     </div>
                 </div>
                 
+            </div>
+            
+            <!-- 接口2: 模糊查找库位ID -->
+            <div class="api-section">
+                <div class="api-header">
+                    <span class="method-badge">GET</span>
+                    <span class="endpoint">/api/racks.php?action=get_rack_id</span>
+                    <span style="margin-left: 15px; color: #666; font-size: 0.9rem;">模糊查找库位ID 🆕</span>
+                </div>
+                
+                <div class="description">
+                    根据库位编码或名称进行模糊查找，支持智能匹配不同格式，如 "8A" 可以匹配 "XF-N-8A"。
+                </div>
+                
+                <h3>查询参数</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>参数名</th>
+                            <th>类型</th>
+                            <th>必填</th>
+                            <th>描述</th>
+                            <th>示例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>action</td>
+                            <td>string</td>
+                            <td>是</td>
+                            <td>固定值：get_rack_id</td>
+                            <td>get_rack_id</td>
+                        </tr>
+                        <tr>
+                            <td>rack_code</td>
+                            <td>string</td>
+                            <td>否</td>
+                            <td>库位编码（支持精确和模糊匹配）</td>
+                            <td>8A, XF-N-8A</td>
+                        </tr>
+                        <tr>
+                            <td>rack_name</td>
+                            <td>string</td>
+                            <td>否</td>
+                            <td>库位名称（支持模糊匹配）</td>
+                            <td>新丰, A区</td>
+                        </tr>
+                        <tr>
+                            <td>base_id</td>
+                            <td>int</td>
+                            <td>否</td>
+                            <td>基地ID（不提供则使用用户默认基地）</td>
+                            <td>2</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div style="background: #e8f4fd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2196F3;">
+                    <strong>⚡ 智能匹配特性：</strong>
+                    <ul style="margin: 10px 0 0 20px; color: #1976D2;">
+                        <li>输入 "8A" 可以匹配 "8A"、"XF-N-8A"、"A-8A" 等格式</li>
+                        <li>输入 "XF" 可以匹配所有包含 "XF" 的库位编码</li>
+                        <li>单个匹配直接返回ID，多个匹配返回选择列表</li>
+                        <li>专为移动端和扫码枪场景优化</li>
+                    </ul>
+                </div>
+                
+                <h3>请求示例</h3>
+                <div class="code-block">
+<span class="comment">// 智能匹配库位编码</span><br>
+GET /api/racks.php?action=get_rack_id&rack_code=8A<br>
+<br>
+<span class="comment">// 完整格式编码查找</span><br>
+GET /api/racks.php?action=get_rack_id&rack_code=XF-N-8A<br>
+<br>
+<span class="comment">// 按名称模糊查找</span><br>
+GET /api/racks.php?action=get_rack_id&rack_name=新丰&base_id=2<br>
+<br>
+<span class="comment">// 部分编码匹配</span><br>
+GET /api/racks.php?action=get_rack_id&rack_code=XF&base_id=2
+                </div>
+                
                 <h3>使用示例</h3>
                 
                 <div class="example-tabs">
@@ -450,7 +610,7 @@ GET /api/racks.php?status=normal&page=1&page_size=50
                 
                 <div id="js-example" class="example-content active">
                     <div class="code-block">
-<span class="comment">// 获取库位架列表</span><br>
+<span class="comment">// 库位列表查询</span><br>
 async function getRacks(params = {}) {<br>
     const token = localStorage.getItem('token');<br>
     const queryParams = new URLSearchParams(params).toString();<br>
@@ -470,20 +630,54 @@ async function getRacks(params = {}) {<br>
     }<br>
 }<br>
 <br>
+<span class="comment">// 模糊查找库位ID 🆕</span><br>
+async function findRackId(rackCode, baseId = null) {<br>
+    const token = localStorage.getItem('token');<br>
+    const params = new URLSearchParams({<br>
+        action: 'get_rack_id',<br>
+        rack_code: rackCode<br>
+    });<br>
+    <br>
+    if (baseId) params.append('base_id', baseId);<br>
+    <br>
+    const response = await fetch(`/api/racks.php?${params}`, {<br>
+        method: 'GET',<br>
+        headers: {<br>
+            'Authorization': 'Bearer ' + token<br>
+        }<br>
+    });<br>
+    <br>
+    const data = await response.json();<br>
+    if (data.code === 200) {<br>
+        if (data.data.match_type === 'exact') {<br>
+            return data.data.rack_id;<br>
+        } else {<br>
+            return data.data.matches;<br>
+        }<br>
+    } else {<br>
+        throw new Error(data.message);<br>
+    }<br>
+}<br>
+<br>
 <span class="comment">// 使用示例</span><br>
-const racks = await getRacks({<br>
-    base_id: 1,<br>
-    area_type: 'storage',<br>
-    page: 1,<br>
-    page_size: 20<br>
-});<br>
-console.log('获取到的库位架列表:', racks.racks);
+try {<br>
+    const result = await findRackId('8A');<br>
+    if (Array.isArray(result)) {<br>
+        console.log('找到多个匹配的库位:', result);<br>
+        showRackSelectionDialog(result);<br>
+    } else {<br>
+        console.log('找到库位ID:', result);<br>
+        await moveToRack(result);<br>
+    }<br>
+} catch (error) {<br>
+    console.error('查找库位失败:', error.message);<br>
+}
                     </div>
                 </div>
                 
                 <div id="python-example" class="example-content">
                     <div class="code-block">
-<span class="comment"># 获取库位架列表</span><br>
+<span class="comment"># 库位列表查询</span><br>
 import requests<br>
 <br>
 def get_racks(token, **params):<br>
@@ -499,18 +693,69 @@ def get_racks(token, **params):<br>
     else:<br>
         raise Exception(data['message'])<br>
 <br>
+<span class="comment"># 模糊查找库位ID 🆕</span><br>
+def find_rack_id(token, rack_code=None, rack_name=None, base_id=None):<br>
+    headers = {'Authorization': f'Bearer {token}'}<br>
+    params = {'action': 'get_rack_id'}<br>
+    <br>
+    if rack_code:<br>
+        params['rack_code'] = rack_code<br>
+    if rack_name:<br>
+        params['rack_name'] = rack_name<br>
+    if base_id:<br>
+        params['base_id'] = base_id<br>
+    <br>
+    response = requests.get(<br>
+        'http://your-domain.com/api/racks.php',<br>
+        headers=headers,<br>
+        params=params<br>
+    )<br>
+    <br>
+    data = response.json()<br>
+    if data['code'] == 200:<br>
+        result_data = data['data']<br>
+        if result_data['match_type'] == 'exact':<br>
+            return result_data['rack_id']<br>
+        else:<br>
+            return result_data['matches']<br>
+    else:<br>
+        raise Exception(data['message'])<br>
+<br>
 <span class="comment"># 使用示例</span><br>
-token = "your-token-here"<br>
-racks = get_racks(token, base_id=1, area_type='storage', page=1, page_size=20)
+try:<br>
+    result = find_rack_id(token, rack_code='8A')<br>
+    if isinstance(result, list):<br>
+        print(f"找到多个匹配库位: {result}")<br>
+        # 处理多选择逻辑<br>
+    else:<br>
+        print(f"找到库位ID: {result}")<br>
+        # 使用找到的库位ID<br>
+except Exception as e:<br>
+    print(f"查找库位失败: {e}")
                     </div>
                 </div>
                 
                 <div id="curl-example" class="example-content">
                     <div class="code-block">
-<span class="comment"># 获取库位架列表</span><br>
+<span class="comment"># 库位列表查询</span><br>
 curl -X GET \<br>
   -H "Authorization: Bearer your-token-here" \<br>
-  "http://your-domain.com/api/racks.php?base_id=1&area_type=storage&page=1&page_size=20"
+  "http://your-domain.com/api/racks.php?base_id=1&area_type=storage&page=1&page_size=20"<br>
+<br>
+<span class="comment"># 模糊查找库位ID 🆕</span><br>
+curl -X GET \<br>
+  -H "Authorization: Bearer your-token-here" \<br>
+  "http://your-domain.com/api/racks.php?action=get_rack_id&rack_code=8A"<br>
+<br>
+<span class="comment"># 完整格式查找</span><br>
+curl -X GET \<br>
+  -H "Authorization: Bearer your-token-here" \<br>
+  "http://your-domain.com/api/racks.php?action=get_rack_id&rack_code=XF-N-8A"<br>
+<br>
+<span class="comment"># 按名称查找</span><br>
+curl -X GET \<br>
+  -H "Authorization: Bearer your-token-here" \<br>
+  "http://your-domain.com/api/racks.php?action=get_rack_id&rack_name=新丰&base_id=2"
                     </div>
                 </div>
             </div>
@@ -532,9 +777,19 @@ curl -X GET \<br>
                             <td>-</td>
                         </tr>
                         <tr>
+                            <td>400</td>
+                            <td>请求参数错误</td>
+                            <td>检查请求参数是否正确</td>
+                        </tr>
+                        <tr>
                             <td>401</td>
                             <td>认证失败</td>
                             <td>检查令牌有效性</td>
+                        </tr>
+                        <tr>
+                            <td>404</td>
+                            <td>未找到匹配的库位</td>
+                            <td>检查输入的库位编码或名称</td>
                         </tr>
                         <tr>
                             <td>405</td>
@@ -548,6 +803,30 @@ curl -X GET \<br>
                         </tr>
                     </tbody>
                 </table>
+                
+                <h3>常见错误示例</h3>
+                <div class="code-block">
+<span class="comment">// 参数错误 - 缺少必需参数</span><br>
+{<br>
+    <span class="key">"code"</span>: <span class="number">400</span>,<br>
+    <span class="key">"message"</span>: <span class="string">"必须提供rack_code或rack_name参数"</span>,<br>
+    <span class="key">"timestamp"</span>: <span class="number">1698765432</span><br>
+}<br>
+<br>
+<span class="comment">// 参数错误 - 名称查询缺少基地ID</span><br>
+{<br>
+    <span class="key">"code"</span>: <span class="number">400</span>,<br>
+    <span class="key">"message"</span>: <span class="string">"使用库位架名称查询时必须提供base_id参数"</span>,<br>
+    <span class="key">"timestamp"</span>: <span class="number">1698765432</span><br>
+}<br>
+<br>
+<span class="comment">// 未找到匹配库位</span><br>
+{<br>
+    <span class="key">"code"</span>: <span class="number">404</span>,<br>
+    <span class="key">"message"</span>: <span class="string">"未找到匹配的库位"</span>,<br>
+    <span class="key">"timestamp"</span>: <span class="number">1698765432</span><br>
+}
+                </div>
             </div>
             
             <div class="api-section">
@@ -559,6 +838,25 @@ curl -X GET \<br>
                     <li><strong>包数量统计</strong>：package_count和total_pieces字段帮助了解库位架使用情况</li>
                     <li><strong>容量管理</strong>：结合capacity字段进行库位架容量规划</li>
                 </ul>
+                
+                <h3>模糊查找使用场景 🆕</h3>
+                <ul style="color: #666; margin-left: 20px;">
+                    <li><strong>移动端扫码</strong>：扫码枪识别库位码后快速定位，支持不同编码格式</li>
+                    <li><strong>用户输入</strong>：用户输入简短编码（如"8A"）即可匹配完整编码（如"XF-N-8A"）</li>
+                    <li><strong>多结果处理</strong>：单个匹配直接使用，多个匹配提供选择界面</li>
+                    <li><strong>格式兼容</strong>：兼容不同用户习惯的编码输入格式</li>
+                    <li><strong>智能推荐</strong>：根据输入内容智能推荐最相关的库位</li>
+                </ul>
+                
+                <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4CAF50;">
+                    <strong>💡 最佳实践：</strong>
+                    <ul style="margin: 10px 0 0 20px; color: #2E7D32;">
+                        <li>移动端建议优先使用模糊查找接口，提升用户体验</li>
+                        <li>多匹配结果时，按状态和相似度排序，优先推荐正常状态库位</li>
+                        <li>输入框实时搜索时，可设置防抖避免频繁请求</li>
+                        <li>结合用户权限，只显示其有权限访问的基地库位</li>
+                    </ul>
+                </div>
             </div>
             
             <div class="api-section">
@@ -653,6 +951,30 @@ curl -X GET \<br>
             
             // 显示选中的示例内容
             document.getElementById(lang + '-example').classList.add('active');
+            
+            // 为选中的标签添加active类
+            event.target.classList.add('active');
+        }
+        
+        function showResponseExample(type) {
+            // 隐藏所有响应示例
+            document.querySelectorAll('.example-content').forEach(content => {
+                if (content.id.includes('-response')) {
+                    content.classList.remove('active');
+                }
+            });
+            
+            // 移除所有标签的active类
+            document.querySelectorAll('.example-tab').forEach(tab => {
+                if (tab.textContent.includes('列表查询') || 
+                    tab.textContent.includes('单个匹配') || 
+                    tab.textContent.includes('多个匹配')) {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // 显示选中的响应示例
+            document.getElementById(type + '-response').classList.add('active');
             
             // 为选中的标签添加active类
             event.target.classList.add('active');
