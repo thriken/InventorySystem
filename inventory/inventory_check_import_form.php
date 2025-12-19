@@ -108,16 +108,57 @@ include 'header.php'; ?>
                     <p><strong>Excel文件格式：</strong></p>
                     <ol>
                         <li>第一行为标题行</li>
-                        <li>包含"包号"和"盘点数量"列</li>
-                        <li>可选择包含"备注"列</li>
+                        <li>必须包含"包号"和"盘点数量"列</li>
+                        <li>可选择包含"库位号"和"备注"列</li>
                     </ol>
                     
-                    <p><strong>示例格式：</strong></p>
+                    <p><strong>支持的列名：</strong></p>
+                    <table class="table table-bordered table-condensed">
+                        <thead>
+                            <tr>
+                                <th>字段</th>
+                                <th>支持的列名</th>
+                                <th>示例</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>包号</td>
+                                <td>包号、package_code、包编号</td>
+                                <td>L250831002</td>
+                            </tr>
+                            <tr>
+                                <td>盘点数量</td>
+                                <td>盘点数量、check_quantity、数量</td>
+                                <td>48</td>
+                            </tr>
+                            <tr>
+                                <td>库位号</td>
+                                <td>库位号、rack_code、库位、库位编码</td>
+                                <td>XF-N-8A 或 8A</td>
+                            </tr>
+                            <tr>
+                                <td>备注</td>
+                                <td>备注、notes、说明</td>
+                                <td>包装轻微破损</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <p><strong>库位号说明：</strong></p>
+                    <ul>
+                        <li>支持完整编码：<code>XF-N-8A</code>、<code>XF-B-02</code></li>
+                        <li>支持库位名称：<code>8A</code>、<code>02</code>（在单个基地内不重复）</li>
+                        <li>库位号为可选项，留空则不更新库位</li>
+                    </ul>
+                    
+                    <p><strong>导入示例：</strong></p>
                     <table class="table table-bordered table-condensed">
                         <thead>
                             <tr>
                                 <th>包号</th>
                                 <th>盘点数量</th>
+                                <th>库位号</th>
                                 <th>备注（可选）</th>
                             </tr>
                         </thead>
@@ -125,12 +166,14 @@ include 'header.php'; ?>
                             <tr>
                                 <td>L250831002</td>
                                 <td>48</td>
-                                <td>包装轻微破损</td>
+                                <td>XF-A-01</td>
+                                <td>使用完整编码</td>
                             </tr>
                             <tr>
                                 <td>L250831003</td>
                                 <td>50</td>
-                                <td></td>
+                                <td>8A</td>
+                                <td>使用库位名称</td>
                             </tr>
                         </tbody>
                     </table>

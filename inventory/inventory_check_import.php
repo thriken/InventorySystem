@@ -174,14 +174,17 @@ function handleConfirmImport() {
         $successCount = 0;
         $errors = [];
         $duplicates = [];
+        $rackUpdates = 0;
         
-        foreach ($data as $row) {
+        foreach ($data as $index => $row) {
             $packageCode = trim($row['package_code'] ?? '');
             $checkQuantity = intval($row['check_quantity'] ?? 0);
+            $rackCode = trim($row['rack_code'] ?? '');
             $notes = trim($row['notes'] ?? '');
             
             if (!$packageCode || $checkQuantity <= 0) {
-                $errors[] = "包号 {$packageCode} 数据无效";
+                $errorMsg = "包号 {$packageCode} 数据无效";
+                $errors[] = $errorMsg;
                 continue;
             }
             
@@ -192,7 +195,9 @@ function handleConfirmImport() {
                                 [$packageCode]);
             
             if (!$package) {
-                $errors[] = "包 {$packageCode} 不存在或不在库存状态";
+                $errorMsg = "包 {$packageCode} 不存在或不在库存状态";
+                debug_log("错误: $errorMsg");
+                $errors[] = $errorMsg;
                 continue;
             }
             
@@ -206,26 +211,69 @@ function handleConfirmImport() {
                 continue;
             }
             
+            // 处理库位号
+            $rackId = $package['current_rack_id'];
+            $rackUpdateCount = 0;
+            
+            if ($rackCode) {
+                // 根据库位编码或名称查找库位ID（支持模糊匹配）
+                $rack = fetchRow("SELECT id, code, name FROM storage_racks 
+                                WHERE (code = ? OR name = ?) AND base_id = ? 
+                                LIMIT 1", 
+                                [$rackCode, $rackCode, getCurrentUser()['base_id']]);
+                
+                if ($rack) {
+                    $rackId = $rack['id'];
+                    
+                    // 如果新库位与原库位不同，同步更新包的实际库位
+                    if ($rackId != $package['current_rack_id']) {
+                        $packageUpdate = update('glass_packages', 
+                            ['current_rack_id' => $rackId], 
+                            'id = ?', 
+                            [$package['id']]);
+                        
+                        if ($packageUpdate > 0) {
+                            $rackUpdateCount = 1;
+                            $rackUpdates++;
+                            $rackDisplay = $rack['code'] != $rackCode ? "{$rack['code']}({$rack['name']})" : $rack['code'];
+                            $notes = ($notes ? "$notes\n" : '') . "盘点时同步更新库位到：{$rackDisplay}";
+                        }
+                    }
+                } else {
+                    $errorMsg = "包 {$packageCode} 的库位号 {$rackCode} 不存在";
+                    $errors[] = $errorMsg;
+                    continue;
+                }
+            }
+            
             // 更新盘点缓存
             $difference = $checkQuantity - $package['pieces'];
             
             $updateData = [
                 'check_quantity' => $checkQuantity,
                 'difference' => $difference,
-                'rack_id' => $package['current_rack_id'],
+                'rack_id' => $rackId,
                 'check_method' => 'excel_import',
                 'check_time' => date('Y-m-d H:i:s'),
                 'operator_id' => getCurrentUserId(),
                 'notes' => $notes
             ];
             
-            update('inventory_check_cache', $updateData, 'task_id = ? AND package_code = ?', [$taskId, $packageCode]);
-            $successCount++;
+            $cacheUpdate = update('inventory_check_cache', $updateData, 'task_id = ? AND package_code = ?', [$taskId, $packageCode]);
+            
+            if ($cacheUpdate > 0) {
+                $successCount++;
+            }
         }
         
         // 更新任务进度
         $newCount = fetchOne("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
-        update('inventory_check_tasks', ['checked_packages' => $newCount], 'id = ?', [$taskId]);
+        $differenceCount = fetchOne("SELECT SUM(ABS(difference)) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        
+        $taskUpdate = update('inventory_check_tasks', [
+            'checked_packages' => $newCount,
+            'difference_count' => $differenceCount ?: 0
+        ], 'id = ?', [$taskId]);
         
         commitTransaction();
         
@@ -233,7 +281,7 @@ function handleConfirmImport() {
         @unlink($filePath);
         
         // 显示结果
-        showImportResult($successCount, $errors, $duplicates, count($data));
+        showImportResult($successCount, $errors, $duplicates, $rackUpdates, count($data));
         
     } catch (Exception $e) {
         rollbackTransaction();
@@ -283,6 +331,10 @@ function parseCSVFile($filePath) {
         '盘点数量' => 'check_quantity',
         'check_quantity' => 'check_quantity',
         '数量' => 'check_quantity',
+        '库位号' => 'rack_code',
+        'rack_code' => 'rack_code',
+        '库位' => 'rack_code',
+        '库位编码' => 'rack_code',
         '备注' => 'notes',
         'notes' => 'notes',
         '说明' => 'notes'
@@ -345,6 +397,10 @@ function parseExcelFileWithPhpSpreadsheet($filePath) {
         '盘点数量' => 'check_quantity',
         'check_quantity' => 'check_quantity',
         '数量' => 'check_quantity',
+        '库位号' => 'rack_code',
+        'rack_code' => 'rack_code',
+        '库位' => 'rack_code',
+        '库位编码' => 'rack_code',
         '备注' => 'notes',
         'notes' => 'notes',
         '说明' => 'notes'
@@ -413,7 +469,7 @@ function showPreview($data, $filePath, $fileName) {
 /**
  * 显示导入结果
  */
-function showImportResult($successCount, $errors, $duplicates, $totalCount) {
+function showImportResult($successCount, $errors, $duplicates, $rackUpdates, $totalCount) {
     global $taskId;
     
     include 'inventory_check_import_result.php';

@@ -285,7 +285,7 @@ function showTaskDetails() {
         }
     }
     
-    // 获取盘点明细
+    // 获取盘点明细 - 未盘点的包排在前面，已盘点的按时间倒序
     $sql = "SELECT c.*, g.name AS glass_name, 
                    r.code AS rack_code, r_current.code AS current_rack_code,
                    u.real_name AS operator_name
@@ -296,7 +296,15 @@ function showTaskDetails() {
             LEFT JOIN storage_racks r_current ON p.current_rack_id = r_current.id
             LEFT JOIN users u ON c.operator_id = u.id
             WHERE c.task_id = ?
-            ORDER BY c.check_time DESC";
+            ORDER BY 
+                CASE 
+                    WHEN c.check_quantity = 0 THEN 0 
+                    ELSE 1 
+                END ASC,
+                CASE 
+                    WHEN c.check_quantity = 0 THEN c.package_code
+                    ELSE c.check_time 
+                END DESC";
     
     $details = fetchAll($sql, [$taskId]);
     
@@ -428,10 +436,11 @@ function handleManualInput() {
             }
         }
         
-        // 更新任务已盘包数量
+        // 更新任务已盘包数量和差异数量
         $summary = calculateTaskSummary($taskId);
         $updateData = [
-            'checked_packages' => $summary['checked_packages']
+            'checked_packages' => $summary['checked_packages'],
+            'difference_count' => $summary['difference_count']
         ];
         update('inventory_check_tasks', $updateData, 'id = ?', [$taskId]);
         
@@ -554,13 +563,13 @@ function calculateTaskSummary($taskId) {
         $summary['checked_packages'] = $result['count'];
     }
     
-    // 获取差异数量
-    $sql = "SELECT COUNT(*) as count 
+    // 获取差异数量（所有差异值的绝对值总和）
+    $sql = "SELECT SUM(ABS(difference)) as total_difference 
             FROM inventory_check_cache 
-            WHERE task_id = ? AND difference != 0";
+            WHERE task_id = ? AND check_quantity > 0";
     $result = fetchRow($sql, [$taskId]);
     if ($result) {
-        $summary['difference_count'] = $result['count'];
+        $summary['difference_count'] = $result['total_difference'] ?: 0;
     }
     
     return $summary;

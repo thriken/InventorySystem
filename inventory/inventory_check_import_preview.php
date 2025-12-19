@@ -58,6 +58,7 @@ include 'header.php'; ?>
                             <th>原片名称</th>
                             <th>系统数量</th>
                             <th>盘点数量</th>
+                            <th>库位号</th>
                             <th>差异</th>
                             <th>备注</th>
                             <th>状态</th>
@@ -119,6 +120,26 @@ include 'header.php'; ?>
                                 </span>
                             </td>
                             <td class="text-center">
+                                <?php 
+                                $rackCode = trim($row['rack_code'] ?? '');
+                                if ($rackCode): 
+                                    // 验证库位号是否存在（支持编码或名称查询）
+                                    $rack = fetchRow("SELECT id, code, name FROM storage_racks 
+                                                   WHERE (code = ? OR name = ?) AND base_id = ? 
+                                                   LIMIT 1", 
+                                                   [$rackCode, $rackCode, getCurrentUser()['base_id']]);
+                                    if ($rack):
+                                        $rackDisplay = $rack['code'] != $rackCode ? "{$rack['code']}({$rack['name']})" : $rack['code'];
+                                        echo '<span class="badge badge-info" title="库位存在">' . htmlspecialchars($rackDisplay) . '</span>';
+                                    else:
+                                        echo '<span class="badge badge-danger" title="库位不存在">' . htmlspecialchars($rackCode) . '</span>';
+                                    endif;
+                                else:
+                                    echo '<span class="text-muted">-</span>';
+                                endif;
+                                ?>
+                            </td>
+                            <td class="text-center">
                                 <?php if ($difference != 0): ?>
                                     <span class="label <?php echo $difference > 0 ? 'label-success' : 'label-danger'; ?>">
                                         <?php echo ($difference > 0 ? '+' : '') . $difference; ?>
@@ -154,7 +175,7 @@ include 'header.php'; ?>
             <h4>确认导入</h4>
         </div>
         <div class="panel-body">
-            <form method="POST" action="inventory_check_import.php" class="form-horizontal">
+            <form method="POST" action="inventory_check_import.php?task_id=<?php echo $taskId; ?>" class="form-horizontal">
                 <input type="hidden" name="action" value="confirm">
                 <input type="hidden" name="file_path" value="<?php echo htmlspecialchars($filePath); ?>">
                 <input type="hidden" name="file_name" value="<?php echo htmlspecialchars($fileName); ?>">
