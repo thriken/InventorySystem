@@ -942,10 +942,61 @@ function showCompleteDialog() {
     // 先关闭任何已打开的模态框，防止重复 backdrop
     $('.modal').modal('hide');
     
-    // 延迟显示新的模态框，确保 backdrop 被正确清理
-    setTimeout(function() {
-        $('#completeTaskModal').modal('show');
-    }, 100);
+    // 加载预览数据
+    $.ajax({
+        url: 'inventory_check.php?action=complete&id=<?php echo $task['id']; ?>&preview=1',
+        type: 'GET',
+        success: function(response) {
+            if (response.success) {
+                updateCompletionPreview(response.data);
+            } else {
+                alert('加载预览数据失败：' + response.message);
+            }
+        },
+        error: function() {
+            alert('加载预览数据失败，请重试');
+        },
+        complete: function() {
+            // 延迟显示新的模态框，确保 backdrop 被正确清理
+            setTimeout(function() {
+                $('#completeTaskModal').modal('show');
+            }, 100);
+        }
+    });
+}
+
+function updateCompletionPreview(data) {
+    // 更新库位调整预览
+    var rackHtml = '';
+    if (data.rack_adjustments && data.rack_adjustments.length > 0) {
+        rackHtml = '<div class="alert alert-info"><strong>需要调整库位的包 (' + data.rack_adjustments.length + ' 个)：</strong><br>';
+        for (var i = 0; i < Math.min(5, data.rack_adjustments.length); i++) {
+            var item = data.rack_adjustments[i];
+            rackHtml += item.package_code + ': ' + (item.original_rack_code || '未分配') + ' → ' + (item.new_rack_code || '未分配') + '<br>';
+        }
+        if (data.rack_adjustments.length > 5) {
+            rackHtml += '...还有 ' + (data.rack_adjustments.length - 5) + ' 个包';
+        }
+        rackHtml += '</div>';
+    }
+    
+    // 更新盘盈盘亏预览
+    var profitLossHtml = '';
+    if (data.profit_loss && data.profit_loss.length > 0) {
+        profitLossHtml = '<div class="alert alert-warning"><strong>盘盈盘亏情况 (' + data.profit_loss.length + ' 个)：</strong><br>';
+        for (var i = 0; i < Math.min(5, data.profit_loss.length); i++) {
+            var item = data.profit_loss[i];
+            profitLossHtml += item.package_code + ': ' + item.difference_type + ' ' + item.difference + ' 片<br>';
+        }
+        if (data.profit_loss.length > 5) {
+            profitLossHtml += '...还有 ' + (data.profit_loss.length - 5) + ' 个包';
+        }
+        profitLossHtml += '</div>';
+    }
+    
+    // 更新模态框内容
+    $('#rackAdjustmentPreview').html(rackHtml);
+    $('#profitLossPreview').html(profitLossHtml);
 }
 
 function submitCompleteTask() {
@@ -966,6 +1017,7 @@ function submitCompleteTask() {
     if (adjustInventory === '1') {
         confirmMessage += '√ 将根据盘点结果自动调整库存数量\n';
         confirmMessage += '√ 盘盈增加库存，盘亏减少库存\n\n';
+        confirmMessage += '√ 自动调整库位位置\n\n';
         confirmMessage += '此操作不可撤销，请再次确认盘点数据！';
     } else {
         confirmMessage += '√ 仅生成盘点报告，不调整库存\n\n';
@@ -976,27 +1028,35 @@ function submitCompleteTask() {
         return;
     }
     
-    // 创建表单并提交
-    var form = document.createElement('form');
-    form.method = 'POST';
-    form.action = 'inventory_check.php?action=complete&id=<?php echo $task['id']; ?>';
+    // 禁用按钮，防止重复提交
+    var submitBtn = event.target;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="glyphicon glyphicon-refresh glyphicon-spin"></i> 处理中...';
     
-    // 添加隐藏字段
-    var autoAdjustField = document.createElement('input');
-    autoAdjustField.type = 'hidden';
-    autoAdjustField.name = 'auto_adjust';
-    autoAdjustField.value = adjustInventory === '1' ? '1' : '0';
-    form.appendChild(autoAdjustField);
-    
-    var notesField = document.createElement('input');
-    notesField.type = 'hidden';
-    notesField.name = 'complete_notes';
-    notesField.value = notes;
-    form.appendChild(notesField);
-    
-    // 提交表单
-    document.body.appendChild(form);
-    form.submit();
+    // AJAX提交
+    $.ajax({
+        url: 'inventory_check.php?action=complete&id=<?php echo $task['id']; ?>',
+        type: 'POST',
+        data: {
+            'auto_adjust': adjustInventory === '1' ? '1' : '0',
+            'complete_notes': notes
+        },
+        success: function(response) {
+            if (response.success) {
+                alert('盘点任务已完成！');
+                window.location.href = response.redirect;
+            } else {
+                alert('完成任务失败：' + response.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="glyphicon glyphicon-ok"></i> 确认完成';
+            }
+        },
+        error: function() {
+            alert('请求失败，请重试');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="glyphicon glyphicon-ok"></i> 确认完成';
+        }
+    });
 }
 
 function showConfirmDialog(adjustInventory, notes, rollbackCount) {
@@ -1220,6 +1280,13 @@ function getStatusText($status) {
                     </ul>
                 </div>
                 
+                <!-- 预览区域 -->
+                <div id="completionPreview">
+                    <h5><i class="glyphicon glyphicon-eye-open"></i> 调整预览</h5>
+                    <div id="rackAdjustmentPreview"></div>
+                    <div id="profitLossPreview"></div>
+                </div>
+                
                 <div class="panel panel-warning">
                     <div class="panel-heading">
                         <h5><i class="glyphicon glyphicon-cog"></i> 库存调整选项</h5>
@@ -1236,7 +1303,7 @@ function getStatusText($status) {
                             <label>
                                 <input type="radio" name="adjust_inventory" value="1">
                                 <strong>自动调整库存</strong><br>
-                                <small class="text-muted">根据盘点结果自动调整库存数量。盘盈增加库存，盘亏减少库存。</small>
+                                <small class="text-muted">根据盘点结果自动调整库存数量和库位。盘盈增加库存，盘亏减少库存，库位变更自动同步。</small>
                             </label>
                         </div>
                         <div class="alert alert-warning" style="margin-top: 15px;">

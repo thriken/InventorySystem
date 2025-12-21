@@ -4,6 +4,13 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
+// 调试函数：写入文件日志（生产环境可注释掉）
+function debug_log($message) {
+    $logFile = __DIR__ . '/debug_inventory.log';
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND | LOCK_EX);
+}
+
 // 处理OPTIONS请求
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
@@ -23,36 +30,56 @@ if (session_status() === PHP_SESSION_NONE) {
 ApiCommon::setHeaders();
 ApiCommon::handlePreflight();
 
+// 处理JSON请求
+$jsonInput = file_get_contents('php://input');
+if ($jsonInput) {
+    $requestData = json_decode($jsonInput, true);
+    if ($requestData) {
+        // 将JSON数据合并到$_POST中
+        $_POST = array_merge($_POST, $requestData);
+    }
+}
+
 // 处理请求
 try {
     $action = $_GET['action'] ?? $_POST['action'] ?? 'list';
     
+
+    
     switch ($action) {
         case 'list':
+        
             handleListTasks();
             break;
         case 'get':
+
             handleGetTask();
             break;
         case 'scan':
             handleScanPackage();
             break;
         case 'batch_scan':
+
             handleBatchScan();
             break;
         case 'sync':
+
             handleSyncData();
             break;
         case 'get_package_info':
+
             handleGetPackageInfo();
             break;
         case 'submit_check':
+
             handleSubmitCheck();
             break;
         case 'get_rollback_count':
+
             handleGetRollbackCount();
             break;
         default:
+
             ApiCommon::sendResponse(400, '不支持的操作类型');
     }
     
@@ -146,6 +173,26 @@ function handleScanPackage() {
     $packageCode = $_POST['package_code'] ?? '';
     $checkQuantity = $_POST['check_quantity'] ?? 0;
     $rackId = $_POST['rack_id'] ?? 0;
+    $rackCode = $_POST['rack_code'] ?? '';
+    
+    // 如果提供了rack_code，则查找对应的rack_id
+    if ($rackCode && !$rackId) {
+        // 支持库位编码或名称查询
+        $where = ["(code = ? OR name = ?)"];
+        $params = [$rackCode, $rackCode];
+        
+        if ($user && isset($user['base_id'])) {
+            $where[] = "base_id = ?";
+            $params[] = $user['base_id'];
+        }
+        
+        $sql = "SELECT id, code, name FROM storage_racks WHERE " . implode(' AND ', $where) . " LIMIT 1";
+        $rack = fetchRow($sql, $params);
+        
+        if ($rack) {
+            $rackId = $rack['id'];
+        }
+    }
     
     if (!$taskId || !$packageCode || !$checkQuantity) {
         ApiCommon::sendResponse(400, '缺少必要参数');
@@ -154,6 +201,7 @@ function handleScanPackage() {
     // 验证任务权限
     $task = fetchRow("SELECT * FROM inventory_check_tasks WHERE id = ? AND base_id = ? AND status = 'in_progress'", 
                      [$taskId, $user['base_id']]);
+    
     if (!$task) {
         ApiCommon::sendResponse(404, '任务不存在或未开始');
     }
@@ -219,7 +267,30 @@ function handleScanPackage() {
         
         // 更新任务进度
         $newCount = fetchOne("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
-        update('inventory_check_tasks', ['checked_packages' => $newCount], 'id = ?', [$taskId]);
+        $differenceCount = fetchOne("SELECT SUM(ABS(difference)) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        
+        debug_log("盘点统计: task_id=$taskId, newCount=$newCount, differenceCount=$differenceCount");
+        
+        // 检查实际的盘点数据
+        $checkData = fetchAll("SELECT package_code, system_quantity, check_quantity, difference FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        debug_log("盘点详细数据: " . json_encode($checkData));
+        
+        // 手动计算差异总和验证
+        $manualSum = 0;
+        foreach ($checkData as $row) {
+            $manualSum += abs($row['difference']);
+        }
+        debug_log("手动计算差异总和: $manualSum");
+        
+        update('inventory_check_tasks', [
+            'checked_packages' => $newCount,
+            'difference_count' => $differenceCount ?: 0
+        ], 'id = ?', [$taskId]);
+        
+        debug_log("更新后的任务数据: " . json_encode([
+            'checked_packages' => $newCount,
+            'difference_count' => $differenceCount ?: 0
+        ]));
         
         commitTransaction();
         
@@ -266,6 +337,7 @@ function handleBatchScan() {
     // 验证任务权限
     $task = fetchRow("SELECT * FROM inventory_check_tasks WHERE id = ? AND base_id = ? AND status = 'in_progress'", 
                      [$taskId, $user['base_id']]);
+    
     if (!$task) {
         ApiCommon::sendResponse(404, '任务不存在或未开始');
     }
@@ -280,6 +352,25 @@ function handleBatchScan() {
             $packageCode = $item['package_code'] ?? '';
             $checkQuantity = $item['check_quantity'] ?? 0;
             $rackId = $item['rack_id'] ?? 0;
+            $rackCode = $item['rack_code'] ?? '';
+            
+            // 如果提供了rack_code，则查找对应的rack_id（支持编码或名称）
+            if ($rackCode && !$rackId) {
+                $where = ["(code = ? OR name = ?)"];
+                $params = [$rackCode, $rackCode];
+                
+                if ($user && isset($user['base_id'])) {
+                    $where[] = "base_id = ?";
+                    $params[] = $user['base_id'];
+                }
+                
+                $sql = "SELECT id, code, name FROM storage_racks WHERE " . implode(' AND ', $where) . " LIMIT 1";
+                $rack = fetchRow($sql, $params);
+                
+                if ($rack) {
+                    $rackId = $rack['id'];
+                }
+            }
             
             if (!$packageCode || !$checkQuantity) {
                 $errors[] = "包 {$packageCode} 数据不完整";
@@ -341,7 +432,30 @@ function handleBatchScan() {
         
         // 更新任务进度
         $newCount = fetchOne("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
-        update('inventory_check_tasks', ['checked_packages' => $newCount], 'id = ?', [$taskId]);
+        $differenceCount = fetchOne("SELECT SUM(ABS(difference)) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        
+        debug_log("盘点统计: task_id=$taskId, newCount=$newCount, differenceCount=$differenceCount");
+        
+        // 检查实际的盘点数据
+        $checkData = fetchAll("SELECT package_code, system_quantity, check_quantity, difference FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        debug_log("盘点详细数据: " . json_encode($checkData));
+        
+        // 手动计算差异总和验证
+        $manualSum = 0;
+        foreach ($checkData as $row) {
+            $manualSum += abs($row['difference']);
+        }
+        debug_log("手动计算差异总和: $manualSum");
+        
+        update('inventory_check_tasks', [
+            'checked_packages' => $newCount,
+            'difference_count' => $differenceCount ?: 0
+        ], 'id = ?', [$taskId]);
+        
+        debug_log("更新后的任务数据: " . json_encode([
+            'checked_packages' => $newCount,
+            'difference_count' => $differenceCount ?: 0
+        ]));
         
         commitTransaction();
         
@@ -459,6 +573,26 @@ function handleSubmitCheck() {
     $packageCode = $_POST['package_code'] ?? '';
     $checkQuantity = $_POST['check_quantity'] ?? 0;
     $rackId = $_POST['rack_id'] ?? 0;
+    $rackCode = $_POST['rack_code'] ?? '';
+    
+    // 如果提供了rack_code，则查找对应的rack_id
+    if ($rackCode && !$rackId) {
+        // 支持库位编码或名称查询
+        $where = ["(code = ? OR name = ?)"];
+        $params = [$rackCode, $rackCode];
+        
+        if ($user && isset($user['base_id'])) {
+            $where[] = "base_id = ?";
+            $params[] = $user['base_id'];
+        }
+        
+        $sql = "SELECT id, code, name FROM storage_racks WHERE " . implode(' AND ', $where) . " LIMIT 1";
+        $rack = fetchRow($sql, $params);
+        
+        if ($rack) {
+            $rackId = $rack['id'];
+        }
+    }
     $notes = $_POST['notes'] ?? '';
     
     if (!$taskId || !$packageCode || !$checkQuantity) {
@@ -468,6 +602,7 @@ function handleSubmitCheck() {
     // 验证任务权限
     $task = fetchRow("SELECT * FROM inventory_check_tasks WHERE id = ? AND base_id = ? AND status = 'in_progress'", 
                      [$taskId, $user['base_id']]);
+    
     if (!$task) {
         ApiCommon::sendResponse(404, '任务不存在或未开始');
     }
@@ -524,7 +659,30 @@ function handleSubmitCheck() {
         
         // 更新任务进度
         $newCount = fetchOne("SELECT COUNT(*) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
-        update('inventory_check_tasks', ['checked_packages' => $newCount], 'id = ?', [$taskId]);
+        $differenceCount = fetchOne("SELECT SUM(ABS(difference)) FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        
+        debug_log("盘点统计: task_id=$taskId, newCount=$newCount, differenceCount=$differenceCount");
+        
+        // 检查实际的盘点数据
+        $checkData = fetchAll("SELECT package_code, system_quantity, check_quantity, difference FROM inventory_check_cache WHERE task_id = ? AND check_quantity > 0", [$taskId]);
+        debug_log("盘点详细数据: " . json_encode($checkData));
+        
+        // 手动计算差异总和验证
+        $manualSum = 0;
+        foreach ($checkData as $row) {
+            $manualSum += abs($row['difference']);
+        }
+        debug_log("手动计算差异总和: $manualSum");
+        
+        update('inventory_check_tasks', [
+            'checked_packages' => $newCount,
+            'difference_count' => $differenceCount ?: 0
+        ], 'id = ?', [$taskId]);
+        
+        debug_log("更新后的任务数据: " . json_encode([
+            'checked_packages' => $newCount,
+            'difference_count' => $differenceCount ?: 0
+        ]));
         
         commitTransaction();
         

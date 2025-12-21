@@ -127,6 +127,113 @@
             </div>
         </div>
     </div>
+    
+    <!-- 额外统计 -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel panel-info">
+                <div class="panel-heading text-center">
+                    <h4>库位调整</h4>
+                </div>
+                <div class="panel-body text-center">
+                    <h2><?php echo count($rackAdjustments ?? []); ?></h2>
+                    <small>包位置已更新</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel panel-warning">
+                <div class="panel-heading text-center">
+                    <h4>库存调整</h4>
+                </div>
+                <div class="panel-body text-center">
+                    <?php 
+                    $profitCount = 0;
+                    $lossCount = 0;
+                    if (!empty($differences)) {
+                        foreach ($differences as $diff) {
+                            if ($diff['difference'] > 0) $profitCount++;
+                            elseif ($diff['difference'] < 0) $lossCount++;
+                        }
+                    }
+                    ?>
+                    <h2><?php echo $profitCount + $lossCount; ?></h2>
+                    <small>盘盈<?php echo $profitCount; ?>个，盘亏<?php echo $lossCount; ?>个</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 库位调整明细 -->
+    <?php 
+    // 获取库位调整明细
+    $rackAdjustments = fetchAll("
+        SELECT 
+            c.package_code,
+            r1.code as original_rack_code,
+            r2.code as new_rack_code,
+            c.check_time,
+            u.real_name as operator_name
+        FROM inventory_check_cache c
+        LEFT JOIN glass_packages p ON c.package_code = p.package_code
+        LEFT JOIN storage_racks r1 ON p.current_rack_id = r1.id
+        LEFT JOIN storage_racks r2 ON c.rack_id = r2.id
+        LEFT JOIN users u ON c.operator_id = u.id
+        WHERE c.task_id = ? AND c.rack_id IS NOT NULL 
+        AND p.current_rack_id != c.rack_id
+        ORDER BY c.check_time DESC
+    ", [$task['id']]);
+    ?>
+    
+    <?php if (!empty($rackAdjustments)): ?>
+    <div class="panel panel-info">
+        <div class="panel-heading">
+            <h4>库位调整明细</h4>
+        </div>
+        <div class="panel-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>包号</th>
+                            <th>原库位</th>
+                            <th>新库位</th>
+                            <th>操作员</th>
+                            <th>调整时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($rackAdjustments as $adjustment): ?>
+                        <tr>
+                            <td><code><?php echo htmlspecialchars($adjustment['package_code']); ?></code></td>
+                            <td>
+                                <?php if ($adjustment['original_rack_code']): ?>
+                                    <span class="badge badge-default"><?php echo htmlspecialchars($adjustment['original_rack_code']); ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">未分配</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($adjustment['new_rack_code']): ?>
+                                    <span class="badge badge-info"><?php echo htmlspecialchars($adjustment['new_rack_code']); ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">未分配</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo htmlspecialchars($adjustment['operator_name']); ?></td>
+                            <td><?php echo date('m-d H:i', strtotime($adjustment['check_time'])); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="alert alert-info">
+                <i class="glyphicon glyphicon-info-sign"></i>
+                <strong>说明：</strong>以上包在盘点过程中进行了库位调整，已自动同步到库存系统中。
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- 差异明细 -->
     <?php if (!empty($differences)): ?>
