@@ -124,7 +124,7 @@ SELECT
     END AS `duration`
 FROM `inventory_check_tasks` t
 LEFT JOIN `bases` b ON t.`base_id` = b.`id`
-LEFT JOIN `users` u ON t.`created_by` = u`.`id`;
+LEFT JOIN `users` u ON t.`created_by` = u.`id`;
 
 -- 创建盘点差异详情视图 (inventory_check_difference_details)
 -- 用于显示盘点报告中的差异明细
