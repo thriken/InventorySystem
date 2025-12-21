@@ -82,24 +82,31 @@ function handleCreateTask() {
             
             $taskId = insert('inventory_check_tasks', $taskData);
             
-            // 根据盘点类型添加需要盘点的包
-            $packages = getCheckPackages($baseId, $taskType);
+// 根据盘点类型添加需要盘点的包
+            $totalPackages = 0;
             
-            foreach ($packages as $package) {
-                $cacheData = [
-                    'task_id' => $taskId,
-                    'package_code' => $package['package_code'],
-                    'package_id' => $package['id'],
-                    'system_quantity' => $package['pieces'],
-                    'check_quantity' => 0,
-                    'difference' => 0,
-                    'check_method' => 'manual_input'
-                ];
-                insert('inventory_check_cache', $cacheData);
+            if ($taskType !== 'partial') {
+                // 部分盘点不在创建时添加包，等用户选择后再添加
+                $packages = getCheckPackages($baseId, $taskType);
+                $totalPackages = count($packages);
+                
+                foreach ($packages as $package) {
+                    $cacheData = [
+                        'task_id' => $taskId,
+                        'package_code' => $package['package_code'],
+                        'package_id' => $package['id'],
+                        'system_quantity' => $package['pieces'],
+                        'check_quantity' => 0,
+                        'difference' => 0,
+                        'check_method' => 'manual_input'
+                    ];
+                    insert('inventory_check_cache', $cacheData);
+                }
             }
+            // 部分盘点的包总数将在用户选择包后更新
             
             // 更新任务包总数
-            $updateData = ['total_packages' => count($packages)];
+            $updateData = ['total_packages' => $totalPackages];
             update('inventory_check_tasks', $updateData, 'id = ?', [$taskId]);
             
             commitTransaction();
@@ -128,6 +135,12 @@ function handleStartTask() {
     
     // 验证任务权限和状态
     $task = requireTaskPermission($taskId, 'start');
+    
+    // 如果是部分盘点，先跳转到选择页面
+    if ($task['task_type'] === 'partial') {
+        redirect("inventory_check_partial_select.php?task_id=$taskId");
+        return;
+    }
     
     $updateData = [
         'status' => 'in_progress',
@@ -159,27 +172,62 @@ function handleCompleteTask() {
     
     // 检查是否是AJAX请求（预览数据）
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['preview'])) {
-        $previewData = getCompletionPreview($taskId);
-        echo json_encode(['success' => true, 'data' => $previewData]);
-        exit;
+        try {
+            // 设置JSON响应头
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-cache, must-revalidate');
+            
+            $previewData = getCompletionPreview($taskId);
+            
+            // 确保数据是数组格式
+            if (!is_array($previewData)) {
+                throw new Exception('预览数据格式错误');
+            }
+            
+            // 返回标准JSON响应
+            $response = [
+                'success' => true,
+                'data' => $previewData
+            ];
+            
+            echo json_encode($response, JSON_UNESCAPED_UNICODE);
+            exit;
+            
+        } catch (Exception $e) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => '加载预览数据失败：' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
     }
     
     // 处理完成请求
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // 设置JSON响应头
+        header('Content-Type: application/json; charset=utf-8');
+        
         beginTransaction();
         
         try {
+            error_log("开始处理完成任务请求，taskId: $taskId");
+            
             // 第一步：处理盘点期间的出库回滚
             $rollbackCount = handleCheckPeriodRollback($taskId);
+            error_log("回滚处理完成，数量: $rollbackCount");
             
             // 第二步：处理库位调整
             $rackAdjustments = processRackAdjustments($taskId);
+            error_log("库位调整完成，数量: $rackAdjustments");
             
             // 第三步：处理盘盈盘亏调整
             $profitLossAdjustments = processProfitLossAdjustments($taskId);
+            error_log("盘盈盘亏调整完成: " . json_encode($profitLossAdjustments));
             
             // 第四步：计算汇总数据
             $summary = calculateTaskSummary($taskId);
+            error_log("汇总数据: " . json_encode($summary));
             
             // 第五步：更新任务状态
             $updateData = [
@@ -198,16 +246,20 @@ function handleCompleteTask() {
             }
             
             update('inventory_check_tasks', $updateData, $whereClause, $params);
+            error_log("任务状态更新完成");
             
             // 第六步：生成盘点结果汇总
             generateTaskResults($taskId);
+            error_log("盘点结果汇总生成完成");
             
             // 第七步：自动生成库存流转记录
             $autoAdjust = $_POST['auto_adjust'] ?? '0';
             $completeNotes = $_POST['complete_notes'] ?? '';
+            error_log("自动调整库存: $autoAdjust, 备注: $completeNotes");
             
             if ($autoAdjust === '1') {
                 generateInventoryTransactions($taskId);
+                error_log("库存流转记录生成完成");
             }
             
             // 第八步：保存完成备注
@@ -227,16 +279,31 @@ function handleCompleteTask() {
                        ['description' => "完成备注: " . $finalNotes], 
                        'id = ?', 
                        [$taskId]);
+                error_log("完成备注保存完成");
             }
             
             commitTransaction();
+            error_log("事务提交完成");
             
-            echo json_encode(['success' => true, 'redirect' => "inventory_check.php?action=report&id=$taskId&success=task_completed"]);
+            $response = [
+                'success' => true,
+                'redirect' => "inventory_check.php?action=report&id=$taskId&success=task_completed",
+                'message' => '盘点任务完成'
+            ];
+            
+            echo json_encode($response, JSON_UNESCAPED_UNICODE);
             exit;
             
         } catch (Exception $e) {
             rollbackTransaction();
-            echo json_encode(['success' => false, 'message' => "完成任务失败：" . $e->getMessage()]);
+            error_log("完成任务失败: " . $e->getMessage());
+            
+            $response = [
+                'success' => false,
+                'message' => "完成任务失败：" . $e->getMessage()
+            ];
+            
+            echo json_encode($response, JSON_UNESCAPED_UNICODE);
             exit;
         }
     }
@@ -380,7 +447,7 @@ function showTaskReport() {
     $differences = fetchAll("SELECT * FROM inventory_check_difference_details WHERE task_id = ?", [$taskId]);
     
     // 获取汇总统计
-    $summary = fetchRow("SELECT * FROM inventory_check_results WHERE task_id = ?", [$taskId]);
+    $summary = fetchAll("SELECT * FROM inventory_check_results WHERE task_id = ?", [$taskId]);
     
     include 'inventory_check_report.php';
 }
@@ -561,7 +628,12 @@ function getCheckPackages($baseId, $taskType) {
             break;
         case 'random':
             // 抽盘：随机选择30%的包
-            $sql .= " ORDER BY RAND()";
+            $totalResult = fetchRow("SELECT COUNT(*) as total_count FROM glass_packages p
+                                   LEFT JOIN storage_racks r ON p.current_rack_id = r.id
+                                   WHERE p.status = 'in_storage' AND r.base_id = ?", [$baseId]);
+            $totalCount = $totalResult['total_count'];
+            $randomCount = max(1, intval($totalCount * 0.3)); // 至少选择1个，30%的比例
+            $sql .= " ORDER BY RAND() LIMIT $randomCount";
             break;
     }
     
@@ -602,28 +674,35 @@ function calculateTaskSummary($taskId) {
  * 生成盘点结果汇总
  */
 function generateTaskResults($taskId) {
-    // 先删除已有的汇总数据
-    execute("DELETE FROM inventory_check_results WHERE task_id = ?", [$taskId]);
-    
-    // 生成新的汇总数据
-    $sql = "INSERT INTO inventory_check_results 
-            (task_id, glass_type_id, total_system_quantity, total_check_quantity, total_difference,
-             profit_packages, loss_packages, normal_packages)
-            SELECT 
-                task_id,
-                p.glass_type_id,
-                SUM(system_quantity) as total_system_quantity,
-                SUM(check_quantity) as total_check_quantity,
-                SUM(difference) as total_difference,
-                SUM(CASE WHEN difference > 0 THEN 1 ELSE 0 END) as profit_packages,
-                SUM(CASE WHEN difference < 0 THEN 1 ELSE 0 END) as loss_packages,
-                SUM(CASE WHEN difference = 0 THEN 1 ELSE 0 END) as normal_packages
-            FROM inventory_check_cache c
-            LEFT JOIN glass_packages p ON c.package_id = p.id
-            WHERE c.task_id = ?
-            GROUP BY task_id, p.glass_type_id";
-    
-    execute($sql, [$taskId]);
+    try {
+        // 先删除已有的汇总数据
+        execute("DELETE FROM inventory_check_results WHERE task_id = ?", [$taskId]);
+        
+        // 生成新的汇总数据
+        $sql = "INSERT INTO inventory_check_results 
+                (task_id, glass_type_id, total_system_quantity, total_check_quantity, total_difference,
+                 profit_packages, loss_packages, normal_packages)
+                SELECT 
+                    task_id,
+                    COALESCE(p.glass_type_id, 0) as glass_type_id,
+                    SUM(system_quantity) as total_system_quantity,
+                    SUM(check_quantity) as total_check_quantity,
+                    SUM(difference) as total_difference,
+                    SUM(CASE WHEN difference > 0 THEN 1 ELSE 0 END) as profit_packages,
+                    SUM(CASE WHEN difference < 0 THEN 1 ELSE 0 END) as loss_packages,
+                    SUM(CASE WHEN difference = 0 THEN 1 ELSE 0 END) as normal_packages
+                FROM inventory_check_cache c
+                LEFT JOIN glass_packages p ON c.package_id = p.id
+                WHERE c.task_id = ?
+                GROUP BY task_id, COALESCE(p.glass_type_id, 0)";
+        
+        $result = execute($sql, [$taskId]);
+        error_log("generateTaskResults for task $taskId: " . ($result ? 'success' : 'failed'));
+        
+    } catch (Exception $e) {
+        error_log("generateTaskResults error for task $taskId: " . $e->getMessage());
+        throw $e;
+    }
 }
 
 /**
@@ -632,49 +711,62 @@ function generateTaskResults($taskId) {
 function getCompletionPreview($taskId) {
     $preview = [];
     
-    // 获取需要库位调整的包
-    $preview['rack_adjustments'] = fetchAll("
-        SELECT 
-            c.package_code,
-            p.current_rack_id as original_rack_id,
-            r1.code as original_rack_code,
-            c.rack_id as new_rack_id,
-            r2.code as new_rack_code,
-            c.check_time
-        FROM inventory_check_cache c
-        LEFT JOIN glass_packages p ON c.package_code = p.package_code
-        LEFT JOIN storage_racks r1 ON p.current_rack_id = r1.id
-        LEFT JOIN storage_racks r2 ON c.rack_id = r2.id
-        WHERE c.task_id = ? AND c.rack_id IS NOT NULL 
-        AND p.current_rack_id != c.rack_id
-        ORDER BY c.check_time DESC
-    ", [$taskId]);
-    
-    // 获取盘盈盘亏数据
-    $preview['profit_loss'] = fetchAll("
-        SELECT 
-            c.package_code,
-            g.short_name as glass_name,
-            c.system_quantity,
-            c.check_quantity,
-            c.difference,
-            CASE 
-                WHEN c.difference > 0 THEN '盘盈'
-                WHEN c.difference < 0 THEN '盘亏'
-                ELSE '正常'
-            END as difference_type,
-            r.code as rack_code
-        FROM inventory_check_cache c
-        LEFT JOIN glass_packages p ON c.package_code = p.package_code
-        LEFT JOIN glass_types g ON p.glass_type_id = g.id
-        LEFT JOIN storage_racks r ON c.rack_id = r.id
-        WHERE c.task_id = ? AND c.difference != 0
-        ORDER BY ABS(c.difference) DESC
-    ", [$taskId]);
-    
-    // 获取汇总统计
-    $summary = calculateTaskSummary($taskId);
-    $preview['summary'] = $summary;
+    try {
+        // 获取需要库位调整的包
+        $rackQuery = "
+            SELECT 
+                c.package_code,
+                p.current_rack_id as original_rack_id,
+                r1.code as original_rack_code,
+                c.rack_id as new_rack_id,
+                r2.code as new_rack_code,
+                c.check_time
+            FROM inventory_check_cache c
+            LEFT JOIN glass_packages p ON c.package_id = p.id
+            LEFT JOIN storage_racks r1 ON p.current_rack_id = r1.id
+            LEFT JOIN storage_racks r2 ON c.rack_id = r2.id
+            WHERE c.task_id = ? AND c.rack_id IS NOT NULL 
+            AND p.current_rack_id != c.rack_id
+            ORDER BY c.check_time DESC
+        ";
+        $preview['rack_adjustments'] = fetchAll($rackQuery, [$taskId]);
+        
+        // 获取盘盈盘亏数据
+        $profitLossQuery = "
+            SELECT 
+                c.package_code,
+                g.short_name as glass_name,
+                c.system_quantity,
+                c.check_quantity,
+                c.difference,
+                CASE 
+                    WHEN c.difference > 0 THEN '盘盈'
+                    WHEN c.difference < 0 THEN '盘亏'
+                    ELSE '正常'
+                END as difference_type,
+                r.code as rack_code
+            FROM inventory_check_cache c
+            LEFT JOIN glass_packages p ON c.package_id = p.id
+            LEFT JOIN glass_types g ON p.glass_type_id = g.id
+            LEFT JOIN storage_racks r ON c.rack_id = r.id
+            WHERE c.task_id = ? AND c.difference != 0
+            ORDER BY ABS(c.difference) DESC
+        ";
+        $preview['profit_loss'] = fetchAll($profitLossQuery, [$taskId]);
+        
+        // 获取汇总统计
+        $summary = calculateTaskSummary($taskId);
+        $preview['summary'] = $summary;
+        
+    } catch (Exception $e) {
+        error_log("getCompletionPreview error for task $taskId: " . $e->getMessage());
+        $preview = [
+            'rack_adjustments' => [],
+            'profit_loss' => [],
+            'summary' => ['checked_packages' => 0, 'difference_count' => 0],
+            'error' => $e->getMessage()
+        ];
+    }
     
     return $preview;
 }
@@ -689,14 +781,35 @@ function processRackAdjustments($taskId) {
     $adjustments = fetchAll("
         SELECT 
             c.package_code,
-            c.rack_id as new_rack_id
+            c.rack_id as new_rack_id,
+            p.current_rack_id as original_rack_id
         FROM inventory_check_cache c
-        LEFT JOIN glass_packages p ON c.package_code = p.package_code
+        LEFT JOIN glass_packages p ON c.package_id = p.id
         WHERE c.task_id = ? AND c.rack_id IS NOT NULL 
         AND p.current_rack_id != c.rack_id
     ", [$taskId]);
     
     foreach ($adjustments as $adjustment) {
+        // 在更新前，将原始库位信息保存到notes字段
+        $existingNote = fetchOne("SELECT notes FROM inventory_check_cache 
+                               WHERE task_id = ? AND package_code = ?", 
+                               [$taskId, $adjustment['package_code']]);
+        
+        $originalRack = fetchOne("SELECT code FROM storage_racks WHERE id = ?", 
+                              [$adjustment['original_rack_id']]);
+        
+        $newNote = "库位调整: 从 {$originalRack} 调整到新库位";
+        if ($existingNote) {
+            $newNote = $existingNote . "\n" . $newNote;
+        }
+        
+        // 更新缓存记录，保存库位调整信息
+        update('inventory_check_cache', 
+            ['notes' => $newNote], 
+            'task_id = ? AND package_code = ?', 
+            [$taskId, $adjustment['package_code']]);
+        
+        // 更新包的库位
         $updateResult = update('glass_packages', 
             ['current_rack_id' => $adjustment['new_rack_id']], 
             'package_code = ?', 
@@ -838,7 +951,7 @@ function handleCheckPeriodRollback($taskId) {
     
     // 获取盘点期间的出库记录
     $outboundRecords = fetchAll("
-        SELECT ior.package_code, ior.operation_quantity, 
+        SELECT p.package_code, ior.operation_quantity, 
                p.pieces as system_quantity, ior.operation_date, ior.notes,
                p.id as package_id
         FROM inventory_operation_records ior

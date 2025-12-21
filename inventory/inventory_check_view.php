@@ -939,36 +939,92 @@ function showPackageDetailModal(packageCode, packageData) {
 }
 
 function showCompleteDialog() {
+    console.log('=== Show Complete Dialog ===');
+    console.log('Task ID:', <?php echo $task['id']; ?>);
+    
     // 先关闭任何已打开的模态框，防止重复 backdrop
     $('.modal').modal('hide');
     
-    // 加载预览数据
-    $.ajax({
-        url: 'inventory_check.php?action=complete&id=<?php echo $task['id']; ?>&preview=1',
-        type: 'GET',
-        success: function(response) {
-            if (response.success) {
-                updateCompletionPreview(response.data);
-            } else {
-                alert('加载预览数据失败：' + response.message);
-            }
-        },
-        error: function() {
-            alert('加载预览数据失败，请重试');
-        },
-        complete: function() {
-            // 延迟显示新的模态框，确保 backdrop 被正确清理
-            setTimeout(function() {
+    // 延迟加载预览数据，确保模态框完全关闭
+    setTimeout(function() {
+        // 加载预览数据
+        $.ajax({
+            url: 'inventory_check.php?action=complete&id=<?php echo $task['id']; ?>&preview=1',
+            type: 'GET',
+            dataType: 'json',
+            beforeSend: function(xhr) {
+                console.log('=== Loading Preview Data ===');
+                console.log('URL:', 'inventory_check.php?action=complete&id=<?php echo $task['id']; ?>&preview=1');
+            },
+            success: function(response) {
+                console.log('=== Preview Response ===');
+                console.log('Response:', response);
+                console.log('Response type:', typeof response);
+                console.log('Response success:', response.success);
+                console.log('Response data:', response.data);
+                
+                if (response && response.success) {
+                    console.log('=== Updating Preview ===');
+                    updateCompletionPreview(response.data);
+                    // 立即显示模态框
+                    $('#completeTaskModal').modal('show');
+                } else {
+                    console.log('=== Preview Failed ===');
+                    console.log('Error message:', response.message);
+                    alert('加载预览数据失败：' + (response.message || '未知错误'));
+                    // 即使失败也显示模态框，但显示错误信息
+                    $('#completeTaskModal').modal('show');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log('=== AJAX Error ===');
+                console.log('Status:', status);
+                console.log('Error:', error);
+                console.log('Response Text:', xhr.responseText);
+                console.log('Status Code:', xhr.status);
+                
+                // 尝试解析响应
+                if (xhr.responseText) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        console.log('Parsed response:', data);
+                        if (data.success) {
+                            updateCompletionPreview(data.data);
+                            $('#completeTaskModal').modal('show');
+                            return;
+                        }
+                    } catch (e) {
+                        console.log('Failed to parse response as JSON:', e);
+                    }
+                }
+                
+                alert('加载预览数据失败：' + error);
+                // 即使失败也显示模态框
                 $('#completeTaskModal').modal('show');
-            }, 100);
-        }
-    });
+            }
+        });
+    }, 100);
 }
 
 function updateCompletionPreview(data) {
+    console.log('=== Update Completion Preview ===');
+    console.log('Data:', data);
+    console.log('Data type:', typeof data);
+    
+    // 检查数据是否存在
+    if (!data) {
+        console.log('=== No Data Provided ===');
+        $('#rackAdjustmentPreview').html('<div class="alert alert-muted">没有调整数据</div>');
+        $('#profitLossPreview').html('<div class="alert alert-muted">没有差异数据</div>');
+        return;
+    }
+    
     // 更新库位调整预览
     var rackHtml = '';
     if (data.rack_adjustments && data.rack_adjustments.length > 0) {
+        console.log('=== Rack Adjustments Found ===');
+        console.log('Count:', data.rack_adjustments.length);
+        
         rackHtml = '<div class="alert alert-info"><strong>需要调整库位的包 (' + data.rack_adjustments.length + ' 个)：</strong><br>';
         for (var i = 0; i < Math.min(5, data.rack_adjustments.length); i++) {
             var item = data.rack_adjustments[i];
@@ -978,11 +1034,17 @@ function updateCompletionPreview(data) {
             rackHtml += '...还有 ' + (data.rack_adjustments.length - 5) + ' 个包';
         }
         rackHtml += '</div>';
+    } else {
+        console.log('=== No Rack Adjustments ===');
+        rackHtml = '<div class="alert alert-muted">没有库位调整</div>';
     }
     
     // 更新盘盈盘亏预览
     var profitLossHtml = '';
     if (data.profit_loss && data.profit_loss.length > 0) {
+        console.log('=== Profit/Loss Found ===');
+        console.log('Count:', data.profit_loss.length);
+        
         profitLossHtml = '<div class="alert alert-warning"><strong>盘盈盘亏情况 (' + data.profit_loss.length + ' 个)：</strong><br>';
         for (var i = 0; i < Math.min(5, data.profit_loss.length); i++) {
             var item = data.profit_loss[i];
@@ -992,16 +1054,30 @@ function updateCompletionPreview(data) {
             profitLossHtml += '...还有 ' + (data.profit_loss.length - 5) + ' 个包';
         }
         profitLossHtml += '</div>';
+    } else {
+        console.log('=== No Profit/Loss ===');
+        profitLossHtml = '<div class="alert alert-muted">没有盘盈盘亏</div>';
     }
+    
+    console.log('=== Updating DOM ===');
+    console.log('Rack HTML:', rackHtml);
+    console.log('Profit/Loss HTML:', profitLossHtml);
     
     // 更新模态框内容
     $('#rackAdjustmentPreview').html(rackHtml);
     $('#profitLossPreview').html(profitLossHtml);
+    
+    console.log('=== DOM Updated ===');
 }
 
 function submitCompleteTask() {
+    console.log('=== Submit Complete Task ===');
+    
     var adjustInventory = $('input[name="adjust_inventory"]:checked').val();
     var notes = $('#complete_notes').val();
+    
+    console.log('Adjust Inventory:', adjustInventory);
+    console.log('Notes:', notes);
     
     // 确认信息
     var confirmMessage = '确定要完成盘点任务吗？\n\n';
@@ -1028,33 +1104,81 @@ function submitCompleteTask() {
         return;
     }
     
+    // 通过选择器获取按钮，避免使用 event.target
+    var submitBtn = $('button[onclick="submitCompleteTask()"]');
+    
     // 禁用按钮，防止重复提交
-    var submitBtn = event.target;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="glyphicon glyphicon-refresh glyphicon-spin"></i> 处理中...';
+    submitBtn.prop('disabled', true);
+    submitBtn.html('<i class="glyphicon glyphicon-refresh glyphicon-spin"></i> 处理中...');
+    
+    console.log('=== Sending AJAX Request ===');
     
     // AJAX提交
     $.ajax({
         url: 'inventory_check.php?action=complete&id=<?php echo $task['id']; ?>',
         type: 'POST',
+        dataType: 'json',
         data: {
             'auto_adjust': adjustInventory === '1' ? '1' : '0',
             'complete_notes': notes
         },
+        beforeSend: function(xhr) {
+            console.log('=== Before Send ===');
+            console.log('URL:', 'inventory_check.php?action=complete&id=<?php echo $task['id']; ?>');
+            console.log('Data:', {
+                'auto_adjust': adjustInventory === '1' ? '1' : '0',
+                'complete_notes': notes
+            });
+        },
         success: function(response) {
-            if (response.success) {
+            console.log('=== AJAX Success ===');
+            console.log('Response:', response);
+            console.log('Response type:', typeof response);
+            console.log('Response success:', response.success);
+            console.log('Response redirect:', response.redirect);
+            
+            if (response && response.success) {
                 alert('盘点任务已完成！');
-                window.location.href = response.redirect;
+                if (response.redirect) {
+                    window.location.href = response.redirect;
+                } else {
+                    // 如果没有重定向地址，刷新页面
+                    window.location.reload();
+                }
             } else {
-                alert('完成任务失败：' + response.message);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="glyphicon glyphicon-ok"></i> 确认完成';
+                console.log('=== Task Completion Failed ===');
+                console.log('Error message:', response.message);
+                alert('完成任务失败：' + (response.message || '未知错误'));
+                submitBtn.prop('disabled', false);
+                submitBtn.html('<i class="glyphicon glyphicon-ok"></i> 确认完成');
             }
         },
-        error: function() {
-            alert('请求失败，请重试');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="glyphicon glyphicon-ok"></i> 确认完成';
+        error: function(xhr, status, error) {
+            console.log('=== AJAX Error ===');
+            console.log('Status:', status);
+            console.log('Error:', error);
+            console.log('Response Text:', xhr.responseText);
+            console.log('Status Code:', xhr.status);
+            
+            // 尝试解析响应
+            var errorMessage = '请求失败，请重试';
+            if (xhr.responseText) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.message) {
+                        errorMessage = '完成任务失败：' + data.message;
+                    }
+                } catch (e) {
+                    console.log('Failed to parse response as JSON:', e);
+                    if (xhr.responseText.indexOf('错误') !== -1 || xhr.responseText.indexOf('Error') !== -1) {
+                        errorMessage = '服务器错误：' + xhr.responseText.substring(0, 100);
+                    }
+                }
+            }
+            
+            alert(errorMessage);
+            submitBtn.prop('disabled', false);
+            submitBtn.html('<i class="glyphicon glyphicon-ok"></i> 确认完成');
         }
     });
 }

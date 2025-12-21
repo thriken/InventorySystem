@@ -91,7 +91,13 @@ CREATE INDEX `idx_check_cache_task_status` ON `inventory_check_cache`(`task_id`,
 CREATE INDEX `idx_results_task_glass` ON `inventory_check_results`(`task_id`, `glass_type_id`);
 CREATE INDEX `idx_tasks_base_created` ON `inventory_check_tasks`(`base_id`, `created_at`);
 
--- MySQL 5.7 兼容的视图创建
+-- =====================================================
+-- 重要：创建盘点功能必需的视图
+-- 这些视图用于盘点报告显示，必须成功创建
+-- =====================================================
+
+-- 创建盘点任务汇总视图 (inventory_check_task_summary)
+-- 用于显示任务列表和统计信息
 CREATE VIEW `inventory_check_task_summary` AS
 SELECT 
     t.`id`,
@@ -118,8 +124,11 @@ SELECT
     END AS `duration`
 FROM `inventory_check_tasks` t
 LEFT JOIN `bases` b ON t.`base_id` = b.`id`
-LEFT JOIN `users` u ON t.`created_by` = u.`id`;
+LEFT JOIN `users` u ON t.`created_by` = u`.`id`;
 
+-- 创建盘点差异详情视图 (inventory_check_difference_details)
+-- 用于显示盘点报告中的差异明细
+-- 注意：此视图在 showTaskReport() 函数中被调用
 CREATE VIEW `inventory_check_difference_details` AS
 SELECT 
     c.`task_id`,
@@ -148,6 +157,15 @@ LEFT JOIN `glass_types` g ON p.`glass_type_id` = g.`id`
 LEFT JOIN `storage_racks` r ON c.`rack_id` = r.`id`
 LEFT JOIN `users` u ON c.`operator_id` = u.`id`
 WHERE c.`difference` != 0;
+
+-- 验证视图创建是否成功
+-- 如果下面这些SELECT语句执行成功，说明视图创建成功
+-- 可以在执行SQL后注释掉这些验证语句
+
+-- SELECT 'inventory_check_task_summary view created successfully' as verification;
+-- SELECT COUNT(*) as task_summary_count FROM information_schema.views WHERE table_name = 'inventory_check_task_summary';
+-- SELECT 'inventory_check_difference_details view created successfully' as verification;
+-- SELECT COUNT(*) as difference_details_count FROM information_schema.views WHERE table_name = 'inventory_check_difference_details';
 
 -- 插入默认配置数据（MySQL 5.7 兼容语法）
 INSERT INTO `inventory_check_settings` (`base_id`, `auto_task_number`, `check_frequency`, `tolerance_percent`, `require_approval`, `approval_role`)

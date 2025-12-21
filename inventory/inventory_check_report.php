@@ -129,6 +129,30 @@
     </div>
     
     <!-- 额外统计 -->
+    <?php 
+    // 获取库位调整明细数据（提前获取用于统计）
+    // 优先从notes字段提取库位调整信息，然后比较当前库位和盘点库位
+    $rackAdjustments = fetchAll("
+        SELECT 
+            c.package_code,
+            COALESCE(r_current.code, '未分配') as original_rack_code,
+            COALESCE(r_new.code, '未分配') as new_rack_code,
+            c.check_time,
+            u.real_name as operator_name,
+            c.notes,
+            CASE WHEN c.notes LIKE '%库位调整:%' THEN 1 
+                 WHEN p.current_rack_id != c.rack_id THEN 1
+                 ELSE 0 END as has_adjustment
+        FROM inventory_check_cache c
+        LEFT JOIN glass_packages p ON c.package_id = p.id
+        LEFT JOIN storage_racks r_current ON p.current_rack_id = r_current.id
+        LEFT JOIN storage_racks r_new ON c.rack_id = r_new.id
+        LEFT JOIN users u ON c.operator_id = u.id
+        WHERE c.task_id = ? AND c.check_method = 'manual_input'
+        AND c.check_quantity > 0  -- 只显示已盘点的包
+        ORDER BY has_adjustment DESC, c.check_time DESC
+    ", [$task['id']]);
+    ?>
     <div class="row">
         <div class="col-md-6">
             <div class="panel panel-info">
@@ -136,7 +160,17 @@
                     <h4>库位调整</h4>
                 </div>
                 <div class="panel-body text-center">
-                    <h2><?php echo count($rackAdjustments ?? []); ?></h2>
+                    <h2><?php 
+                        // 只统计真正有库位调整的记录数量
+                        $actualCount = 0;
+                        foreach ($rackAdjustments as $adj) {
+                            if ($adj['has_adjustment'] == 1 || 
+                                ($adj['notes'] && strpos($adj['notes'], '库位调整:') !== false)) {
+                                $actualCount++;
+                            }
+                        }
+                        echo $actualCount;
+                    ?></h2>
                     <small>包位置已更新</small>
                 </div>
             </div>
@@ -165,25 +199,6 @@
     </div>
 
     <!-- 库位调整明细 -->
-    <?php 
-    // 获取库位调整明细
-    $rackAdjustments = fetchAll("
-        SELECT 
-            c.package_code,
-            r1.code as original_rack_code,
-            r2.code as new_rack_code,
-            c.check_time,
-            u.real_name as operator_name
-        FROM inventory_check_cache c
-        LEFT JOIN glass_packages p ON c.package_code = p.package_code
-        LEFT JOIN storage_racks r1 ON p.current_rack_id = r1.id
-        LEFT JOIN storage_racks r2 ON c.rack_id = r2.id
-        LEFT JOIN users u ON c.operator_id = u.id
-        WHERE c.task_id = ? AND c.rack_id IS NOT NULL 
-        AND p.current_rack_id != c.rack_id
-        ORDER BY c.check_time DESC
-    ", [$task['id']]);
-    ?>
     
     <?php if (!empty($rackAdjustments)): ?>
     <div class="panel panel-info">
@@ -203,12 +218,28 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($rackAdjustments as $adjustment): ?>
+                        <?php 
+                        // 只显示真正有库位调整的记录
+                        $actualAdjustments = array_filter($rackAdjustments, function($adj) {
+                            return $adj['has_adjustment'] == 1 || 
+                                   ($adj['notes'] && strpos($adj['notes'], '库位调整:') !== false);
+                        });
+                        
+                        foreach ($actualAdjustments as $adjustment): 
+                            // 从notes中提取原始库位信息
+                            $originalRack = $adjustment['original_rack_code'];
+                            if ($adjustment['notes'] && strpos($adjustment['notes'], '库位调整:') !== false) {
+                                // 解析: "库位调整: 从 XF-N-10B 调整到新库位"
+                                if (preg_match('/库位调整:\s+从\s+(\S+)\s+调整到/', $adjustment['notes'], $matches)) {
+                                    $originalRack = $matches[1];
+                                }
+                            }
+                        ?>
                         <tr>
                             <td><code><?php echo htmlspecialchars($adjustment['package_code']); ?></code></td>
                             <td>
-                                <?php if ($adjustment['original_rack_code']): ?>
-                                    <span class="badge badge-default"><?php echo htmlspecialchars($adjustment['original_rack_code']); ?></span>
+                                <?php if ($originalRack): ?>
+                                    <span class="badge badge-default"><?php echo htmlspecialchars($originalRack); ?></span>
                                 <?php else: ?>
                                     <span class="text-muted">未分配</span>
                                 <?php endif; ?>
@@ -336,51 +367,57 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($summary as $item): ?>
-                        <tr>
-                            <td><?php echo getGlassTypeName($item['glass_type_id']); ?></td>
-                            <td class="text-center"><?php echo $item['total_system_quantity']; ?></td>
-                            <td class="text-center"><?php echo $item['total_check_quantity']; ?></td>
-                            <td class="text-center">
-                                <?php if ($item['total_difference'] != 0): ?>
-                                    <span class="label <?php echo $item['total_difference'] > 0 ? 'label-success' : 'label-danger'; ?>">
-                                        <?php echo ($item['total_difference'] > 0 ? '+' : '') . $item['total_difference']; ?>
-                                    </span>
-                                <?php else: ?>
-                                    <span class="label label-default">0</span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="text-center">
-                                <?php if ($item['profit_packages'] > 0): ?>
-                                    <span class="badge badge-success"><?php echo $item['profit_packages']; ?></span>
-                                <?php else: ?>
-                                    <span class="text-muted">0</span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="text-center">
-                                <?php if ($item['loss_packages'] > 0): ?>
-                                    <span class="badge badge-danger"><?php echo $item['loss_packages']; ?></span>
-                                <?php else: ?>
-                                    <span class="text-muted">0</span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge"><?php echo $item['normal_packages']; ?></span>
-                            </td>
-                            <td class="text-center">
-                                <?php
-                                $totalPackages = $item['profit_packages'] + $item['loss_packages'] + $item['normal_packages'];
-                                $accuracy = $totalPackages > 0 ? round(($item['normal_packages'] / $totalPackages) * 100, 2) : 100;
-                                ?>
-                                <div class="progress" style="height: 20px; margin-bottom: 0;">
-                                    <div class="progress-bar progress-bar-<?php echo $accuracy >= 95 ? 'success' : ($accuracy >= 80 ? 'warning' : 'danger'); ?>" 
-                                         role="progressbar" style="width: <?php echo $accuracy; ?>%;">
-                                        <?php echo $accuracy; ?>%
+                        <?php if ($summary && is_array($summary) && count($summary) > 0): ?>
+                            <?php foreach ($summary as $item): ?>
+                            <tr>
+                                <td><?php echo getGlassTypeName($item['glass_type_id']); ?></td>
+                                <td class="text-center"><?php echo $item['total_system_quantity']; ?></td>
+                                <td class="text-center"><?php echo $item['total_check_quantity']; ?></td>
+                                <td class="text-center">
+                                    <?php if ($item['total_difference'] != 0): ?>
+                                        <span class="label <?php echo $item['total_difference'] > 0 ? 'label-success' : 'label-danger'; ?>">
+                                            <?php echo ($item['total_difference'] > 0 ? '+' : '') . $item['total_difference']; ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="label label-default">0</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($item['profit_packages'] > 0): ?>
+                                        <span class="badge badge-success"><?php echo $item['profit_packages']; ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">0</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($item['loss_packages'] > 0): ?>
+                                        <span class="badge badge-danger"><?php echo $item['loss_packages']; ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">0</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge"><?php echo $item['normal_packages']; ?></span>
+                                </td>
+                                <td class="text-center">
+                                    <?php
+                                    $totalPackages = $item['profit_packages'] + $item['loss_packages'] + $item['normal_packages'];
+                                    $accuracy = $totalPackages > 0 ? round(($item['normal_packages'] / $totalPackages) * 100, 2) : 100;
+                                    ?>
+                                    <div class="progress" style="height: 20px; margin-bottom: 0;">
+                                        <div class="progress-bar progress-bar-<?php echo $accuracy >= 95 ? 'success' : ($accuracy >= 80 ? 'warning' : 'danger'); ?>" 
+                                             role="progressbar" style="width: <?php echo $accuracy; ?>%;">
+                                            <?php echo $accuracy; ?>%
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">暂无汇总数据</td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -445,50 +482,123 @@
 </div>
 
 <!-- 图表脚本 -->
-<script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+<!-- 使用 Chart.js 3.x 版本，兼容性更好，添加时间戳避免缓存问题 -->
+<!--script src="//cdn.bootcdn.net/ajax/libs/Chart.js/3.9.1/chart.min.js?v=<?php echo time(); ?>"></script-->
+<script src="//cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" integrity="sha512-ElRFoEQdI5Ht6kZvyzXhYG9NqjtkmlkfYk0wr6wHxU9JEHakS7UJZNeml5ALk+8IKlU6jDgMabC3vkumRokgJA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
-$(document).ready(function() {
+// 备用 CDN 机制
+var chartsInitialized = false; // 防止重复初始化
+
+window.addEventListener('load', function() {
+    // 检查 Chart 是否已加载
+    if (typeof Chart === 'undefined') {
+        console.log('主 CDN 失败，尝试备用 CDN');
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js';
+        script.onload = function() {
+            console.log('备用 CDN 加载成功，Chart.js 版本:', Chart.version);
+            if (!chartsInitialized) {
+                initCharts();
+                chartsInitialized = true;
+            }
+        };
+        script.onerror = function() {
+            console.error('所有 CDN 都失败了');
+            // 显示图表容器错误信息
+            $('#differenceChart, #methodChart').parent().html('<div class="alert alert-warning">图表加载失败，请检查网络连接或稍后重试</div>');
+        };
+        document.head.appendChild(script);
+    } else {
+        console.log('主 CDN 加载成功，Chart.js 版本:', Chart.version);
+    }
+});
+
+// 备用错误监听
+window.addEventListener('error', function(e) {
+    if (e.filename && e.filename.indexOf('chart.js') !== -1) {
+        console.log('Chart.js 加载错误:', e.message);
+    }
+}, true);
+</script>
+<script>
+// 全局变量存储图表实例，用于销毁
+var chartInstances = {};
+
+// 图表初始化函数
+function initCharts() {
+    // 检查 Chart 是否已加载
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js 未能正确加载，跳过图表生成');
+        // 显示错误信息
+        $('#differenceChart, #methodChart').parent().html('<div class="alert alert-warning">图表加载失败，请检查网络连接或稍后重试</div>');
+        return;
+    }
+    
+    console.log('Chart.js 版本:', Chart.version);
+    
+    // 销毁已存在的图表实例，避免 Canvas 重复使用
+    if (chartInstances.differenceChart) {
+        chartInstances.differenceChart.destroy();
+    }
+    if (chartInstances.methodChart) {
+        chartInstances.methodChart.destroy();
+    }
+    
     // 差异类型分布图
-    var differenceCtx = document.getElementById('differenceChart').getContext('2d');
-    new Chart(differenceCtx, {
-        type: 'pie',
-        data: {
-            labels: ['正常', '盘盈', '盘亏'],
-            datasets: [{
-                data: [
-                    <?php echo $task['checked_packages'] - $task['difference_count']; ?>,
-                    <?php echo getProfitCount($differences); ?>,
-                    <?php echo getLossCount($differences); ?>
-                ],
-                backgroundColor: ['#5cb85c', '#f0ad4e', '#d9534f']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
+    var differenceCtx = document.getElementById('differenceChart');
+    if (differenceCtx) {
+        chartInstances.differenceChart = new Chart(differenceCtx, {
+            type: 'pie',
+            data: {
+                labels: ['正常', '盘盈', '盘亏'],
+                datasets: [{
+                    data: [
+                        <?php echo $task['checked_packages'] - $task['difference_count']; ?>,
+                        <?php echo getProfitCount($differences); ?>,
+                        <?php echo getLossCount($differences); ?>
+                    ],
+                    backgroundColor: ['#5cb85c', '#f0ad4e', '#d9534f']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
     
     // 盘点方式分布图
-    var methodCtx = document.getElementById('methodChart').getContext('2d');
-    new Chart(methodCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['PDA扫码', '手动录入', 'Excel导入'],
-            datasets: [{
-                data: [
-                    <?php echo getMethodCount($differences, 'pda_scan'); ?>,
-                    <?php echo getMethodCount($differences, 'manual_input'); ?>,
-                    <?php echo getMethodCount($differences, 'excel_import'); ?>
-                ],
-                backgroundColor: ['#5bc0de', '#777', '#f0ad4e']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
+    var methodCtx = document.getElementById('methodChart');
+    if (methodCtx) {
+        chartInstances.methodChart = new Chart(methodCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['PDA扫码', '手动录入', 'Excel导入'],
+                datasets: [{
+                    data: [
+                        <?php echo getMethodCount($differences, 'pda_scan'); ?>,
+                        <?php echo getMethodCount($differences, 'manual_input'); ?>,
+                        <?php echo getMethodCount($differences, 'excel_import'); ?>
+                    ],
+                    backgroundColor: ['#5bc0de', '#777', '#f0ad4e']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+}
+
+$(document).ready(function() {
+    // 延迟执行，确保 Chart.js 完全加载
+    setTimeout(function() {
+        if (!chartsInitialized) {
+            initCharts();
+            chartsInitialized = true;
         }
-    });
+    }, 100);
 });
 </script>
 
@@ -497,6 +607,11 @@ $(document).ready(function() {
  * 获取原片类型名称
  */
 function getGlassTypeName($glassTypeId) {
+    // 处理空值或无效值
+    if (!$glassTypeId || $glassTypeId === 0) {
+        return '未知类型';
+    }
+    
     $glass = fetchRow("SELECT short_name FROM glass_types WHERE id = ?", [$glassTypeId]);
     return $glass ? $glass['short_name'] : '未知类型';
 }

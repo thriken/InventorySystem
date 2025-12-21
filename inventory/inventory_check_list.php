@@ -333,18 +333,21 @@ include 'header.php';
                                 <td><?php echo htmlspecialchars($task['created_by_name']); ?></td>
                                 <td><?php echo date('Y-m-d H:i', strtotime($task['created_at'])); ?></td>
                                 <td>
-                                    <div class="btn-group btn-group-xs" role="group">
+                                    <div class="btn-group btn-group-sm" role="group">
                                         <a href="inventory_check.php?action=view&id=<?php echo $task['id']; ?>" 
                                            class="btn btn-default" title="查看详情">
-                                            <i class="glyphicon glyphicon-eye-open"></i>
+                                            <i class="glyphicon glyphicon-eye-open" style="font-size: 16px;"></i>
                                         </a>
-                                        
+                                        <a href="inventory_check.php?action=report&id=<?php echo $task['id']; ?>" 
+                                           class="btn btn-default" title="查看盘点报告">
+                                            <i class="glyphicon glyphicon-file" style="font-size: 16px;"></i>
+                                        </a>
                                         <?php if ($isManager): ?>
                                             <?php if ($task['status'] === 'created'): ?>
                                                 <a href="inventory_check.php?action=start&id=<?php echo $task['id']; ?>" 
                                                    class="btn btn-success" title="开始盘点"
                                                    onclick="return confirm('确定要开始这个盘点任务吗？')">
-                                                    <i class="glyphicon glyphicon-play"></i>
+                                                    <i class="glyphicon glyphicon-play" style="font-size: 16px;"></i>
                                                 </a>
                                             <?php endif; ?>
                                             
@@ -352,18 +355,18 @@ include 'header.php';
                                                 <a href="inventory_check.php?action=complete&id=<?php echo $task['id']; ?>" 
                                                    class="btn btn-primary" title="完成盘点"
                                                    onclick="return confirm('确定要完成这个盘点任务吗？')">
-                                                    <i class="glyphicon glyphicon-ok"></i>
+                                                    <i class="glyphicon glyphicon-ok" style="font-size: 16px;"></i>
                                                 </a>
                                             <?php endif; ?>
                                             
                                             <?php if ($task['status'] === 'completed'): ?>
                                                 <a href="inventory_check.php?action=report&id=<?php echo $task['id']; ?>" 
                                                    class="btn btn-info" title="查看报告">
-                                                    <i class="glyphicon glyphicon-stats"></i>
+                                                    <i class="glyphicon glyphicon-stats" style="font-size: 16px;"></i>
                                                 </a>
                                                 <a href="inventory_check.php?action=export&id=<?php echo $task['id']; ?>" 
                                                    class="btn btn-warning" title="导出数据">
-                                                    <i class="glyphicon glyphicon-download"></i>
+                                                    <i class="glyphicon glyphicon-download-alt" style="font-size: 16px;"></i>
                                                 </a>
                                             <?php endif; ?>
                                             
@@ -371,13 +374,13 @@ include 'header.php';
                                                 <a href="inventory_check.php?action=cancel&id=<?php echo $task['id']; ?>" 
                                                    class="btn btn-danger" title="取消任务"
                                                    onclick="return confirm('确定要取消这个盘点任务吗？')">
-                                                    <i class="glyphicon glyphicon-remove"></i>
+                                                    <i class="glyphicon glyphicon-remove" style="font-size: 16px;"></i>
                                                 </a>
                                             <?php endif; ?>
                                         <?php else: ?>
                                             <!-- Admin用户只能查看，不能操作 -->
                                             <button class="btn btn-default" disabled title="只读权限">
-                                                <i class="glyphicon glyphicon-lock"></i>
+                                                <i class="glyphicon glyphicon-lock" style="font-size: 16px;"></i>
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -402,6 +405,34 @@ include 'header.php';
         </div>
     </div>
 </div>
+
+<style>
+/* 增强操作按钮的样式 */
+.btn-group-sm .btn {
+    padding: 8px 10px;
+    min-width: 36px;
+}
+
+.btn-group-sm .btn i {
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* 按钮悬停效果 */
+.btn-group .btn {
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* 确保操作列有足够宽度 */
+td:last-child {
+    min-width: 200px;
+}
+</style>
 
 <script>
 // 自动刷新进行中的任务

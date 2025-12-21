@@ -138,10 +138,12 @@ function handleGetTask() {
     
     // 获取待盘点包列表
     $sql = "SELECT c.id as cache_id, c.package_code, c.package_id, c.system_quantity, 
-                   c.check_quantity, c.check_time, p.glass_type_id, g.name as glass_name
+                   c.check_quantity, c.check_time, p.glass_type_id, g.name as glass_name,
+                   p.pieces, r.name as rack_name
             FROM inventory_check_cache c
             JOIN glass_packages p ON c.package_id = p.id
             JOIN glass_types g ON p.glass_type_id = g.id
+            LEFT JOIN storage_racks r ON p.current_rack_id = r.id
             WHERE c.task_id = ? AND c.check_quantity = 0
             ORDER BY c.package_code";
     
@@ -553,7 +555,7 @@ function handleGetPackageInfo() {
     }
     
     // 检查是否属于用户基地
-    if ($package['base_name'] != $user['base_name']) {
+    if ($package['base_id'] != $user['base_id']) {
         ApiCommon::sendResponse(403, '无权限访问此包');
     }
     
