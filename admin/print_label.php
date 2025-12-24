@@ -251,8 +251,8 @@ ob_start();
                 // 生成每个包的二维码
                 new QRCode(document.getElementById("qrcode-<?php echo $package['id']; ?>"), {
                     text: "<?php echo htmlspecialchars($package['package_code']); ?>",
-                    width: 160,
-                    height: 160,
+                    width: 80,
+                    height: 80,
                     colorDark: "#000000",
                     colorLight: "#ffffff",
                     correctLevel: QRCode.CorrectLevel.H
@@ -351,7 +351,7 @@ ob_start();
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
                     
                     // 添加玻璃名称（支持换行）
-                    const glassName<?php echo $package['id']; ?> = "<?php echo addslashes($package['glass_short_name'] ?: $package['glass_name']); ?>";
+                    const glassName<?php echo $package['id']; ?> = "<?php echo addslashes( $package['glass_name']) ?>";
                     // 长名称处理：如果超过10个字符则分成两行
                     let displayName<?php echo $package['id']; ?> = glassName<?php echo $package['id']; ?>;
                     if (glassName<?php echo $package['id']; ?>.length > 10) {

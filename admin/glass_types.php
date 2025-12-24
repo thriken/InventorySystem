@@ -121,6 +121,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $message = '原片类型添加成功！';
             $messageType = 'success';
+            
+            // 添加成功后自动关闭表单并刷新页面数据
+            echo '<script>
+                setTimeout(() => { 
+                    hideForm(); 
+                    // 显示成功提示
+                    showSuccessMessage("原片类型添加成功！");
+                }, 800);
+            </script>';
         } elseif ($action === 'edit') {
             $id = (int)($_POST['id'] ?? 0);
             $customId = trim($_POST['custom_id'] ?? '');
@@ -197,6 +206,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $message = '原片类型更新成功！';
             $messageType = 'success';
+            
+            // 更新成功后自动关闭表单并刷新页面数据
+            echo '<script>
+                setTimeout(() => { 
+                    hideForm(); 
+                    // 显示成功提示
+                    showSuccessMessage("原片类型更新成功！");
+                }, 800);
+            </script>';
         } elseif ($action === 'delete') {
             $id = (int)($_POST['id'] ?? 0);
 
@@ -214,6 +232,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $message = '原片类型删除成功！';
             $messageType = 'success';
+            
+            // 删除成功后显示成功提示
+            echo '<script>
+                setTimeout(() => { 
+                    showSuccessMessage("原片类型删除成功！");
+                }, 500);
+            </script>';
         }
     } catch (Exception $e) {
         $message = '错误：' . $e->getMessage();
@@ -232,7 +257,54 @@ if (isset($_GET['edit'])) {
 }
 
 // 添加专用CSS和JS文件
-$additionalCSS = [];
+$additionalCSS = ['<style>
+    /* 表单容器动画 */
+    .form-container {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    
+    /* 成功提示样式 */
+    .success-toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 16px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 250px;
+        transform: translateX(100%);
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .success-toast.show {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    
+    .success-icon {
+        width: 24px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+    }
+    
+    .success-text {
+        font-size: 14px;
+        font-weight: 500;
+    }
+</style>'];
 $additionalJS = [];
 
 ob_start();
@@ -245,7 +317,7 @@ ob_start();
 </div>
 
 <!-- 添加/编辑表单 -->
-<div class="form-container" id="formContainer" style="display: <?php echo $editRecord ? 'block' : 'none'; ?>">
+<div class="form-container" id="formContainer" style="display: <?php echo $editRecord ? 'block' : 'none'; ?>; <?php echo $editRecord ? 'opacity: 1; transform: scale(1);' : 'opacity: 0; transform: scale(0.95);'; ?>">
     <div class="form-header">
         <h3><?php echo $editRecord ? '编辑原片类型' : '添加原片类型'; ?></h3>
         <button class="close-btn" onclick="hideForm()">&times;</button>
@@ -306,7 +378,7 @@ ob_start();
 
             <div class="form-group">
                 <label for="manufacturer">原片生产商</label>
-                <select id="manufacturer" name="manufacturer">
+                <select id="manufacturer" name="manufacturer" <?php echo $editRecord ? 'data-selected="' . htmlspecialchars($editRecord['manufacturer'] ?? '') . '"' : ''; ?>>
                     <option value="">请选择生产商</option>
                     <?php foreach ($manufacturers as $mfr): ?>
                         <option value="<?php echo htmlspecialchars($mfr['name']); ?>" <?php echo ($editRecord['manufacturer'] ?? '') === $mfr['name'] ? 'selected' : ''; ?>>
@@ -428,7 +500,43 @@ ob_start();
     }
 
     function hideForm() {
-        document.getElementById('formContainer').style.display = 'none';
+        const formContainer = document.getElementById('formContainer');
+        formContainer.style.opacity = '0';
+        formContainer.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            formContainer.style.display = 'none';
+            // 重置透明度和缩放
+            formContainer.style.opacity = '1';
+            formContainer.style.transform = 'scale(1)';
+        }, 200);
+    }
+    
+    function showSuccessMessage(message) {
+        // 创建成功提示元素
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-toast';
+        successDiv.innerHTML = `
+            <div class="success-icon">✓</div>
+            <div class="success-text">${message}</div>
+        `;
+        
+        // 添加到页面
+        document.body.appendChild(successDiv);
+        
+        // 动画显示
+        setTimeout(() => {
+            successDiv.classList.add('show');
+        }, 100);
+        
+        // 3秒后自动消失
+        setTimeout(() => {
+            successDiv.classList.remove('show');
+            setTimeout(() => {
+                if (successDiv.parentNode) {
+                    document.body.removeChild(successDiv);
+                }
+            }, 300);
+        }, 3000);
     }
 
     function deleteGlassType(id) {
@@ -493,11 +601,40 @@ ob_start();
     // 页面加载时检查是否需要显示LOWE字段
     document.addEventListener('DOMContentLoaded', function() {
         toggleLoweFields();
+        
+        // 如果页面加载时有编辑模式，添加显示动画
+        const formContainer = document.getElementById('formContainer');
+        if (formContainer && formContainer.style.display !== 'none') {
+            setTimeout(() => {
+                formContainer.style.opacity = '1';
+                formContainer.style.transform = 'scale(1)';
+            }, 100);
+            
+            // 编辑模式下，如果品牌已选择，自动加载对应的生产商
+            const brandSelect = document.getElementById('brand');
+            const selectedBrand = brandSelect.value;
+            if (selectedBrand) {
+                loadManufacturersByBrand(selectedBrand);
+                
+                // 设置生产商的选中值
+                setTimeout(() => {
+                    const manufacturerSelect = document.getElementById('manufacturer');
+                    const selectedManufacturer = manufacturerSelect.getAttribute('data-selected');
+                    if (selectedManufacturer) {
+                        manufacturerSelect.value = selectedManufacturer;
+                    }
+                }, 200);
+            }
+        }
     });
 
     // 在showAddForm函数中重置时也调用
     function showAddForm() {
-        document.getElementById('formContainer').style.display = 'block';
+        const formContainer = document.getElementById('formContainer');
+        formContainer.style.opacity = '0';
+        formContainer.style.transform = 'scale(0.95)';
+        formContainer.style.display = 'block';
+        
         document.querySelector('input[name="action"]').value = 'add';
         document.querySelector('.form-header h3').textContent = '添加原片类型';
         document.querySelector('form').reset();
@@ -506,6 +643,12 @@ ob_start();
         if (idField) idField.remove();
         // 重置后重新检查LOWE字段显示状态
         setTimeout(toggleLoweFields, 100);
+        
+        // 添加显示动画
+        setTimeout(() => {
+            formContainer.style.opacity = '1';
+            formContainer.style.transform = 'scale(1)';
+        }, 50);
     }
 
 </script>

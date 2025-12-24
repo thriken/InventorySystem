@@ -391,8 +391,8 @@ ob_start();
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="initial_rack_id">起始库区 *</label>
-                    <select id="initial_rack_id" name="initial_rack_id" required>
+                    <label for="initial_rack_id">起始库区</label>
+                    <select id="initial_rack_id" name="initial_rack_id">
                         <option value="">请选择库区</option>
                         <?php foreach ($racks as $rack): ?>
                             <option value="<?php echo $rack['id']; ?>" <?php echo ($editRecord['initial_rack_id'] ?? '') == $rack['id'] ? 'selected' : ''; ?>>
