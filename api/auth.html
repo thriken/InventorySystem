@@ -372,6 +372,7 @@ Authorization: Bearer {token}
   "message": "登录成功",
   "data": {
     "token": "eyJ1c2VyX2lkIjoxLCJjcmVhdGVkX2F0IjoxNzAxMzAwMDAwLCJleHBpcmVzX2F0IjoxNzAxMzg0MDAwfQ==",
+    "expire_time": 1701384000,
     "user": {
       "id": 1,
       "username": "admin",
@@ -460,6 +461,7 @@ Authorization: Bearer {token}
   "code": 200,
   "message": "用户已登录",
   "data": {
+    "expire_time": 1701384000,
     "user": {
       "id": 1,
       "username": "admin",
@@ -558,6 +560,14 @@ $appInfo = getAppInfo();
   "expires_at": 1701386400
 }
                     </div>
+                    
+                    <h5>📋 API响应中的 expire_time 字段</h5>
+                    <p>在登录和状态检查接口的响应中，会返回 <code>expire_time</code> 字段，表示令牌的过期时间戳（Unix时间戳）：</p>
+                    <div class="json-block">
+{
+  "expire_time": 1701384000
+}
+                    </div>
                 </div>
                 
                 <h3>⏰ 令牌生命周期</h3>
@@ -570,17 +580,17 @@ $appInfo = getAppInfo();
                     <tr>
                         <td>创建</td>
                         <td>登录时</td>
-                        <td>生成包含用户ID和过期时间的令牌</td>
+                        <td>生成包含用户ID和过期时间的令牌，返回 <code>expire_time</code> 字段</td>
                     </tr>
                     <tr>
                         <td>有效期</td>
                         <td>24小时</td>
-                        <td>令牌从创建起24小时内有效</td>
+                        <td>令牌从创建起24小时内有效，客户端可通过 <code>expire_time</code> 检查过期状态</td>
                     </tr>
                     <tr>
                         <td>过期</td>
                         <td>24小时后</td>
-                        <td>令牌自动失效，需要重新登录</td>
+                        <td>令牌自动失效，需要重新登录获取新的 <code>expire_time</code></td>
                     </tr>
                 </table>
                 
@@ -662,8 +672,9 @@ async function login(username, password) {
     
     const result = await response.json();
     if (result.code === 200) {
-        // 保存令牌
+        // 保存令牌和过期时间
         localStorage.setItem('token', result.data.token);
+        localStorage.setItem('expire_time', result.data.expire_time);
         localStorage.setItem('user', JSON.stringify(result.data.user));
         return result.data;
     } else {
@@ -671,8 +682,20 @@ async function login(username, password) {
     }
 }
 
+// 检查令牌是否过期
+function isTokenExpired() {
+    const expireTime = localStorage.getItem('expire_time');
+    const currentTime = Math.floor(Date.now() / 1000);
+    return !expireTime || currentTime >= parseInt(expireTime);
+}
+
 // 使用令牌访问其他API
 async function callApi(url, options = {}) {
+    // 检查令牌是否过期
+    if (isTokenExpired()) {
+        throw new Error('令牌已过期，请重新登录');
+    }
+    
     const token = localStorage.getItem('token');
     const defaultOptions = {
         headers: {
@@ -763,6 +786,11 @@ if ($data['code'] === 200) {
                     </tr>
                     <tr>
                         <td><span class="status-badge status-success">v1.1</span></td>
+                        <td>2025-12-24</td>
+                        <td>新增 <code>expire_time</code> 字段，优化客户端令牌过期管理</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge status-warning">v1.2</span></td>
                         <td>计划中</td>
                         <td>增强令牌机制，支持JWT和刷新令牌</td>
                     </tr>

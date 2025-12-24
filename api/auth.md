@@ -44,6 +44,7 @@ Content-Type: application/json
     "timestamp": 1698758400,
     "data": {
         "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "expire_time": 1698844800,
         "user": {
             "id": 1,
             "username": "0030025",
@@ -84,6 +85,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     "message": "用户已登录",
     "timestamp": 1698758400,
     "data": {
+        "expire_time": 1698844800,
         "user": {
             "id": 1,
             "username": "0030025",
@@ -178,10 +180,10 @@ function generateApiToken($userId) {
 
 ### Token 信息
 
-| 字段名 | 类型 | 描述 |
-|--------|------|------|
-| token | string | 认证令牌 |
-| expires_at | int | 过期时间戳 |
+| 字段名 | 类型 | 描述 | 示例 |
+|--------|------|------|------|
+| token | string | 认证令牌 | "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." |
+| expire_time | int | 过期时间戳（Unix时间戳） | 1698844800 |
 
 ## 💡 使用示例
 
@@ -201,6 +203,7 @@ async function login(username, password) {
     const data = await response.json();
     if (data.code === 200) {
         localStorage.setItem('token', data.data.token);
+        localStorage.setItem('expire_time', data.data.expire_time);
         return data.data.user;
     } else {
         throw new Error(data.message);
@@ -221,9 +224,14 @@ async function checkLogin() {
     
     const data = await response.json();
     if (data.code === 200) {
+        // 可以更新本地存储的过期时间
+        if (data.data.expire_time) {
+            localStorage.setItem('expire_time', data.data.expire_time);
+        }
         return data.data.user;
     } else {
         localStorage.removeItem('token');
+        localStorage.removeItem('expire_time');
         return null;
     }
 }

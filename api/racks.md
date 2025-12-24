@@ -37,6 +37,27 @@ Authorization: Bearer your-token-here
 
 根据库位编码或名称模糊查找库位ID，支持智能匹配格式。
 
+### 3. GET /api/racks.php?action=get_rack_packages - 查询库位所有原片信息
+
+根据库位ID获取该库位的所有原片信息，包括原片类型和详细库存统计。
+
+#### 请求参数
+
+**请求头**:
+```http
+Authorization: Bearer your-token-here
+```
+
+**查询参数**:
+
+|| 参数名 | 类型 | 必填 | 描述 | 示例 |
+||--------|------|------|------|------|
+|| action | string | 是 | 固定值：get_rack_packages | get_rack_packages |
+|| rack_id | int | 否 | 库位ID精确查询 | 15 |
+|| rack_code | string | 否 | 库位编码精确查询 | "XF-N-8A" |
+
+**注意**：`rack_id` 和 `rack_code` 必须提供其中一个。如果都提供，优先使用 `rack_id`。
+
 #### 请求参数
 
 **请求头**:
@@ -100,6 +121,15 @@ GET /api/racks.php?action=get_rack_id&rack_code=XF-N-8A
 
 ```http
 GET /api/racks.php?action=get_rack_id&rack_name=新丰&base_id=2
+```
+
+**查询库位原片信息**:
+```http
+GET /api/racks.php?action=get_rack_packages&rack_id=15
+```
+
+```http
+GET /api/racks.php?action=get_rack_packages&rack_code=XF-N-8A
 ```
 
 #### 响应示例
@@ -193,6 +223,132 @@ GET /api/racks.php?action=get_rack_id&rack_name=新丰&base_id=2
 {
     "code": 404,
     "message": "未找到匹配的库位",
+    "timestamp": 1698765432
+}
+```
+
+**库位原片信息查询成功响应 (200)**:
+```json
+{
+    "code": 200,
+    "message": "查询成功",
+    "timestamp": 1698765432,
+    "data": {
+        "rack_info": {
+            "id": 15,
+            "base_id": 2,
+            "base_name": "分部基地",
+            "code": "XF-N-8A",
+            "name": "新丰8A库位",
+            "area_type": "storage",
+            "area_type_name": "库存区",
+            "capacity": 100,
+            "status": "normal",
+            "status_name": "正常"
+        },
+        "summary": {
+            "total_packages": 5,
+            "total_pieces": 500,
+            "total_quantity": 5000,
+            "glass_type_count": 3
+        },
+        "glass_types": [
+            {
+                "glass_type": {
+                    "id": 1,
+                    "custom_id": "GT001",
+                    "name": "浮法玻璃",
+                    "short_name": "浮法",
+                    "brand": "信义",
+                    "manufacturer": "信义玻璃",
+                    "color": "透明",
+                    "thickness": 5.0,
+                    "silver_layers": "单层",
+                    "substrate": "普通",
+                    "transmittance": "85%"
+                },
+                "packages": [
+                    {
+                        "id": 101,
+                        "package_code": "YP20240501",
+                        "width": 1200.0,
+                        "height": 2400.0,
+                        "pieces": 100,
+                        "quantity": 1000,
+                        "entry_date": "2024-05-15",
+                        "position_order": 1,
+                        "status": "in_storage",
+                        "status_name": "库存中",
+                        "created_at": "2024-05-15 10:00:00",
+                        "updated_at": "2024-05-15 10:00:00"
+                    },
+                    {
+                        "id": 102,
+                        "package_code": "YP20240502",
+                        "width": 1200.0,
+                        "height": 2400.0,
+                        "pieces": 80,
+                        "quantity": 800,
+                        "entry_date": "2024-05-16",
+                        "position_order": 2,
+                        "status": "in_storage",
+                        "status_name": "库存中",
+                        "created_at": "2024-05-16 10:00:00",
+                        "updated_at": "2024-05-16 10:00:00"
+                    }
+                ],
+                "summary": {
+                    "package_count": 2,
+                    "pieces": 180,
+                    "quantity": 1800
+                }
+            },
+            {
+                "glass_type": {
+                    "id": 2,
+                    "custom_id": "GT002",
+                    "name": "钢化玻璃",
+                    "short_name": "钢化",
+                    "brand": "南玻",
+                    "manufacturer": "南玻集团",
+                    "color": "透明",
+                    "thickness": 6.0,
+                    "silver_layers": "双层",
+                    "substrate": "强化",
+                    "transmittance": "88%"
+                },
+                "packages": [
+                    {
+                        "id": 103,
+                        "package_code": "YP20240503",
+                        "width": 1000.0,
+                        "height": 2000.0,
+                        "pieces": 120,
+                        "quantity": 1200,
+                        "entry_date": "2024-05-17",
+                        "position_order": 1,
+                        "status": "in_storage",
+                        "status_name": "库存中",
+                        "created_at": "2024-05-17 10:00:00",
+                        "updated_at": "2024-05-17 10:00:00"
+                    }
+                ],
+                "summary": {
+                    "package_count": 1,
+                    "pieces": 120,
+                    "quantity": 1200
+                }
+            }
+        ]
+    }
+}
+```
+
+**库位不存在 (404)**:
+```json
+{
+    "code": 404,
+    "message": "库位不存在",
     "timestamp": 1698765432
 }
 ```
@@ -293,8 +449,34 @@ LIMIT 10
 - 输入 "8A" 可以匹配 "8A"、"XF-N-8A"、"A-8A" 等
 - 输入 "XF" 可以匹配 "XF-N-8A"、"XF-S-9B" 等
 
-### 4. 响应处理逻辑
+### 4. 库位原片信息查询SQL结构
 
+```sql
+-- 库位原片信息查询
+SELECT 
+    sr.id, sr.base_id, sr.code, sr.name, sr.area_type,
+    sr.capacity, sr.status, sr.created_at, sr.updated_at,
+    b.name as base_name,
+    
+    gt.id as glass_type_id, gt.custom_id, gt.name as glass_type_name,
+    gt.short_name, gt.brand, gt.manufacturer, gt.color, gt.thickness,
+    gt.silver_layers, gt.substrate, gt.transmittance,
+    
+    p.id as package_id, p.package_code, p.width, p.height,
+    p.pieces, p.quantity, p.entry_date, p.position_order,
+    p.status, p.created_at as package_created_at, p.updated_at as package_updated_at
+    
+FROM storage_racks sr
+LEFT JOIN bases b ON sr.base_id = b.id
+LEFT JOIN glass_packages p ON sr.id = p.current_rack_id AND p.status = 'in_storage'
+LEFT JOIN glass_types gt ON p.glass_type_id = gt.id
+WHERE sr.id = ? OR sr.code = ?
+ORDER BY gt.custom_id, p.position_order, p.created_at
+```
+
+### 5. 响应处理逻辑
+
+**模糊查找逻辑**:
 ```php
 if (count($results) === 0) {
     // 未找到匹配的库位
@@ -305,6 +487,35 @@ if (count($results) === 0) {
 } else {
     // 多个匹配结果，返回列表供用户选择
     ApiCommon::sendResponse(200, '找到多个匹配的库位，请选择', $multipleResults);
+}
+```
+
+**库位原片信息处理逻辑**:
+```php
+// 数据分组处理
+$glassTypes = [];
+$totalPackages = 0;
+$totalPieces = 0;
+$totalQuantity = 0;
+
+foreach ($packages as $package) {
+    $glassTypeId = $package['glass_type_id'];
+    if (!isset($glassTypes[$glassTypeId])) {
+        $glassTypes[$glassTypeId] = [
+            'glass_type' => $glassTypeData,
+            'packages' => [],
+            'summary' => ['package_count' => 0, 'pieces' => 0, 'quantity' => 0]
+        ];
+    }
+    
+    $glassTypes[$glassTypeId]['packages'][] = $packageData;
+    $glassTypes[$glassTypeId]['summary']['package_count']++;
+    $glassTypes[$glassTypeId]['summary']['pieces'] += $package['pieces'];
+    $glassTypes[$glassTypeId]['summary']['quantity'] += $package['quantity'];
+    
+    $totalPackages++;
+    $totalPieces += $package['pieces'];
+    $totalQuantity += $package['quantity'];
 }
 ```
 
@@ -385,6 +596,34 @@ async function findRackId(rackCode, baseId = null) {
             // 多个匹配结果，需要用户选择
             return data.data.matches;
         }
+    } else {
+        throw new Error(data.message);
+    }
+}
+```
+
+**查询库位原片信息**:
+```javascript
+// 查询库位所有原片信息
+async function getRackPackages(rackId = null, rackCode = null) {
+    const token = localStorage.getItem('token');
+    const params = new URLSearchParams({
+        action: 'get_rack_packages'
+    });
+    
+    if (rackId) params.append('rack_id', rackId);
+    if (rackCode) params.append('rack_code', rackCode);
+    
+    const response = await fetch(`/api/racks.php?${params}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    });
+    
+    const data = await response.json();
+    if (data.code === 200) {
+        return data.data;
     } else {
         throw new Error(data.message);
     }
@@ -471,6 +710,51 @@ except Exception as e:
     print(f"查找库位失败: {e}")
 ```
 
+**查询库位原片信息**:
+```python
+def get_rack_packages(token, rack_id=None, rack_code=None):
+    headers = {'Authorization': f'Bearer {token}'}
+    params = {'action': 'get_rack_packages'}
+    
+    if rack_id:
+        params['rack_id'] = rack_id
+    if rack_code:
+        params['rack_code'] = rack_code
+    
+    response = requests.get(
+        'http://your-domain.com/api/racks.php',
+        headers=headers,
+        params=params
+    )
+    
+    data = response.json()
+    if data['code'] == 200:
+        return data['data']
+    else:
+        raise Exception(data['message'])
+
+# 使用示例
+try:
+    # 按库位ID查询
+    rack_info = get_rack_packages(token, rack_id=15)
+    print(f"库位: {rack_info['rack_info']['name']}")
+    print(f"总包数: {rack_info['summary']['total_packages']}")
+    print(f"原片类型数: {rack_info['summary']['glass_type_count']}")
+    
+    # 遍历各原片类型
+    for glass_type_data in rack_info['glass_types']:
+        glass_type = glass_type_data['glass_type']
+        summary = glass_type_data['summary']
+        print(f"- {glass_type['name']}: {summary['package_count']}包, {summary['pieces']}片")
+        
+    # 按库位编码查询
+    rack_info2 = get_rack_packages(token, rack_code='XF-N-8A')
+    print(f"查询结果2: {rack_info2}")
+    
+except Exception as e:
+    print(f"查询库位原片信息失败: {e}")
+```
+
 ### cURL 示例
 
 **库位列表查询**:
@@ -497,6 +781,15 @@ curl -X GET \
 curl -X GET \
   -H "Authorization: Bearer your-token-here" \
   "http://your-domain.com/api/racks.php?action=get_rack_id&rack_name=新丰&base_id=2"
+
+# 查询库位原片信息
+curl -X GET \
+  -H "Authorization: Bearer your-token-here" \
+  "http://your-domain.com/api/racks.php?action=get_rack_packages&rack_id=15"
+
+curl -X GET \
+  -H "Authorization: Bearer your-token-here" \
+  "http://your-domain.com/api/racks.php?action=get_rack_packages&rack_code=XF-N-8A"
 ```
 
 ## ⚠️ 错误处理
@@ -706,6 +999,13 @@ async function recommendRacks(userInput, baseId) {
 
 ## 🆕 更新日志
 
+### v4.0 (2025-12-21)
+- ✨ **新增库位原片查询功能**: 支持查询库位所有原片信息
+- 📊 **详细统计信息**: 提供总包数、总片数、原片类型数等统计
+- 🗂️ **按类型分组**: 原片信息按类型分组，清晰展示库存分布
+- 📱 **灵活查询方式**: 支持按库位ID或编码查询
+- 🔗 **完整关联信息**: 包含原片类型详细信息和包信息
+
 ### v3.0 (2025-12-17)
 - ✨ **新增模糊查找功能**: 支持根据库位编码或名称进行模糊匹配
 - 🎯 **智能匹配算法**: 支持 `8A` 匹配 `XF-N-8A` 等不同格式
@@ -725,6 +1025,6 @@ async function recommendRacks(userInput, baseId) {
 
 ---
 
-*最后更新: 2025-12-17*  
-*版本: 3.0*  
+*最后更新: 2025-12-21*  
+*版本: 4.0*  
 *维护团队: 原片管理系统开发组*

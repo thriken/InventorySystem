@@ -44,6 +44,8 @@ switch ($method) {
         $action = $_GET['action'] ?? 'list';
         if ($action === 'get_rack_id') {
             handleGetRackId();
+        } elseif ($action === 'rack_packages') {
+            handleGetRackPackages();
         } else {
             handleGetRacks();
         }
@@ -279,4 +281,236 @@ function handleGetRackId() {
     } catch (Exception $e) {
         ApiCommon::sendResponse(500, '查询失败：' . $e->getMessage());
     }
+}
+
+/**
+ * 获取库位中的所有原片包信息
+ */
+function handleGetRackPackages() {
+    global $user;
+    
+    // 获取查询参数
+    $rackId = isset($_GET['rack_id']) ? intval($_GET['rack_id']) : null;
+    $rackCode = isset($_GET['rack_code']) ? trim($_GET['rack_code']) : null;
+    $baseId = isset($_GET['base_id']) ? intval($_GET['base_id']) : null;
+    $status = isset($_GET['status']) ? trim($_GET['status']) : 'in_storage';
+    $glassTypeId = isset($_GET['glass_type_id']) ? intval($_GET['glass_type_id']) : null;
+    
+    // 分页参数
+    $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+    $pageSize = isset($_GET['page_size']) ? min(100, max(1, intval($_GET['page_size']))) : 50;
+    $offset = ($page - 1) * $pageSize;
+    
+    // 必须提供库位信息
+    if (!$rackId && !$rackCode) {
+        ApiCommon::sendResponse(400, '必须提供rack_id或rack_code参数');
+        return;
+    }
+    
+    // 如果没有提供base_id，则使用当前用户的base_id
+    if (!$baseId && $user && isset($user['base_id'])) {
+        $baseId = intval($user['base_id']);
+    }
+    
+    // 如果只提供了rack_code，先查找库位
+    if (!$rackId && $rackCode) {
+        $rackWhere = "WHERE (code LIKE ? OR name LIKE ?)";
+        $rackParams = ["%{$rackCode}%", "%{$rackCode}%"];
+        
+        if ($baseId) {
+            $rackWhere .= " AND base_id = ?";
+            $rackParams[] = $baseId;
+        }
+        
+        $rackSql = "SELECT id, code, name FROM storage_racks {$rackWhere} LIMIT 1";
+        $rackResult = fetchAll($rackSql, $rackParams);
+        
+        if (empty($rackResult)) {
+            ApiCommon::sendResponse(404, '未找到匹配的库位');
+            return;
+        }
+        
+        $rackId = $rackResult[0]['id'];
+    }
+    
+    // 构建包查询条件
+    $conditions = ["p.current_rack_id = ?"];
+    $params = [$rackId];
+
+    if ($status) {
+        $conditions[] = "p.status = ?";
+        $params[] = $status;
+    }
+
+    if ($glassTypeId) {
+        $conditions[] = "p.glass_type_id = ?";
+        $params[] = $glassTypeId;
+    }
+
+    if ($baseId) {
+        $conditions[] = "r.base_id = ?";
+        $params[] = $baseId;
+    }
+
+    $whereClause = 'WHERE ' . implode(' AND ', $conditions);
+
+    // 查询包信息
+    $sql = "
+        SELECT 
+            p.id,
+            p.package_code,
+            p.width,
+            p.height,
+            p.pieces,
+            p.quantity,
+            p.entry_date,
+            p.position_order,
+            p.status,
+            p.created_at,
+            p.updated_at,
+            
+            gt.id as glass_type_id,
+            gt.custom_id as glass_type_custom_id,
+            gt.name as glass_type_name,
+            gt.short_name as glass_type_short_name,
+            gt.brand as glass_type_brand,
+            gt.manufacturer as glass_type_manufacturer,
+            gt.color as glass_type_color,
+            gt.thickness as glass_type_thickness,
+            gt.silver_layers as glass_type_silver_layers,
+            gt.substrate as glass_type_substrate,
+            gt.transmittance as glass_type_transmittance,
+            
+            r.id as rack_id,
+            r.code as rack_code,
+            r.name as rack_name,
+            r.area_type as rack_area_type,
+            r.capacity as rack_capacity,
+            r.status as rack_status,
+            
+            b.id as base_id,
+            b.name as base_name
+            
+        FROM glass_packages p
+        LEFT JOIN glass_types gt ON p.glass_type_id = gt.id
+        LEFT JOIN storage_racks r ON p.current_rack_id = r.id
+        LEFT JOIN bases b ON r.base_id = b.id
+        {$whereClause}
+        ORDER BY p.position_order ASC, p.package_code ASC
+        LIMIT ? OFFSET ?
+    ";
+
+    $params[] = $pageSize;
+    $params[] = $offset;
+
+    try {
+        $packages = fetchAll($sql, $params);
+        
+        // 获取总数
+        $countSql = "SELECT COUNT(*) as total FROM glass_packages p 
+                    LEFT JOIN storage_racks r ON p.current_rack_id = r.id
+                    LEFT JOIN bases b ON r.base_id = b.id
+                    {$whereClause}";
+        $countParams = array_slice($params, 0, count($params) - 2);
+        $totalResult = fetchRow($countSql, $countParams);
+        $totalRecords = $totalResult ? $totalResult['total'] : 0;
+        $totalPages = ceil($totalRecords / $pageSize);
+
+        // 获取库位统计信息
+        $rackStats = fetchRow("
+            SELECT 
+                COUNT(*) as total_packages,
+                COALESCE(SUM(pieces), 0) as total_pieces,
+                COUNT(DISTINCT glass_type_id) as distinct_glass_types
+            FROM glass_packages 
+            WHERE current_rack_id = ? AND status = ?
+        ", [$rackId, $status]);
+
+        // 格式化包数据
+        $formattedPackages = [];
+        foreach ($packages as $package) {
+            $formattedPackages[] = [
+                'id' => intval($package['id']),
+                'package_code' => $package['package_code'],
+                'dimensions' => [
+                    'width' => floatval($package['width']),
+                    'height' => floatval($package['height'])
+                ],
+                'quantity' => [
+                    'pieces' => intval($package['pieces']),
+                    'quantity' => intval($package['quantity'])
+                ],
+                'entry_date' => $package['entry_date'],
+                'position_order' => intval($package['position_order']),
+                'glass_type' => [
+                    'id' => intval($package['glass_type_id']),
+                    'custom_id' => $package['glass_type_custom_id'],
+                    'name' => $package['glass_type_name'],
+                    'short_name' => $package['glass_type_short_name'],
+                    'brand' => $package['glass_type_brand'],
+                    'manufacturer' => $package['glass_type_manufacturer'],
+                    'color' => $package['glass_type_color'],
+                    'thickness' => floatval($package['glass_type_thickness']),
+                    'silver_layers' => $package['glass_type_silver_layers'],
+                    'substrate' => $package['glass_type_substrate'],
+                    'transmittance' => $package['glass_type_transmittance']
+                ],
+                'rack_info' => [
+                    'id' => intval($package['rack_id']),
+                    'code' => $package['rack_code'],
+                    'name' => $package['rack_name'],
+                    'area_type' => $package['rack_area_type'],
+                    'capacity' => $package['rack_capacity'] ? intval($package['rack_capacity']) : null,
+                    'status' => $package['rack_status'],
+                    'base_id' => intval($package['base_id']),
+                    'base_name' => $package['base_name']
+                ],
+                'status' => $package['status'],
+                'status_name' => getStatusName($package['status']),
+                'created_at' => $package['created_at'],
+                'updated_at' => $package['updated_at']
+            ];
+        }
+
+        // 返回响应
+        ApiCommon::sendResponse(200, '获取成功', [
+            'rack_info' => [
+                'id' => intval($packages[0]['rack_id'] ?? $rackId),
+                'code' => $packages[0]['rack_code'] ?? '',
+                'name' => $packages[0]['rack_name'] ?? '',
+                'area_type' => $packages[0]['rack_area_type'] ?? '',
+                'base_id' => intval($packages[0]['base_id'] ?? 0),
+                'base_name' => $packages[0]['base_name'] ?? ''
+            ],
+            'rack_statistics' => [
+                'total_packages' => intval($rackStats['total_packages']),
+                'total_pieces' => intval($rackStats['total_pieces']),
+                'distinct_glass_types' => intval($rackStats['distinct_glass_types'])
+            ],
+            'packages' => $formattedPackages,
+            'pagination' => [
+                'page' => $page,
+                'page_size' => $pageSize,
+                'total' => intval($totalRecords),
+                'total_pages' => $totalPages
+            ]
+        ]);
+        
+    } catch (Exception $e) {
+        ApiCommon::sendResponse(500, '查询失败：' . $e->getMessage());
+    }
+}
+
+/**
+ * 获取状态名称
+ */
+function getStatusName($status) {
+    $statusMap = [
+        'in_storage' => '库存中',
+        'in_processing' => '加工中',
+        'scrapped' => '已报废',
+        'used_up' => '已用完'
+    ];
+    
+    return $statusMap[$status] ?? '未知状态';
 }

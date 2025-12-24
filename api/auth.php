@@ -58,9 +58,11 @@ function handleLogin() {
         
         // 生成API令牌（简化版，实际项目中应该使用更安全的令牌机制）
         $token = generateApiToken($user['id']);
+        $expireTime = time() + 24 * 60 * 60; // 24小时过期
         
         ApiCommon::sendResponse(200, '登录成功', [
             'token' => $token,
+            'expire_time' => $expireTime,
             'user' => [
                 'id' => $user['id'],
                 'username' => $user['username'],
@@ -101,15 +103,19 @@ function handleCheckLogin() {
         return;
     }
     
-    // 验证令牌（简化版）
-    $userId = ApiCommon::validateApiToken($token);
+    // 验证令牌（简化版）并获取过期时间
+    $tokenData = validateApiTokenWithExpireTime($token);
     
-    if ($userId) {
+    if ($tokenData) {
+        $userId = $tokenData['user_id'];
+        $expireTime = $tokenData['expires_at'];
+        
         // 获取用户信息
         $user = fetchRow("SELECT id, username, real_name as name, role, base_id FROM users WHERE id = ?", [$userId]);
         
         if ($user) {
             ApiCommon::sendResponse(200, '用户已登录', [
+                'expire_time' => $expireTime,
                 'user' => $user
             ]);
         } else {
@@ -132,6 +138,28 @@ function generateApiToken($userId) {
     ];
     
     return base64_encode(json_encode($tokenData));
+}
+
+/**
+ * 验证API令牌并返回完整数据（包含过期时间）
+ */
+function validateApiTokenWithExpireTime($token) {
+    try {
+        $tokenData = json_decode(base64_decode($token), true);
+        
+        if (!$tokenData || !isset($tokenData['user_id']) || !isset($tokenData['expires_at'])) {
+            return false;
+        }
+        
+        // 检查是否过期
+        if (time() > $tokenData['expires_at']) {
+            return false;
+        }
+        
+        return $tokenData;
+    } catch (Exception $e) {
+        return false;
+    }
 }
 
 /**
