@@ -38,12 +38,20 @@ switch ($method) {
  * 用途：日常库存查看，保持向后兼容性
  */
 function handleGetPackages() {
+    global $currentUser;
+    
     // 获取查询参数
     $packageCode = isset($_GET['package_code']) ? trim($_GET['package_code']) : null;
     $glassTypeId = isset($_GET['glass_type_id']) ? intval($_GET['glass_type_id']) : null;
     $rackId = isset($_GET['rack_id']) ? intval($_GET['rack_id']) : null;
     $baseId = isset($_GET['base_id']) ? intval($_GET['base_id']) : null;
     $status = isset($_GET['status']) ? trim($_GET['status']) : null;
+    
+    // 如果没有指定base_all=true，且用户有基地权限，则默认只显示该用户基地的数据
+    $baseAll = isset($_GET['base_all']) && filter_var($_GET['base_all'], FILTER_VALIDATE_BOOLEAN);
+    if (!$baseAll && !$baseId && isset($currentUser['base_id']) && $currentUser['base_id']) {
+        $baseId = intval($currentUser['base_id']);
+    }
 
     // 获取分页参数
     $pagination = getPaginationParams(20, 100);
@@ -814,17 +822,17 @@ function handleFuzzySearch() {
         
         $whereClause = 'WHERE (' . implode(' OR ', $searchConditions) . ')';
         
+        // 如果没有指定base_all=true，且用户有基地权限，则默认只显示该用户基地的数据
+        if (!$baseAll && isset($currentUser['base_id']) && $currentUser['base_id']) {
+            $baseAll = false;
+        }
+        
         // 构建基地过滤条件
         $baseFilters = buildBaseFilters($currentUser, $baseAll, 'p_filtered', 'sr');
         $baseFilter = $baseFilters['baseJoin'];
         
-        // 为子查询单独构建过滤条件
-        if (!$baseAll && isset($currentUser['base_id']) && $currentUser['base_id']) {
-            $baseId = intval($currentUser['base_id']);
-            $subQueryPackageFilter = "p.status = 'in_storage' AND sr.base_id = {$baseId}";
-        } else {
-            $subQueryPackageFilter = "p.status = 'in_storage'";
-        }
+        // 使用与buildBaseFilters一致的包过滤条件
+        $packageFilter = $baseFilters['packageFilter'];
         
         // 主查询SQL - 优化为选择器格式
         $sql = "
@@ -849,7 +857,7 @@ function handleFuzzySearch() {
                     COUNT(*) as total_packages
                 FROM glass_packages p
                 INNER JOIN storage_racks sr ON p.current_rack_id = sr.id
-                WHERE {$subQueryPackageFilter}
+                WHERE p.status = 'in_storage' " . (!$baseAll && isset($currentUser['base_id']) && $currentUser['base_id'] ? "AND sr.base_id = " . intval($currentUser['base_id']) : "") . "
                 GROUP BY p.glass_type_id
             ) pkg_summary ON gt.id = pkg_summary.glass_type_id
             {$whereClause}

@@ -432,6 +432,7 @@ ob_start();
         <thead>
             <tr>
                 <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                <th>操作</th>
                 <th>包号</th>
                 <th>原片名</th>
                 <th>原片品牌</th>
@@ -443,12 +444,18 @@ ob_start();
                 <th>起始库区</th>
                 <th>当前位置</th>
                 <th>状态</th>
-                <th>操作</th>
+                
             </tr>
         </thead>
         <?php foreach ($packages as $package): ?>
             <tr>
                 <td><input type="checkbox" class="package-checkbox" value="<?php echo $package['id']; ?>"></td>
+                <td>
+                    <a href="?edit=<?php echo $package['id']; ?>" class="btn btn-sm btn-info">编辑</a>
+                    <button onclick="printSingleLabel(<?php echo $package['id']; ?>)" class="btn btn-sm btn-warning" title="打印标签">打印</button>
+                    <button onclick="deleteRecord(<?php echo $package['id']; ?>)" class="btn btn-sm btn-danger">删除</button>
+                </td>
+                
                 <td><?php echo htmlspecialchars($package['package_code']); ?></td>
                 <td><?php echo htmlspecialchars($package['glass_name']); ?></td>
                 <td><?php echo htmlspecialchars($package['glass_brand']); ?></td>
@@ -478,11 +485,7 @@ ob_start();
                     echo $statusLabels[$package['status']] ?? $package['status'];
                     ?>
                 </td>
-                <td>
-                    <a href="?edit=<?php echo $package['id']; ?>" class="btn btn-sm btn-info">编辑</a>
-                    <button onclick="printSingleLabel(<?php echo $package['id']; ?>)" class="btn btn-sm btn-warning" title="打印标签">🏷️</button>
-                    <button onclick="deleteRecord(<?php echo $package['id']; ?>)" class="btn btn-sm btn-danger">删除</button>
-                </td>
+                
             </tr>
         <?php endforeach; ?>
         </tbody>
