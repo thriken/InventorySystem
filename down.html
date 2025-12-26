@@ -80,12 +80,17 @@
             border-radius: 15px;
             overflow: hidden;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        .qr-code img {
+        .qr-code img,
+        .qr-code canvas,
+        .qr-code svg {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            border-radius: 13px;
         }
         
         .download-btn {
@@ -248,6 +253,7 @@
             animation: fadeInUp 1s ease-out;
         }
     </style>
+    <script src="/assets/js/qrcode.min.js"></script>
 </head>
 <body>
     <div class="download-container">
@@ -258,23 +264,23 @@
         <h1 class="app-title">原片管理系统</h1>
         <p class="app-subtitle">移动端应用程序</p>
         
-        <div class="qr-code">
-            <img src="/assets/imgs/apkqrcode.png" alt="APK下载二维码" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-            <div style="display:none;padding:20px;color:#999;font-size:14px;">二维码加载失败</div>
+        <div class="qr-code" id="qrcode-container">
+            <div id="qrcode"></div>
+            <div id="qrcode-fallback" style="display:none;padding:40px;color:#999;font-size:14px;">二维码加载失败</div>
         </div>
         
-        <a href="https://yuan.win7e.com/yuanpian.apk" class="download-btn" download="yuanpian.apk">
+        <a href="/apk/stock-app-v1.1.31.apk" class="download-btn" download="yuanpian.apk">
             📥 立即下载 APK
         </a>
         
         <div class="download-info">
             <div class="info-item">
                 <span class="info-label">应用名称:</span>
-                <span class="info-value">原片管理系统</span>
+                <span class="info-value">原片管理系统 v1.1.31</span>
             </div>
             <div class="info-item">
                 <span class="info-label">文件大小:</span>
-                <span class="info-value">约 3 MB</span>
+                <span class="info-value">约 6 MB</span>
             </div>
             <div class="info-item">
                 <span class="info-label">支持系统:</span>
@@ -282,7 +288,7 @@
             </div>
             <div class="info-item">
                 <span class="info-label">更新时间:</span>
-                <span class="info-value">2025年8月</span>
+                <span class="info-value">2025年12月</span>
             </div>
         </div>
         
@@ -315,6 +321,22 @@
         document.addEventListener('DOMContentLoaded', function() {
             detectDevice();
             
+            // 生成二维码
+            try {
+                new QRCode(document.getElementById("qrcode"), {
+                    text: "https://yuan.win7e.com/apk/stock-app-v1.1.31.apk",
+                    width: 196,
+                    height: 196,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } catch (error) {
+                console.error('二维码生成失败:', error);
+                document.getElementById('qrcode').style.display = 'none';
+                document.getElementById('qrcode-fallback').style.display = 'block';
+            }
+            
             // 添加下载统计（可选）
             document.querySelector('.download-btn').addEventListener('click', function() {
                 // 这里可以添加下载统计代码
@@ -324,8 +346,8 @@
         
         // 二维码点击放大（可选功能）
         document.querySelector('.qr-code').addEventListener('click', function() {
-            const img = this.querySelector('img');
-            if (img && img.style.display !== 'none') {
+            const qrContent = this.querySelector('#qrcode');
+            if (qrContent && qrContent.style.display !== 'none') {
                 // 创建模态框显示大图
                 const modal = document.createElement('div');
                 modal.style.cssText = `
@@ -340,17 +362,33 @@
                     justify-content: center;
                     z-index: 1000;
                     cursor: pointer;
+                    padding: 20px;
                 `;
                 
-                const bigImg = document.createElement('img');
-                bigImg.src = img.src;
-                bigImg.style.cssText = `
+                const bigQR = document.createElement('div');
+                bigQR.style.cssText = `
                     max-width: 90%;
                     max-height: 90%;
                     border-radius: 10px;
+                    background: white;
+                    padding: 20px;
                 `;
                 
-                modal.appendChild(bigImg);
+                // 重新生成更大的二维码
+                try {
+                    new QRCode(bigQR, {
+                        text: "https://yuan.win7e.com/apk/stock-app-v1.1.31.apk",
+                        width: 300,
+                        height: 300,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                } catch (error) {
+                    console.error('大二维码生成失败:', error);
+                }
+                
+                modal.appendChild(bigQR);
                 document.body.appendChild(modal);
                 
                 modal.addEventListener('click', function() {
