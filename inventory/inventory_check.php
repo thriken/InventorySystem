@@ -901,7 +901,7 @@ function generateInventoryTransactions($taskId) {
                 'operation_date' => date('Y-m-d'),
                 'operation_time' => date('H:i:s'),
                 'status' => 'completed',
-                'notes' => "盘点盈余，任务ID：{$taskId}"
+                'notes' => "盘点盈余+{$diff['difference']}，任务ID：{$taskId}"
             ];
             insert('inventory_operation_records', $transactionData);
         } elseif ($diff['difference'] < 0) {
@@ -919,7 +919,7 @@ function generateInventoryTransactions($taskId) {
                 'operation_date' => date('Y-m-d'),
                 'operation_time' => date('H:i:s'),
                 'status' => 'completed',
-                'notes' => "盘点亏损，任务ID：{$taskId}"
+                'notes' => "盘点亏损{$diff['difference']}，任务ID：{$taskId}"
             ];
             insert('inventory_operation_records', $transactionData);
         }
