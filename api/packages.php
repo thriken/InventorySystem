@@ -785,7 +785,7 @@ function handleFuzzySearch() {
     $baseAll = isset($_GET['base_all']) && filter_var($_GET['base_all'], FILTER_VALIDATE_BOOLEAN);
     
     // 获取搜索范围
-    $searchFields = isset($_GET['fields']) ? explode(',', trim($_GET['fields'])) : ['name', 'custom_id', 'brand', 'manufacturer'];
+    $searchFields = isset($_GET['fields']) ? explode(',', trim($_GET['fields'])) : ['name', 'custom_id', 'brand', 'short_name', 'product_series'];
     
     // 分页参数
     $pagination = getPaginationParams(10, 50); // 选择器使用较小的默认值
@@ -797,7 +797,7 @@ function handleFuzzySearch() {
     }
     
     // 验证搜索字段
-    $validFields = ['name', 'custom_id', 'short_name', 'brand', 'manufacturer', 'color', 'substrate', 'silver_layers', 'transmittance'];
+    $validFields = ['name', 'custom_id', 'short_name', 'brand', 'manufacturer', 'color', 'substrate', 'silver_layers', 'transmittance', 'product_series', 'thickness'];
     $sanitizedFields = [];
     foreach ($searchFields as $field) {
         $field = trim($field);
@@ -807,7 +807,7 @@ function handleFuzzySearch() {
     }
     
     if (empty($sanitizedFields)) {
-        $sanitizedFields = ['name', 'custom_id', 'brand', 'manufacturer'];
+        $sanitizedFields = ['name', 'custom_id', 'brand', 'short_name','product_series'];
     }
     
     try {
