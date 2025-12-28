@@ -362,7 +362,8 @@ function generateOperationRecordNo($operationType) {
         'return_in' => 'GH',
         'scrap' => 'BF',
         'check_in' => 'PY',
-        'check_out' => 'PK'
+        'check_out' => 'PK',
+        'location_adjust' => 'KW'
     ];
     
     $prefix = $prefixes[$operationType] ?? 'OP';
