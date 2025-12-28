@@ -76,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('目标货架不存在或不属于选择的基地');
         }
 
+        $notes += "跨基地转移";
         // 执行流转操作
         $result = executeInventoryTransaction(
             $packageCode,
@@ -84,7 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'location_adjust', // 基地间流转使用库位调整
             $currentUser,
             '',
-            $notes
+            $notes,
+            true  // 允许跨基地操作
         );
 
         $message = $result;

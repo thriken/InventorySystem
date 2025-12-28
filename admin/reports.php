@@ -33,7 +33,7 @@ $baseId = $_GET['base_id'] ?? '';
 $startDate = $reportDate;
 $endDate = date('Y-m-d', strtotime($reportDateEnd . ' +1 day')); // 包含结束日期
 
-// 获取每日领用总表数据 - 直接使用 inventory_transactions 表
+// 获取每日领用总表数据 - 使用新的 inventory_operation_records 表
 $sql = "SELECT 
             gt.name as glass_name,
             gt.color,
@@ -42,21 +42,21 @@ $sql = "SELECT
             gp.height,
             'processing' as target_area,
             COALESCE(b.name, '未知基地') as target_base_name,
-            SUM(CASE WHEN it.transaction_type = 'usage_out' THEN it.quantity ELSE 0 END) as usage_out_pieces,
-            SUM(CASE WHEN it.transaction_type = 'return_in' THEN it.quantity ELSE 0 END) as return_in_pieces,
-            SUM(CASE WHEN it.transaction_type = 'usage_out' THEN it.quantity ELSE 0 END) - 
-            SUM(CASE WHEN it.transaction_type = 'return_in' THEN it.quantity ELSE 0 END) as actual_usage,
-            SUM(CASE WHEN it.transaction_type = 'partial_usage' THEN COALESCE(it.actual_usage, it.quantity) ELSE 0 END) as partial_usage_pieces,
-            SUM(CASE WHEN it.transaction_type = 'scrap' THEN it.quantity ELSE 0 END) as scrap_pieces,
-            COUNT(DISTINCT it.package_id) as package_count
-        FROM inventory_transactions it
-        LEFT JOIN glass_packages gp ON it.package_id = gp.id
+            SUM(CASE WHEN ior.operation_type = 'usage_out' THEN ior.operation_quantity ELSE 0 END) as usage_out_pieces,
+            SUM(CASE WHEN ior.operation_type = 'return_in' THEN ior.operation_quantity ELSE 0 END) as return_in_pieces,
+            SUM(CASE WHEN ior.operation_type = 'usage_out' THEN ior.operation_quantity ELSE 0 END) - 
+            SUM(CASE WHEN ior.operation_type = 'return_in' THEN ior.operation_quantity ELSE 0 END) as actual_usage,
+            SUM(CASE WHEN ior.operation_type = 'partial_usage' THEN ior.operation_quantity ELSE 0 END) as partial_usage_pieces,
+            SUM(CASE WHEN ior.operation_type = 'scrap' THEN ior.operation_quantity ELSE 0 END) as scrap_pieces,
+            COUNT(DISTINCT ior.package_id) as package_count
+        FROM inventory_operation_records ior
+        LEFT JOIN glass_packages gp ON ior.package_id = gp.id
         LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id
         LEFT JOIN storage_racks sr ON gp.current_rack_id = sr.id
         LEFT JOIN bases b ON sr.base_id = b.id
-        WHERE DATE(it.transaction_time) >= ?
-        AND DATE(it.transaction_time) < ?
-        AND it.transaction_type IN ('usage_out', 'partial_usage', 'return_in', 'scrap')";
+        WHERE DATE(ior.operation_date) >= ?
+        AND DATE(ior.operation_date) < ?
+        AND ior.operation_type IN ('usage_out', 'partial_usage', 'return_in', 'scrap')";
 
 $params = [$startDate, $endDate];
 
@@ -88,32 +88,32 @@ foreach ($dailyUsageData as &$row) {
 }
 unset($row);
 $summarySql = "SELECT 
-                SUM(CASE WHEN it.transaction_type = 'usage_out' THEN it.quantity ELSE 0 END) as total_usage_out,
-                SUM(CASE WHEN it.transaction_type = 'return_in' THEN it.quantity ELSE 0 END) as total_return_in,
-                SUM(CASE WHEN it.transaction_type = 'usage_out' THEN it.quantity ELSE 0 END) - 
-                SUM(CASE WHEN it.transaction_type = 'return_in' THEN it.quantity ELSE 0 END) as total_actual_usage,
-                SUM(CASE WHEN it.transaction_type = 'partial_usage' THEN COALESCE(it.actual_usage, it.quantity) ELSE 0 END) as total_partial_usage,
-                SUM(CASE WHEN it.transaction_type = 'scrap' THEN it.quantity ELSE 0 END) as total_scrap,
+                SUM(CASE WHEN ior.operation_type = 'usage_out' THEN ior.operation_quantity ELSE 0 END) as total_usage_out,
+                SUM(CASE WHEN ior.operation_type = 'return_in' THEN ior.operation_quantity ELSE 0 END) as total_return_in,
+                SUM(CASE WHEN ior.operation_type = 'usage_out' THEN ior.operation_quantity ELSE 0 END) - 
+                SUM(CASE WHEN ior.operation_type = 'return_in' THEN ior.operation_quantity ELSE 0 END) as total_actual_usage,
+                SUM(CASE WHEN ior.operation_type = 'partial_usage' THEN ior.operation_quantity ELSE 0 END) as total_partial_usage,
+                SUM(CASE WHEN ior.operation_type = 'scrap' THEN ior.operation_quantity ELSE 0 END) as total_scrap,
                 SUM(CASE 
                     WHEN gp.width > 0 AND gp.height > 0 
                     THEN ROUND((gp.width / 1000) * (gp.height / 1000) * 
                         CASE 
-                            WHEN it.transaction_type = 'usage_out' THEN it.quantity
-                            WHEN it.transaction_type = 'return_in' THEN -it.quantity
-                            WHEN it.transaction_type = 'partial_usage' THEN COALESCE(it.actual_usage, it.quantity)
-                            WHEN it.transaction_type = 'scrap' THEN it.quantity
+                            WHEN ior.operation_type = 'usage_out' THEN ior.operation_quantity
+                            WHEN ior.operation_type = 'return_in' THEN -ior.operation_quantity
+                            WHEN ior.operation_type = 'partial_usage' THEN ior.operation_quantity
+                            WHEN ior.operation_type = 'scrap' THEN ior.operation_quantity
                             ELSE 0
                         END, 2)
                     ELSE 0
                 END) as total_area,
-                COUNT(DISTINCT it.package_id) as total_packages
-               FROM inventory_transactions it
-               LEFT JOIN glass_packages gp ON it.package_id = gp.id
+                COUNT(DISTINCT ior.package_id) as total_packages
+               FROM inventory_operation_records ior
+               LEFT JOIN glass_packages gp ON ior.package_id = gp.id
                LEFT JOIN storage_racks sr ON gp.current_rack_id = sr.id
                LEFT JOIN bases b ON sr.base_id = b.id
-               WHERE DATE(it.transaction_time) >= ?
-               AND DATE(it.transaction_time) < ?
-               AND it.transaction_type IN ('usage_out', 'partial_usage', 'return_in', 'scrap')";
+               WHERE DATE(ior.operation_date) >= ?
+               AND DATE(ior.operation_date) < ?
+               AND ior.operation_type IN ('usage_out', 'partial_usage', 'return_in', 'scrap')";
 
 $summaryParams = [$startDate, $endDate];
 

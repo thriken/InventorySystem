@@ -152,6 +152,143 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_GET['action']) || $_GET['
     }
 }
 
+/**
+ * 跨基地转移接口（简化版 - 只需包号和目标基地）
+ * POST /api/scan.php?action=location_adjust
+ * Content-Type: application/json
+ * 
+ * 请求体示例：
+ * {
+ *   "package_code": "YP20240001",
+ *   "target_base_id": 2
+ * }
+ */
+if (isset($_GET['action']) && $_GET['action'] === 'location_adjust') {
+    try {
+        // 获取请求数据
+        $input = getPostData();
+        
+        // 验证必填字段
+        $requiredFields = ['package_code', 'target_base_id'];
+        validateRequiredFields($input, $requiredFields);
+        
+        $packageCode = trim($input['package_code'] ?? '');
+        $targetBaseId = intval($input['target_base_id'] ?? 0);
+        
+        // 验证数据
+        if (empty($packageCode) || empty($targetBaseId)) {
+            ApiCommon::sendResponse(400, '请填写包号和目标基地');
+        }
+        
+        // 验证用户权限（只有管理员可以进行跨基地转移）
+        if ($currentUser['role'] !== 'manager') {
+            ApiCommon::sendResponse(403, '只有库管可以进行跨基地转移操作');
+        }
+        
+        // 获取包信息
+        $packageResult = getPackageInfo($packageCode);
+        if (!$packageResult['success']) {
+            ApiCommon::sendResponse(404, $packageResult['message']);
+        }
+        
+        $packageInfo = $packageResult['data'];
+        $currentPieces = $packageInfo['pieces'];
+        
+        // 获取当前包的基地信息
+        $currentBaseId = $packageInfo['base_id'] ?? null;
+        $currentBaseName = $packageInfo['base_name'] ?? '未知基地';
+        $currentRackId = $packageInfo['current_rack_id'] ?? null;
+        
+        // 验证是否为跨基地操作
+        if ($currentBaseId == $targetBaseId) {
+            ApiCommon::sendResponse(400, '目标基地与当前基地相同，无需跨基地转移');
+        }
+        
+        // 获取目标基地信息
+        $targetBaseQuery = fetchOne("SELECT name FROM bases WHERE id = ?", [$targetBaseId]);
+        if (!$targetBaseQuery) {
+            ApiCommon::sendResponse(404, '目标基地不存在');
+        }
+        $targetBaseName = $targetBaseQuery;
+        
+        // 自动获取目标基地的临时库位信息
+        $targetRackQuery = fetchRow("SELECT * FROM storage_racks WHERE base_id = ? AND area_type = 'temporary' ORDER BY id LIMIT 1", 
+            [$targetBaseId]);
+        if (!$targetRackQuery) {
+            ApiCommon::sendResponse(404, "目标基地（{$targetBaseName}）没有可用的临时库位");
+        }
+        $targetTempRackCode = $targetRackQuery['code'];
+        
+        // 构建备注信息
+        $notes = "从{$currentBaseName}转来";
+        
+        // 执行跨基地转移操作
+        $result = executeInventoryTransaction(
+            $packageCode,
+            $targetTempRackCode,
+            $currentPieces,  // 使用当前片数
+            'location_adjust',
+            $currentUser,
+            '',  // 报废原因
+            $notes,
+            true  // 允许跨基地操作
+        );
+        
+        ApiCommon::sendResponse(200, $result, [
+            'package_code' => $packageCode,
+            'current_pieces' => $currentPieces,
+            'from_base' => [
+                'id' => $currentBaseId,
+                'name' => $currentBaseName
+            ],
+            'to_base' => [
+                'id' => $targetBaseId,
+                'name' => $targetBaseName
+            ],
+            'target_temp_rack' => [
+                'id' => $targetRackQuery['id'],
+                'code' => $targetTempRackCode,
+                'name' => $targetRackQuery['name']
+            ],
+            'transaction_type' => 'location_adjust',
+            'operator' => $currentUser['real_name'] ?? $currentUser['username']
+        ]);
+        
+    } catch (Exception $e) {
+        ApiCommon::sendResponse(500, $e->getMessage());
+    }
+}
+
+/**
+ * 获取基地列表
+ * GET /api/scan.php?action=get_bases
+ */
+if (isset($_GET['action']) && $_GET['action'] === 'get_bases') {
+    try {
+        // 其他用户只能查看自己所属的基地
+        if (!empty($currentUser['base_id'])) {
+            $bases = fetchAll("SELECT id, name, code,address FROM bases  ORDER BY name");
+        } else {
+            $bases = [];
+        }
+        
+        // 格式化为下拉选择格式
+        $formattedBases = [];
+        foreach ($bases as $base) {
+            $formattedBases[] = [
+                'id' => $base['id'],
+                'name' => $base['name'],
+                'code' => $base['code'] ?? '',
+                'address' => $base['address'],
+            ];
+        }
+        
+        ApiCommon::sendResponse(200, '获取成功', $formattedBases);
+        
+    } catch (Exception $e) {
+        ApiCommon::sendResponse(500, '服务器错误: ' . $e->getMessage());
+    }
+}  
 // 默认响应
 ApiCommon::sendResponse(400, '无效的API请求');
 ?>

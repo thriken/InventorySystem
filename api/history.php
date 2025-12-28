@@ -41,7 +41,11 @@ function handleGetHistory() {
             'page' => $_GET['page'] ?? null,
             'page_size' => $_GET['page_size'] ?? null
         ];
-        
+        // 如果没有指定日期范围，默认查询最近7天的记录
+        if (empty($params['start_date']) && empty($params['end_date'])) {
+            $params['start_date'] = date('Y-m-d', strtotime('-7 days'));
+            $params['end_date'] = date('Y-m-d');
+        }
         // 参数验证
         validateHistoryParams($params, $currentUser);
         
@@ -51,11 +55,8 @@ function handleGetHistory() {
         // 获取可用操作类型列表（用于前端筛选）
         $operationTypes = getAvailableOperationTypes();
         
-        // 获取可用基地列表（仅超管可见）
-        $bases = [];
-        if ($currentUser['role'] === 'admin') {
-            $bases = getAvailableBases();
-        }
+        // 获取可用基地列表（用于前端筛选）
+        $bases = getAvailableBases($currentUser);
         
         // 构建响应数据
         $responseData = [
@@ -123,7 +124,7 @@ function validateHistoryParams($params, $currentUser) {
         }
     }
     
-    // 验证基地权限（非超管用户不能指定其他基地）
+    // 验证基地权限（非管理员用户不能指定其他基地）
     if ($params['base_id'] && $currentUser['role'] !== 'admin') {
         throw new Exception('只有管理员可以指定基地查询');
     }
@@ -174,12 +175,25 @@ function getAvailableOperationTypes() {
 }
 
 /**
- * 获取可用的基地列表（仅超管使用）
+ * 获取可用的基地列表（根据用户权限过滤）
+ * @param array $currentUser 当前用户信息
  * @return array 基地列表
  */
-function getAvailableBases() {
-    $sql = "SELECT id, name FROM bases ORDER BY name";
-    $bases = fetchAll($sql);
+function getAvailableBases($currentUser) {
+    // 管理员可以查看所有基地
+    if ($currentUser['role'] === 'admin') {
+        $sql = "SELECT id, name FROM bases ORDER BY name";
+        $bases = fetchAll($sql);
+    } else {
+        // 其他用户只能查看自己所属的基地
+        if (!empty($currentUser['base_id'])) {
+            $sql = "SELECT id, name FROM bases WHERE id = ? ORDER BY name";
+            $bases = fetchAll($sql, [$currentUser['base_id']]);
+        } else {
+            // 如果用户没有分配基地，返回空数组
+            return [];
+        }
+    }
     
     $result = [];
     foreach ($bases as $base) {

@@ -40,50 +40,50 @@ $systemStats = [
 // 获取最近流转记录（最近5条）
 $recentTransactions = fetchAll("SELECT t.*, p.package_code, u.username, g.name as glass_name,
                                       sr_from.code as from_rack_code, sr_to.code as to_rack_code
-                              FROM inventory_transactions t 
+                              FROM inventory_operation_records t 
                               LEFT JOIN glass_packages p ON t.package_id = p.id 
                               LEFT JOIN users u ON t.operator_id = u.id 
                               LEFT JOIN glass_types g ON p.glass_type_id = g.id 
                               LEFT JOIN storage_racks sr_from ON t.from_rack_id = sr_from.id
                               LEFT JOIN storage_racks sr_to ON t.to_rack_id = sr_to.id
-                              WHERE t.transaction_type NOT IN ('purchase_in')
-                              ORDER BY t.transaction_time DESC LIMIT 10");
+                              WHERE t.operation_type NOT IN ('purchase_in')
+                              ORDER BY t.created_at DESC LIMIT 10");
 
 // 获取最近采购入库记录（最近5条）
 $recentPurchases = fetchAll("SELECT t.*, p.package_code, u.username, g.name as glass_name, g.color, g.thickness,
                                     p.width, p.height, p.pieces
-                            FROM inventory_transactions t 
+                            FROM inventory_operation_records t 
                             LEFT JOIN glass_packages p ON t.package_id = p.id 
                             LEFT JOIN users u ON t.operator_id = u.id 
                             LEFT JOIN glass_types g ON p.glass_type_id = g.id 
-                            WHERE t.transaction_type = 'purchase_in'
-                            ORDER BY t.transaction_time DESC LIMIT 10");
+                            WHERE t.operation_type = 'purchase_in'
+                            ORDER BY t.created_at DESC LIMIT 10");
 
 // 获取本月消耗统计（按原片类型）
 $monthStart = date('Y-m-01 00:00:00');
 $monthEnd = date('Y-m-t 23:59:59');
 $monthlyConsumption = fetchAll("SELECT g.name as glass_name, g.color, g.thickness,
-                                      SUM(CASE WHEN t.transaction_type IN ('usage_out', 'partial_usage') THEN t.quantity ELSE 0 END) as total_usage,
-                                      SUM(CASE WHEN t.transaction_type = 'scrap' THEN t.quantity ELSE 0 END) as total_scrap,
-                                      SUM(CASE WHEN t.transaction_type IN ('usage_out', 'partial_usage', 'scrap') THEN t.quantity ELSE 0 END) as total_consumption
-                              FROM inventory_transactions t
+                                      SUM(CASE WHEN t.operation_type IN ('usage_out', 'partial_usage') THEN t.operation_quantity ELSE 0 END) as total_usage,
+                                      SUM(CASE WHEN t.operation_type = 'scrap' THEN t.operation_quantity ELSE 0 END) as total_scrap,
+                                      SUM(CASE WHEN t.operation_type IN ('usage_out', 'partial_usage', 'scrap') THEN t.operation_quantity ELSE 0 END) as total_consumption
+                              FROM inventory_operation_records t
                               LEFT JOIN glass_packages p ON t.package_id = p.id
                               LEFT JOIN glass_types g ON p.glass_type_id = g.id
-                              WHERE t.transaction_time >= ? AND t.transaction_time <= ?
-                              AND t.transaction_type IN ('usage_out', 'partial_usage', 'scrap')
+                              WHERE t.operation_date >= ? AND t.operation_date <= ?
+                              AND t.operation_type IN ('usage_out', 'partial_usage', 'scrap')
                               GROUP BY g.id, g.name, g.color, g.thickness
                               HAVING total_consumption > 0
                               ORDER BY total_consumption DESC LIMIT 10", [$monthStart, $monthEnd]);
 
 // 获取本月消耗统计（按颜色）
 $monthlyColorConsumption = fetchAll("SELECT g.color,
-                                           SUM(CASE WHEN t.transaction_type IN ('usage_out', 'partial_usage', 'scrap') THEN t.quantity ELSE 0 END) as total_consumption,
+                                           SUM(CASE WHEN t.operation_type IN ('usage_out', 'partial_usage', 'scrap') THEN t.operation_quantity ELSE 0 END) as total_consumption,
                                            COUNT(DISTINCT p.id) as package_count
-                                   FROM inventory_transactions t
+                                   FROM inventory_operation_records t
                                    LEFT JOIN glass_packages p ON t.package_id = p.id
                                    LEFT JOIN glass_types g ON p.glass_type_id = g.id
-                                   WHERE t.transaction_time >= ? AND t.transaction_time <= ?
-                                   AND t.transaction_type IN ('usage_out', 'partial_usage', 'scrap')
+                                   WHERE t.operation_date >= ? AND t.operation_date <= ?
+                                   AND t.operation_type IN ('usage_out', 'partial_usage', 'scrap')
                                    AND g.color IS NOT NULL AND g.color != ''
                                    GROUP BY g.color
                                    HAVING total_consumption > 0
@@ -141,12 +141,12 @@ ob_start();
                                         'check_out' => '<span class="label label-danger">盘点出库</span>',
                                         'location_adjust' => '<span class="label label-info">位置调整</span>',
                                     ];
-                                    echo $typeLabels[$transaction['transaction_type']] ?? $transaction['transaction_type'];
+                                    echo $typeLabels[$transaction['operation_type']] ?? $transaction['operation_type'];
                                     ?> | 
-                                    <?php echo $transaction['quantity']; ?>片
+                                    <?php echo $transaction['operation_quantity']; ?>片
                                 </div>
                             </div>
-                            <div class="item-time"><?php echo date('m-d H:i', strtotime($transaction['transaction_time'])); ?></div>
+                            <div class="item-time"><?php echo date('m-d H:i', strtotime($transaction['created_at'])); ?></div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -174,7 +174,7 @@ ob_start();
                                     <?php echo $purchase['pieces']; ?>片
                                 </div>
                             </div>
-                            <div class="item-time"><?php echo date('m-d H:i', strtotime($purchase['transaction_time'])); ?></div>
+                            <div class="item-time"><?php echo date('m-d H:i', strtotime($purchase['created_at'])); ?></div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>

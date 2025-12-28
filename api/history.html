@@ -286,7 +286,7 @@
                 <h3>权限控制</h3>
                 <div class="grid">
                     <div class="grid-item">
-                        <h4><span class="badge badge-danger">超管</span> admin</h4>
+                        <h4><span class="badge badge-danger">管理员</span> admin</h4>
                         <ul>
                             <li>可查询所有基地记录</li>
                             <li>时间范围无限制</li>
@@ -332,21 +332,21 @@
                     <tbody>
                         <tr>
                             <td>admin</td>
-                            <td>最近30天</td>
+                            <td>最近7天</td>
                             <td>无限制</td>
                             <td>可查询任意时间范围</td>
                         </tr>
                         <tr>
                             <td>manager</td>
-                            <td>本月1日至今</td>
+                            <td>最近7天</td>
                             <td>365天</td>
                             <td>最多查询一年记录</td>
                         </tr>
                         <tr>
                             <td>viewer/operator</td>
-                            <td>今日（8:00-次日8:00）</td>
+                            <td>最近7天</td>
                             <td>7天</td>
-                            <td>工作日间隔为8:00-次日8:00</td>
+                            <td>只能查询7天内记录</td>
                         </tr>
                     </tbody>
                 </table>
@@ -403,7 +403,7 @@
                             <td>integer</td>
                             <td><span class="optional">否</span></td>
                             <td>-</td>
-                            <td>基地ID筛选（仅超管可用）</td>
+                            <td>基地ID筛选（仅管理员可用）</td>
                         </tr>
                         <tr>
                             <td>page</td>
@@ -427,7 +427,7 @@
                     <li><strong>日期格式：</strong>必须为 YYYY-MM-DD 格式，如 2024-01-01</li>
                     <li><strong>日期范围：</strong>开始日期不能晚于结束日期</li>
                     <li><strong>查询天数：</strong>不能超过角色允许的最大天数</li>
-                    <li><strong>基地权限：</strong>非超管用户不能指定基地参数</li>
+                    <li><strong>基地权限：</strong>非管理员用户不能指定基地参数</li>
                     <li><strong>分页限制：</strong>page_size 最大为 100，超过时自动设为 100</li>
                 </ul>
             </div>
@@ -437,66 +437,71 @@
                 <h2>成功响应</h2>
                 <div class="response-example">
                     <pre><code>{
-    "success": true,
+    "code": 200,
     "message": "查询成功",
     "data": {
         "records": [
             {
-                "id": 1,
-                "record_no": "CG202401270001",
+                "id": 22,
+                "record_no": "CG202512280001",
                 "operation_type": "purchase_in",
-                "operation_type_name": "采购入库",
-                "operation_quantity": 50,
-                "operation_date": "2024-01-27",
-                "operation_time": "09:30:00",
-                "notes": "新包入库",
-                "created_at": "2024-01-27 09:30:15",
-                "package_info": {
-                    "package_code": "PKG20240127001",
-                    "glass_name": "5mm白玻",
-                    "glass_thickness": 5.00,
-                    "glass_color": "白玻"
-                },
-                "location_info": {
-                    "from_rack": null,
-                    "to_rack": {
-                        "code": "A-01-001",
-                        "name": "A区1排1架"
-                    }
-                },
-                "base_name": "主基地",
-                "operator_name": "张三",
-                "quantity_info": {
-                    "before_quantity": null,
-                    "after_quantity": 50,
-                    "unit_area": 2.88,
-                    "total_area": 144.00
-                }
+                "package_id": 160,
+                "glass_type_id": 67,
+                "base_id": 2,
+                "operation_quantity": 35,
+                "before_quantity": 35,
+                "after_quantity": 35,
+                "from_rack_id": null,
+                "to_rack_id": 140,
+                "unit_area": 8.93,
+                "total_area": 312.56,
+                "operator_id": 5,
+                "operation_date": "2025-12-28",
+                "operation_time": "09:58:53",
+                "status": "completed",
+                "scrap_reason": null,
+                "notes": null,
+                "related_record_id": null,
+                "created_at": "2025-12-28 09:58:53",
+                "updated_at": "2025-12-28 09:58:53",
+                "package_code": "NT251226001",
+                "glass_name": "4mm台玻白玻",
+                "thickness": 4.00,
+                "color": "白玻",
+                "brand": "台玻",
+                "base_name": "新丰基地",
+                "operator_name": "新丰库管",
+                "from_rack_code": null,
+                "to_rack_code": "XF-N-8A"
             }
         ],
         "pagination": {
-            "page": 1,
-            "page_size": 20,
-            "total": 150,
-            "total_pages": 8
+            "current_page": 1,
+            "total_pages": 1,
+            "total_records": 8,
+            "page_size": 20
         },
         "filters": {
             "operation_types": [
                 {"value": "purchase_in", "label": "采购入库"},
-                {"value": "usage_out", "label": "领用出库"}
+                {"value": "usage_out", "label": "领用出库"},
+                {"value": "partial_usage", "label": "部分领用"},
+                {"value": "return_in", "label": "归还入库"},
+                {"value": "scrap", "label": "报废"},
+                {"value": "check_in", "label": "盘盈"},
+                {"value": "check_out", "label": "盘亏"}
             ],
             "bases": [
-                {"value": 1, "label": "主基地"},
-                {"value": 2, "label": "分基地"}
+                {"value": 2, "label": "新丰基地"}
             ],
             "current_time_range": {
-                "start_date": "2024-01-01",
-                "end_date": "2024-01-27"
+                "start_date": "2025-12-21",
+                "end_date": "2025-12-28"
             },
             "user_permissions": {
-                "role": "admin",
-                "can_query_all_bases": true,
-                "max_days_allowed": 0
+                "role": "manager",
+                "can_query_all_bases": false,
+                "max_days_allowed": 365
             }
         }
     }
@@ -660,7 +665,7 @@ if ($result['success']) {
                     </div>
                     <div class="grid-item">
                         <h4>场景4：跨基地查询</h4>
-                        <p>超管查询指定基地的操作记录。</p>
+                        <p>管理员查询指定基地的操作记录。</p>
                         <pre><code>GET /api/history.php?base_id=2&page_size=100</code></pre>
                     </div>
                 </div>

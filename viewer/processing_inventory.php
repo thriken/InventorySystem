@@ -44,14 +44,14 @@ $sql = "SELECT gp.package_code, gt.name as glass_name, gt.short_name, gt.color, 
         LEFT JOIN storage_racks sr ON gp.current_rack_id = sr.id 
         LEFT JOIN bases b ON sr.base_id = b.id
         LEFT JOIN (
-            SELECT it1.package_id, it1.operator_id
-            FROM inventory_transactions it1
-            WHERE it1.transaction_type IN ('usage_out', 'partial_usage')
-            AND it1.transaction_time = (
-                SELECT MAX(it2.transaction_time)
-                FROM inventory_transactions it2
-                WHERE it2.package_id = it1.package_id
-                AND it2.transaction_type IN ('usage_out', 'partial_usage')
+            SELECT ior1.package_id, ior1.operator_id
+            FROM inventory_operation_records ior1
+            WHERE ior1.operation_type IN ('usage_out', 'partial_usage')
+            AND ior1.created_at = (
+                SELECT MAX(ior2.created_at)
+                FROM inventory_operation_records ior2
+                WHERE ior2.package_id = ior1.package_id
+                AND ior2.operation_type IN ('usage_out', 'partial_usage')
             )
         ) latest_op ON gp.id = latest_op.package_id
         LEFT JOIN users u ON latest_op.operator_id = u.id

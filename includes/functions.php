@@ -105,44 +105,4 @@ function validateRequiredFields($data, $requiredFields) {
         }
     }
 }
-
-/**
- * 获取包操作历史记录（替代package_operation_history视图）
- */
-function getPackageOperationHistory($conditions = [], $limit = null) {
-    $sql = "
-        SELECT 
-            ior.id, ior.record_no, ior.operation_type, ior.package_id,
-            ior.glass_type_id, ior.base_id, ior.operation_quantity,
-            ior.before_quantity, ior.after_quantity, ior.from_rack_id,
-            ior.to_rack_id, ior.unit_area, ior.total_area, ior.operator_id,
-            ior.operation_date, ior.operation_time, ior.status,
-            ior.scrap_reason, ior.notes, ior.related_record_id,
-            ior.created_at, ior.updated_at,
-            gp.package_code, gt.name as glass_name, gt.thickness,
-            gt.color, gt.brand, b.name as base_name, u.real_name as operator_name,
-            fr.code as from_rack_code, tr.code as to_rack_code
-        FROM inventory_operation_records ior
-        LEFT JOIN glass_packages gp ON ior.package_id = gp.id
-        LEFT JOIN glass_types gt ON ior.glass_type_id = gt.id
-        LEFT JOIN bases b ON ior.base_id = b.id
-        LEFT JOIN users u ON ior.operator_id = u.id
-        LEFT JOIN storage_racks fr ON ior.from_rack_id = fr.id
-        LEFT JOIN storage_racks tr ON ior.to_rack_id = tr.id
-    ";
-    
-    $params = [];
-    if (!empty($conditions)) {
-        $sql .= " WHERE " . implode(' AND ', array_keys($conditions));
-        $params = array_values($conditions);
-    }
-    
-    $sql .= " ORDER BY ior.operation_date DESC, ior.operation_time DESC";
-    
-    if ($limit) {
-        $sql .= " LIMIT $limit";
-    }
-    
-    return query($sql, $params);
-}
 ?>

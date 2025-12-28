@@ -363,17 +363,104 @@ GET /api/scan.php?action=get_package_info&package_code=YP20240001
     <span class="key">"data"</span>: {
         <span class="key">"id"</span>: <span class="number">1</span>,
         <span class="key">"package_code"</span>: <span class="string">"YP20240001"</span>,
-        <span class="key">"glass_name"</span>: <span class="string">"浮法玻璃"</span>,
-        <span class="key">"pieces"</span>: <span class="number">100</span>,
-        <span class="key">"quantity"</span>: <span class="number">1000</span>,
-        <span class="key">"current_rack_code"</span>: <span class="string">"R001"</span>,
-        <span class="key">"current_rack_id"</span>: <span class="number">1</span>,
+        <span class="key">"glass_name"</span>: <span class="string">"4mm台玻白玻"</span>,
+        <span class="key">"short_name"</span>: <span class="string">"4白"</span>,
+        <span class="key">"pieces"</span>: <span class="number">30</span>,
+        <span class="key">"quantity"</span>: <span class="number">0</span>,
+        <span class="key">"specification"</span>: <span class="string">"1200×2400mm"</span>,
+        <span class="key">"entry_date"</span>: <span class="string">"2025-12-28"</span>,
+        <span class="key">"current_rack_code"</span>: <span class="string">"XF-N-8A"</span>,
+        <span class="key">"current_rack_id"</span>: <span class="number">140</span>,
         <span class="key">"current_area_type"</span>: <span class="string">"storage"</span>,
-        <span class="key">"base_name"</span>: <span class="string">"总部基地"</span>,
+        <span class="key">"base_id"</span>: <span class="number">2</span>,
+        <span class="key">"base_name"</span>: <span class="string">"新丰基地"</span>,
         <span class="key">"status"</span>: <span class="string">"库存中"</span>
     }
 }
                 </div>
+                
+                <h3>响应数据字段说明</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>字段名</th>
+                            <th>类型</th>
+                            <th>描述</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>id</td>
+                            <td>integer</td>
+                            <td>包ID</td>
+                        </tr>
+                        <tr>
+                            <td>package_code</td>
+                            <td>string</td>
+                            <td>包编号</td>
+                        </tr>
+                        <tr>
+                            <td>glass_name</td>
+                            <td>string</td>
+                            <td>玻璃类型名称</td>
+                        </tr>
+                        <tr>
+                            <td>short_name</td>
+                            <td>string</td>
+                            <td>玻璃类型简称</td>
+                        </tr>
+                        <tr>
+                            <td>pieces</td>
+                            <td>integer</td>
+                            <td>实际片数</td>
+                        </tr>
+                        <tr>
+                            <td>quantity</td>
+                            <td>integer</td>
+                            <td>默认包装数量</td>
+                        </tr>
+                        <tr>
+                            <td>specification</td>
+                            <td>string</td>
+                            <td>规格（宽×高）</td>
+                        </tr>
+                        <tr>
+                            <td>entry_date</td>
+                            <td>string</td>
+                            <td>入库日期</td>
+                        </tr>
+                        <tr>
+                            <td>current_rack_code</td>
+                            <td>string</td>
+                            <td>当前库位编码</td>
+                        </tr>
+                        <tr>
+                            <td>current_rack_id</td>
+                            <td>integer</td>
+                            <td>当前库位ID</td>
+                        </tr>
+                        <tr>
+                            <td>current_area_type</td>
+                            <td>string</td>
+                            <td>当前区域类型</td>
+                        </tr>
+                        <tr>
+                            <td>base_id</td>
+                            <td>integer</td>
+                            <td>基地ID</td>
+                        </tr>
+                        <tr>
+                            <td>base_name</td>
+                            <td>string</td>
+                            <td>基地名称</td>
+                        </tr>
+                        <tr>
+                            <td>status</td>
+                            <td>string</td>
+                            <td>包状态</td>
+                        </tr>
+                    </tbody>
+                </table>
                 
                 <h3>错误响应</h3>
                 <div class="code-block">
@@ -504,6 +591,245 @@ GET /api/scan.php?action=get_target_info&target_rack_code=R001
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div class="api-section">
+                <div class="api-header">
+                    <span class="method-badge">GET</span>
+                    <span class="endpoint">/api/scan.php?action=get_bases</span>
+                </div>
+                
+                <div class="description">
+                    获取基地列表，根据用户权限自动过滤数据。
+                </div>
+                
+                <h3>请求参数</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>参数名</th>
+                            <th>类型</th>
+                            <th>必填</th>
+                            <th>描述</th>
+                            <th>示例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>action</td>
+                            <td>string</td>
+                            <td>是</td>
+                            <td>固定值：get_bases</td>
+                            <td>get_bases</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>请求示例</h3>
+                <div class="code-block">
+<span class="comment">// 请求头</span><br>
+Authorization: Bearer your-token-here<br>
+<br>
+<span class="comment">// 请求</span><br>
+GET /api/scan.php?action=get_bases
+                </div>
+                
+                <h3>响应示例</h3>
+                <div class="code-block">
+{
+    <span class="key">"code"</span>: <span class="number">200</span>,
+    <span class="key">"message"</span>: <span class="string">"获取成功"</span>,
+    <span class="key">"timestamp"</span>: <span class="number">1698765432</span>,
+    <span class="key">"data"</span>: [
+        {
+            <span class="key">"id"</span>: <span class="number">1</span>,
+            <span class="key">"name"</span>: <span class="string">"总部基地"</span>,
+            <span class="key">"location"</span>: <span class="string">"总部"</span>
+        },
+        {
+            <span class="key">"id"</span>: <span class="number">2</span>,
+            <span class="key">"name"</span>: <span class="string">"新丰基地"</span>,
+            <span class="key">"location"</span>: <span class="string">"新丰"</span>
+        },
+        {
+            <span class="key">"id"</span>: <span class="number">3</span>,
+            <span class="key">"name"</span>: <span class="string">"金鱼基地"</span>,
+            <span class="key">"location"</span>: <span class="string">"金鱼"</span>
+        }
+    ]
+}
+                </div>
+                
+                <h3>权限控制</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>用户角色</th>
+                            <th>可见基地</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>管理员</td>
+                            <td>所有基地</td>
+                        </tr>
+                        <tr>
+                            <td>普通用户</td>
+                            <td>仅所属基地</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>JavaScript示例</h3>
+                <div class="code-block">
+<span class="comment">// 获取基地列表</span><br>
+async function getBaseList() {<br>
+    const response = await fetch('/api/scan.php?action=get_bases', {<br>
+        method: 'GET',<br>
+        headers: {<br>
+            'Authorization': 'Bearer ' + getToken()<br>
+        }<br>
+    });<br>
+    return await response.json();<br>
+}<br>
+<br>
+<span class="comment">// 使用示例</span><br>
+getBaseList()<br>
+    .then(result => {<br>
+        if (result.code === 200) {<br>
+            console.log('基地列表:', result.data);<br>
+            // 可以用于构建下拉选择器<br>
+            const baseOptions = result.data.map(base => <br>
+                `<option value="${base.id}">${base.name}</option>`<br>
+            ).join('');<br>
+            document.getElementById('base-select').innerHTML = baseOptions;<br>
+        }<br>
+    })<br>
+    .catch(error => console.error('获取基地列表失败:', error));
+                </div>
+            </div>
+
+            <div class="api-section">
+                <div class="api-header">
+                    <span class="method-badge">POST</span>
+                    <span class="endpoint">/api/scan.php?action=location_adjust</span>
+                </div>
+                
+                <div class="description">
+                    跨基地转移API：将玻璃包从一个基地转移到另一个基地的临时库位，系统自动获取目标库位。
+                </div>
+                
+                <h3>请求参数（JSON格式）</h3>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>参数名</th>
+                            <th>类型</th>
+                            <th>必填</th>
+                            <th>描述</th>
+                            <th>示例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>package_code</td>
+                            <td>string</td>
+                            <td>是</td>
+                            <td>包号</td>
+                            <td>NT251226001</td>
+                        </tr>
+                        <tr>
+                            <td>target_base_id</td>
+                            <td>integer</td>
+                            <td>是</td>
+                            <td>目标基地ID</td>
+                            <td>3</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <p><strong>注意：</strong>系统会自动获取目标基地的第一个可用临时库位，无需手动指定库位编码。</p>
+                
+                <h3>请求示例</h3>
+                <div class="code-block">
+<span class="comment">// 请求头</span><br>
+Authorization: Bearer your-token<br>
+Content-Type: application/json<br>
+<br>
+<span class="comment">// 请求体</span><br>
+{
+    <span class="key">"package_code"</span>: <span class="string">"NT251226001"</span>,
+    <span class="key">"target_base_id"</span>: <span class="number">3</span>
+}
+                </div>
+                
+                <h3>响应示例</h3>
+                <div class="code-block">
+{
+    <span class="key">"code"</span>: <span class="number">200</span>,
+    <span class="key">"message"</span>: <span class="string">"库位调整操作成功完成！"</span>,
+    <span class="key">"timestamp"</span>: <span class="number">1735276800</span>,
+    <span class="key">"data"</span>: {
+        <span class="key">"package_code"</span>: <span class="string">"NT251226001"</span>,
+        <span class="key">"current_pieces"</span>: <span class="number">35</span>,
+        <span class="key">"from_base"</span>: {
+            <span class="key">"id"</span>: <span class="number">2</span>,
+            <span class="key">"name"</span>: <span class="string">"新丰基地"</span>
+        },
+        <span class="key">"to_base"</span>: {
+            <span class="key">"id"</span>: <span class="number">3</span>,
+            <span class="key">"name"</span>: <span class="string">"金鱼基地"</span>
+        },
+        <span class="key">"target_temp_rack"</span>: {
+            <span class="key">"id"</span>: <span class="number">5</span>,
+            <span class="key">"code"</span>: <span class="string">"JY-T-临时区"</span>,
+            <span class="key">"name"</span>: <span class="string">"临时区"</span>
+        },
+        <span class="key">"transaction_type"</span>: <span class="string">"location_adjust"</span>,
+        <span class="key">"operator"</span>: <span class="string">"管理员"</span>
+    }
+}
+                </div>
+                
+                <h3>业务规则</h3>
+                <ul style="color: #666; margin-left: 20px; margin-bottom: 20px;">
+                    <li><strong>权限验证</strong>：只有库管可以执行跨基地转移</li>
+                    <li><strong>跨基地限制</strong>：目标基地必须与当前基地不同</li>
+                    <li><strong>自动库位</strong>：系统自动获取目标基地的第一个可用临时库位(<code>area_type = 'temporary'</code>)</li>
+                    <li><strong>转移数量</strong>：自动使用包的当前片数</li>
+                    <li><strong>备注生成</strong>：自动生成格式为"从{源基地名}转来"的备注</li>
+                    <li><strong>顺序号调整</strong>：源库位和目标库位的包顺序号都会自动重新整理</li>
+                </ul>
+                
+                <h3>JavaScript示例</h3>
+                <div class="code-block">
+<span class="comment">// 跨基地转移操作</span><br>
+async function executeLocationAdjust(packageCode, targetBaseId) {<br>
+    const response = await fetch('/api/scan.php?action=location_adjust', {<br>
+        method: 'POST',<br>
+        headers: {<br>
+            'Authorization': 'Bearer ' + getToken(),<br>
+            'Content-Type': 'application/json'<br>
+        },<br>
+        body: JSON.stringify({<br>
+            package_code: packageCode,<br>
+            target_base_id: targetBaseId<br>
+        })<br>
+    });<br>
+    return await response.json();<br>
+}<br>
+<br>
+<span class="comment">// 使用示例</span><br>
+executeLocationAdjust('NT251226001', 3)<br>
+    .then(result => {<br>
+        if (result.code === 200) {<br>
+            console.log('转移成功:', result.data);<br>
+        } else {<br>
+            console.error('转移失败:', result.message);<br>
+        }<br>
+    })<br>
+    .catch(error => console.error('请求失败:', error));
+                </div>
             </div>
 
             <div class="api-section">

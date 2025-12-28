@@ -32,7 +32,7 @@ function getPackageInfo($packageCode) {
         return ['success' => false, 'message' => '包号不能为空'];
     }
     
-    $sql = "SELECT gp.id, gp.package_code, gp.pieces, gp.quantity, gp.current_rack_id, gp.status,
+    $sql = "SELECT gp.id, gp.package_code, gp.pieces, gp.quantity, gp.width, gp.height, gp.entry_date, gp.current_rack_id, gp.status,
                gt.name as glass_name, gt.short_name, gt.thickness, gt.color,
                sr.code as current_rack_code, sr.id as current_rack_id,
                sr.area_type as current_area_type, sr.base_id,
@@ -54,6 +54,12 @@ function getPackageInfo($packageCode) {
         'scrapped' => '已报废',
         'used_up' => '已用完'
     ];
+    // 构建规格字符串
+    $specification = '';
+    if ($package['width'] && $package['height']) {
+        $specification = (int)$package['width'] . '×' . (int)$package['height'] . 'mm';
+    }
+    
     return [
         'success' => true,
         'data' => [
@@ -63,6 +69,8 @@ function getPackageInfo($packageCode) {
             'short_name' => $package['short_name'],
             'pieces' => (int)$package['pieces'],
             'quantity' => (int)$package['quantity'],
+            'specification' => $specification,
+            'entry_date' => $package['entry_date'] ? $package['entry_date'] : null,
             'current_rack_code' => $package['current_rack_code'] ?? '未分配',
             'current_rack_id' => $package['current_rack_id'],
             'current_area_type' => $package['current_area_type'],
@@ -204,7 +212,7 @@ function determineTransactionType($fromAreaType, $toAreaType) {
 }
 
 /**
- * 执行库存流转操作（从admin/transactions.php移植）
+ * 执行库存流转操作（使用新的inventory_operation_records表）
  * @param string $packageCode 包号
  * @param string $targetRackCode 目标库位架编码
  * @param int $quantity 数量
@@ -212,9 +220,10 @@ function determineTransactionType($fromAreaType, $toAreaType) {
  * @param array $currentUser 当前用户信息
  * @param string $scrapReason 报废原因（可选）
  * @param string $notes 备注（可选）
+ * @param bool $allowCrossBase 是否允许跨基地操作（可选，默认false）
  * @return string 操作结果消息
  */
-function executeInventoryTransaction($packageCode, $targetRackCode, $quantity, $transactionType, $currentUser, $scrapReason = '', $notes = '') {
+function executeInventoryTransaction($packageCode, $targetRackCode, $quantity, $transactionType, $currentUser, $scrapReason = '', $notes = '', $allowCrossBase = false) {
     return executeInTransaction(function () use (
         $packageCode,
         $targetRackCode,
@@ -222,7 +231,8 @@ function executeInventoryTransaction($packageCode, $targetRackCode, $quantity, $
         $transactionType,
         $scrapReason,
         $notes,
-        $currentUser
+        $currentUser,
+        $allowCrossBase
     ) {
         return processTransaction(
             $packageCode,
@@ -231,13 +241,25 @@ function executeInventoryTransaction($packageCode, $targetRackCode, $quantity, $
             $transactionType,
             $scrapReason,
             $notes,
-            $currentUser
+            $currentUser,
+            $allowCrossBase
         );
     });
 }
 
-// 将业务逻辑拆分为独立函数
-function processTransaction($packageCode, $targetRackCode, $quantity, $transactionType, $scrapReason, $notes, $currentUser)
+/**
+ * 处理库存流转业务逻辑（新版 - 使用inventory_operation_records表）
+ * @param string $packageCode 包号
+ * @param string $targetRackCode 目标库位架编码
+ * @param int $quantity 数量
+ * @param string $transactionType 交易类型
+ * @param string $scrapReason 报废原因
+ * @param string $notes 备注
+ * @param array $currentUser 当前用户信息
+ * @param bool $allowCrossBase 是否允许跨基地操作
+ * @return string 操作结果消息
+ */
+function processTransaction($packageCode, $targetRackCode, $quantity, $transactionType, $scrapReason, $notes, $currentUser, $allowCrossBase = false)
 {
     // 查询包信息
     $sql = "SELECT gp.*, gt.name as glass_name, gt.thickness, gt.color, gt.brand, gt.manufacturer,
@@ -273,22 +295,20 @@ function processTransaction($packageCode, $targetRackCode, $quantity, $transacti
         $fromRack = fetchRow($sql, [$package['current_rack_id']]);
     }
     
-    // ===== 新增：基地权限验证逻辑 =====
-    validateBasePermissions($currentUser, $package, $fromRack, $targetRack, $transactionType);
+    // 基地权限验证
+    validateBasePermissions($currentUser, $package, $fromRack, $targetRack, $transactionType, $allowCrossBase);
     
     // 检查是否为跨基地操作，在备注中添加标识
     if ($fromRack && $fromRack['base_id'] !== $targetRack['base_id']) {
         $baseFromName = $fromRack['base_name'] ?? '未知基地';
         $baseToName = $targetRack['base_name'];
         
-        // 根据目标区域类型判断是否为基地间转移
         if ($targetRack['area_type'] === 'temporary') {
             $notes = "[基地间转移] {$baseFromName} → {$baseToName}" . ($notes ? " | {$notes}" : '');
         } else {
             $notes = "[基地间流转] {$baseFromName} → {$baseToName}" . ($notes ? " | {$notes}" : '');
         }
     } else if ($targetRack['area_type'] === 'temporary' && $transactionType === 'purchase_in') {
-        // 采购入库到临时区的标识
         $notes = "[采购入库]" . ($notes ? " | {$notes}" : '');
     } else if ($targetRack['area_type'] === 'storage' && $transactionType === 'return_in') {
         $notes = "[实际使用]" . ($notes ? " | {$notes}" : '');
@@ -297,50 +317,63 @@ function processTransaction($packageCode, $targetRackCode, $quantity, $transacti
     // 验证交易类型
     validateTransactionType($transactionType, $package, $fromRack, $targetRack, $quantity);
     
+    // 生成记录单号
+    $recordNo = generateOperationRecordNo($transactionType);
+    
+    // 计算面积信息
+    $unitArea = null;
+    $totalArea = null;
+    if ($package['width'] && $package['height']) {
+        $unitArea = ($package['width'] * $package['height']) / 1000000; // 转换为平方米
+        $totalArea = $unitArea * $quantity;
+    }
+    
     // 根据交易类型执行相应操作
     switch ($transactionType) {
         case 'purchase_in':
-            return processPurchaseIn($package, $targetRack, $notes, $currentUser);
+            return processPurchaseIn($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser);
         case 'usage_out':
-            return processUsageOut($package, $targetRack, $quantity, $scrapReason, $notes, $currentUser);
+            return processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $scrapReason, $notes, $currentUser);
         case 'return_in':
-            return processReturnIn($package, $targetRack, $quantity, $notes, $currentUser);
+            return processReturnIn($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser);
         case 'scrap':
-            return processScrap($package, $targetRack, $quantity, $scrapReason, $currentUser);
+            return processScrap($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $scrapReason, $currentUser);
         case 'check_in':
         case 'check_out':
-            return processInventoryCheck($transactionType, $package, $targetRack, $quantity, $notes, $currentUser);
+            return processInventoryCheck($transactionType, $package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser);
         case 'location_adjust':
-            // 库位调整逻辑
-            $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                    quantity, actual_usage, notes, operator_id, transaction_time) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-            query($sql, [
-                $package['id'],
-                'location_adjust',
-                $package['current_rack_id'],
-                $targetRack['id'],
-                $quantity,
-                0, // 库位调整不涉及实际使用量
-                $notes,
-                $currentUser['id']
-            ]);
-
-            // 更新包的当前库位
-            $sql = "UPDATE glass_packages SET current_rack_id = ?, updated_at = ? WHERE id = ?";
-            query($sql, [$targetRack['id'], date('Y-m-d H:i:s'), $package['id']]);
-            
-            // 移除原库位中的包并重新整理顺序
-            if ($package['current_rack_id']) {
-                removeFromRack($package['current_rack_id'], $package['id']);
-            }
-            
-            // 为包在新库位中分配位置顺序号
-            assignPackagePosition($package['id'], $targetRack['id']);
-            return '库位调整操作成功完成！';
+            return processLocationAdjust($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser);
         default:
             throw new Exception('不支持的交易类型：' . $transactionType);
     }
+}
+
+/**
+ * 生成操作记录单号
+ * @param string $operationType 操作类型
+ * @return string 记录单号
+ */
+function generateOperationRecordNo($operationType) {
+    $date = date('Ymd');
+    $prefixes = [
+        'purchase_in' => 'CG',
+        'usage_out' => 'LY',
+        'partial_usage' => 'BF',
+        'return_in' => 'GH',
+        'scrap' => 'BF',
+        'check_in' => 'PY',
+        'check_out' => 'PK'
+    ];
+    
+    $prefix = $prefixes[$operationType] ?? 'OP';
+    
+    // 获取当天该类型的最大序号
+    $sql = "SELECT COUNT(*) as count FROM inventory_operation_records 
+            WHERE operation_type = ? AND DATE(created_at) = CURDATE()";
+    $result = fetchRow($sql, [$operationType]);
+    $sequence = ($result ? $result['count'] : 0) + 1;
+    
+    return $prefix . $date . str_pad($sequence, 4, '0', STR_PAD_LEFT);
 }
 
 function validateTransactionType($transactionType, $package, $fromRack, $targetRack, $quantity)
@@ -383,21 +416,33 @@ function validateTransactionType($transactionType, $package, $fromRack, $targetR
     }
 }
 
-function processPurchaseIn($package, $targetRack, $notes, $currentUser)
+function processPurchaseIn($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser)
 {
-    // 采购入库：整包入库
-    $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-            quantity, actual_usage, notes, operator_id, transaction_time) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    // 采购入库：插入新的操作记录
+    $sql = "INSERT INTO inventory_operation_records (
+                record_no, operation_type, package_id, glass_type_id, base_id,
+                operation_quantity, before_quantity, after_quantity, 
+                from_rack_id, to_rack_id, unit_area, total_area,
+                operator_id, operation_date, operation_time, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
     query($sql, [
-        $package['id'],
+        $recordNo,
         'purchase_in',
+        $package['id'],
+        $package['glass_type_id'],
+        $targetRack['base_id'],
+        $quantity,
+        $package['pieces'], // 操作前数量
+        $package['pieces'], // 采购入库数量不变
         $package['current_rack_id'],
         $targetRack['id'],
-        $package['pieces'], // 整包数量
-        0, // 采购入库不消耗，actual_usage为0
-        $notes, // 添加 notes 参数
-        $currentUser['id']
+        $unitArea,
+        $totalArea,
+        $currentUser['id'],
+        date('Y-m-d'),
+        date('H:i:s'),
+        $notes
     ]);
 
     // 更新包状态和位置
@@ -410,166 +455,172 @@ function processPurchaseIn($package, $targetRack, $notes, $currentUser)
     return '采购入库操作成功完成！';
 }
 
-function processUsageOut($package, $targetRack, $quantity, $scrapReason, $notes, $currentUser)
+function processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $scrapReason, $notes, $currentUser)
 {
-    // 处理"全部用完"逻辑：数量为0表示完全使用
     if ($quantity == 0) {
-        // 完全使用 - 类似部分领用但使用全部片数
-        $quantity = $package['pieces']; // 使用包的全部片数
-        
-        // 插入交易记录
-        $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                quantity, actual_usage, notes, operator_id, transaction_time) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-        query($sql, [
-            $package['id'],
-            'partial_usage',
-            $package['current_rack_id'],
-            $targetRack['id'],
-            $quantity,
-            $quantity, // 实际使用量等于领用量
-            $notes . ' (完全使用)',
-            $currentUser['id']
-        ]);
-
-        // 使用原子操作更新片数，将片数设为0
-        $sql = "UPDATE glass_packages SET pieces = 0, status = 'used_up', current_rack_id = ?, updated_at = ? 
-                WHERE id = ? AND pieces >= ?";
-        $affectedRows = query($sql, [
-            $targetRack['id'],
-            date('Y-m-d H:i:s'),
-            $package['id'],
-            $quantity
-        ]);
-
-        if ($affectedRows === 0) {
-            throw new Exception('更新失败：包的片数不足或包不存在');
-        }
-
-        return '完全使用操作成功完成！该包已标记为已用完状态。';
+        $quantity = $package['pieces']; // 完全使用
     }
     
     if ($quantity == $package['pieces']) {
         // 整包领用出库
-        if ($targetRack['area_type'] === 'scrap') {
-            // 直接报废
-            $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                    quantity, actual_usage, scrap_reason, notes, operator_id, transaction_time) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-            query($sql, [
-                $package['id'],
-                'usage_out',
-                $package['current_rack_id'],
-                $targetRack['id'],
-                $quantity,
-                $quantity, // 整包报废，actual_usage等于quantity
-                $scrapReason,
-                $notes, // 添加 notes 参数
-                $currentUser['id']
-            ]);
+        $afterQuantity = 0;
+        
+        // 插入操作记录
+        $sql = "INSERT INTO inventory_operation_records (
+                    record_no, operation_type, package_id, glass_type_id, base_id,
+                    operation_quantity, before_quantity, after_quantity, 
+                    from_rack_id, to_rack_id, unit_area, total_area,
+                    operator_id, operation_date, operation_time, notes, scrap_reason
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        query($sql, [
+            $recordNo,
+            'usage_out',
+            $package['id'],
+            $package['glass_type_id'],
+            $targetRack['base_id'],
+            $quantity,
+            $package['pieces'],
+            $afterQuantity,
+            $package['current_rack_id'],
+            $targetRack['id'],
+            $unitArea,
+            $totalArea,
+            $currentUser['id'],
+            date('Y-m-d'),
+            date('H:i:s'),
+            $notes,
+            $scrapReason
+        ]);
 
-            // 更新包状态为报废，片数为0
-            $sql = "UPDATE glass_packages SET current_rack_id = ?, status = 'scrapped', pieces = 0, updated_at = ? WHERE id = ?";
-            query($sql, [$targetRack['id'], date('Y-m-d H:i:s'), $package['id']]);
-            
-            // 离开库存区：重新整理原库位位置号
-            removeFromRack($package['current_rack_id'], $package['id']);
+        // 更新包状态
+        $newStatus = $targetRack['area_type'] === 'scrap' ? 'used_up' : 'in_processing';
+        $sql = "UPDATE glass_packages SET current_rack_id = ?, status = ?, pieces = ?, updated_at = ? WHERE id = ?";
+        query($sql, [$targetRack['id'], $newStatus, $afterQuantity, date('Y-m-d H:i:s'), $package['id']]);
+        
+        // 离开库存区：重新整理原库位位置号
+        removeFromRack($package['current_rack_id'], $package['id']);
 
-            return '整包报废操作成功完成！';
-        } else {
-            // 正常领用出库到加工区
-            $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                    quantity, actual_usage, notes, operator_id, transaction_time) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-            query($sql, [
-                $package['id'],
-                'usage_out',
-                $package['current_rack_id'],
-                $targetRack['id'],
-                $quantity,
-                0, // 领用到加工区，actual_usage暂时为0，等归还时确定
-                $notes, // 添加 notes 参数
-                $currentUser['id']
-            ]);
-
-            // 更新包状态为加工中
-            $sql = "UPDATE glass_packages SET current_rack_id = ?, status = 'in_processing', updated_at = ? WHERE id = ?";
-            query($sql, [$targetRack['id'], date('Y-m-d H:i:s'), $package['id']]);
-            
-            // 离开库存区：重新整理原库位位置号
-            removeFromRack($package['current_rack_id'], $package['id']);
-
-            return '整包领用出库操作成功完成！';
-        }
+        return '整包领用出库操作成功完成！';
     } else {
-        // 部分领用出库 - 使用原子操作
-        // 1. 先检查片数是否足够（在事务中）
-        $currentPieces = fetchOne(
-            "SELECT pieces FROM glass_packages WHERE id = ?",
-            [$package['id']]
-        );
-
+        // 部分领用出库
+        $currentPieces = fetchOne("SELECT pieces FROM glass_packages WHERE id = ?", [$package['id']]);
+        
         if ($currentPieces < $quantity) {
             throw new Exception('当前包的片数不足，无法完成领用操作');
         }
 
-        // 2. 插入交易记录
-        $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                quantity, actual_usage, notes, operator_id, transaction_time) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        $afterQuantity = $currentPieces - $quantity;
+        
+        // 插入操作记录
+        $sql = "INSERT INTO inventory_operation_records (
+                    record_no, operation_type, package_id, glass_type_id, base_id,
+                    operation_quantity, before_quantity, after_quantity, 
+                    from_rack_id, to_rack_id, unit_area, total_area,
+                    operator_id, operation_date, operation_time, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
         query($sql, [
-            $package['id'],
+            $recordNo,
             'partial_usage',
+            $package['id'],
+            $package['glass_type_id'],
+            $targetRack['base_id'],
+            $quantity,
+            $currentPieces,
+            $afterQuantity,
             $package['current_rack_id'],
             $targetRack['id'],
-            $quantity,
-            $quantity, // 部分领用，actual_usage等于领用量
-            $notes, // 添加 notes 参数
-            $currentUser['id']
+            $unitArea,
+            $totalArea,
+            $currentUser['id'],
+            date('Y-m-d'),
+            date('H:i:s'),
+            $notes
         ]);
 
-        // 3. 使用原子操作更新片数，同时检查约束
-        $sql = "UPDATE glass_packages SET pieces = pieces - ?, updated_at = ? 
-                WHERE id = ? AND pieces >= ?";
-        $affectedRows = query($sql, [
-            $quantity,
-            date('Y-m-d H:i:s'),
-            $package['id'],
-            $quantity
-        ]);
+        // 更新片数
+        $sql = "UPDATE glass_packages SET pieces = pieces - ?, updated_at = ? WHERE id = ?";
+        query($sql, [$quantity, date('Y-m-d H:i:s'), $package['id']]);
 
-        if ($affectedRows === 0) {
-            throw new Exception('更新失败：包的片数不足或包不存在');
-        }
-
-        // 4. 获取更新后的片数
-        $remainingPieces = fetchOne(
-            "SELECT pieces FROM glass_packages WHERE id = ?",
-            [$package['id']]
-        );
-
-        return '部分领用出库操作成功完成！剩余片数：' . $remainingPieces;
+        return '部分领用出库操作成功完成！剩余片数：' . $afterQuantity;
     }
 }
 
-function processReturnIn($package, $targetRack, $quantity, $notes, $currentUser)
+function processLocationAdjust($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser)
+{
+    // 库位调整逻辑
+    $sql = "INSERT INTO inventory_operation_records (
+                record_no, operation_type, package_id, glass_type_id, base_id,
+                operation_quantity, before_quantity, after_quantity, 
+                from_rack_id, to_rack_id, unit_area, total_area,
+                operator_id, operation_date, operation_time, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    query($sql, [
+        $recordNo,
+        'location_adjust',
+        $package['id'],
+        $package['glass_type_id'],
+        $targetRack['base_id'],
+        $quantity,
+        $package['pieces'],
+        $package['pieces'],
+        $package['current_rack_id'],
+        $targetRack['id'],
+        $unitArea,
+        $totalArea,
+        $currentUser['id'],
+        date('Y-m-d'),
+        date('H:i:s'),
+        $notes
+    ]);
+
+    // 更新包的当前库位
+    $sql = "UPDATE glass_packages SET current_rack_id = ?, updated_at = ? WHERE id = ?";
+    query($sql, [$targetRack['id'], date('Y-m-d H:i:s'), $package['id']]);
+    
+    // 移除原库位中的包并重新整理顺序
+    if ($package['current_rack_id']) {
+        removeFromRack($package['current_rack_id'], $package['id']);
+    }
+    
+    // 为包在新库位中分配位置顺序号
+    assignPackagePosition($package['id'], $targetRack['id']);
+    return '库位调整操作成功完成！';
+}
+
+function processReturnIn($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser)
 {
     if ($quantity == 0) {
         // 归还数量为0，表示完全使用
-        $actualUsage = $package['pieces']; // 实际使用量等于原有片数
+        $actualUsage = $package['pieces'];
+        $afterQuantity = 0;
         
-        $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                quantity, actual_usage, notes, operator_id, transaction_time) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        $sql = "INSERT INTO inventory_operation_records (
+                    record_no, operation_type, package_id, glass_type_id, base_id,
+                    operation_quantity, before_quantity, after_quantity, 
+                    from_rack_id, to_rack_id, unit_area, total_area,
+                    operator_id, operation_date, operation_time, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
         query($sql, [
-            $package['id'],
+            $recordNo,
             'return_in',
+            $package['id'],
+            $package['glass_type_id'],
+            $targetRack['base_id'],
+            0, // 归还数量为0
+            $package['pieces'],
+            $afterQuantity,
             $package['current_rack_id'],
             $targetRack['id'],
-            0, // 归还数量为0
-            $actualUsage, // 实际使用量
-            $notes . ' (完全使用)' . '(' . $actualUsage . '片)',
-            $currentUser['id']
+            $unitArea,
+            $totalArea,
+            $currentUser['id'],
+            date('Y-m-d'),
+            date('H:i:s'),
+            $notes . ' (完全使用)' . '(' . $actualUsage . '片)'
         ]);
 
         // 更新包状态为已用完，片数为0
@@ -579,18 +630,32 @@ function processReturnIn($package, $targetRack, $quantity, $notes, $currentUser)
         return '归还入库操作成功完成！该包已完全使用。';
     } else {
         // 正常归还逻辑
-        $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-                quantity, actual_usage, notes, operator_id, transaction_time) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        $actualUsage = $package['pieces'] - $quantity;
+        
+        $sql = "INSERT INTO inventory_operation_records (
+                    record_no, operation_type, package_id, glass_type_id, base_id,
+                    operation_quantity, before_quantity, after_quantity, 
+                    from_rack_id, to_rack_id, unit_area, total_area,
+                    operator_id, operation_date, operation_time, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
         query($sql, [
-            $package['id'],
+            $recordNo,
             'return_in',
+            $package['id'],
+            $package['glass_type_id'],
+            $targetRack['base_id'],
+            $quantity,
+            $package['pieces'],
+            $quantity,
             $package['current_rack_id'],
             $targetRack['id'],
-            $quantity,
-            $package['pieces'] - $quantity, // 实际领用量
-            $notes . ' (' . $package['pieces'] - $quantity . ')',
-            $currentUser['id']
+            $unitArea,
+            $totalArea,
+            $currentUser['id'],
+            date('Y-m-d'),
+            date('H:i:s'),
+            $notes . ' (' . $actualUsage . ')'
         ]);
 
         // 更新包状态为库存中，更新剩余片数
@@ -604,22 +669,36 @@ function processReturnIn($package, $targetRack, $quantity, $notes, $currentUser)
     }
 }
 
-function processScrap($package, $targetRack, $quantity, $scrapReason, $currentUser)
+function processScrap($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $scrapReason, $currentUser)
 {
-    // 报废操作
-    $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-            quantity, actual_usage, scrap_reason,notes, operator_id, transaction_time) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    $afterQuantity = $package['pieces'] - $quantity;
+    
+    // 插入报废操作记录
+    $sql = "INSERT INTO inventory_operation_records (
+                record_no, operation_type, package_id, glass_type_id, base_id,
+                operation_quantity, before_quantity, after_quantity, 
+                from_rack_id, to_rack_id, unit_area, total_area,
+                operator_id, operation_date, operation_time, notes, scrap_reason
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
     query($sql, [
-        $package['id'],
+        $recordNo,
         'scrap',
+        $package['id'],
+        $package['glass_type_id'],
+        $targetRack['base_id'],
+        $quantity,
+        $package['pieces'],
+        $afterQuantity,
         $package['current_rack_id'],
         $targetRack['id'],
-        $quantity,
-        $quantity, // 报废操作，actual_usage等于报废量
+        $unitArea,
+        $totalArea,
+        $currentUser['id'],
+        date('Y-m-d'),
+        date('H:i:s'),
         $scrapReason,
-        $scrapReason,   //备注也写上
-        $currentUser['id']
+        $scrapReason
     ]);
 
     if ($quantity == $package['pieces']) {
@@ -629,41 +708,54 @@ function processScrap($package, $targetRack, $quantity, $scrapReason, $currentUs
         return '整包报废操作成功完成！该包已完全使用。';
     } else {
         // 部分报废
-        $remainingPieces = $package['pieces'] - $quantity;
         $sql = "UPDATE glass_packages SET pieces = ?, updated_at = ? WHERE id = ?";
-        query($sql, [$remainingPieces, date('Y-m-d H:i:s'), $package['id']]);
-        return '部分报废操作成功完成！剩余片数：' . $remainingPieces;
+        query($sql, [$afterQuantity, date('Y-m-d H:i:s'), $package['id']]);
+        return '部分报废操作成功完成！剩余片数：' . $afterQuantity;
     }
 }
 
-function processInventoryCheck($transactionType, $package, $targetRack, $quantity, $notes, $currentUser)
+function processInventoryCheck($transactionType, $package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser)
 {
-    // 盘点操作
-    $sql = "INSERT INTO inventory_transactions (package_id, transaction_type, from_rack_id, to_rack_id, 
-            quantity, actual_usage, notes, operator_id, transaction_time) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-    query($sql, [
-        $package['id'],
-        $transactionType,
-        $package['current_rack_id'],
-        $targetRack['id'],
-        $quantity,
-        $quantity, // 修复：无论盘盈还是盘亏，actual_usage都应该是变化的数量
-        $notes,
-        $currentUser['id']
-    ]);
-
-    // 更新包的片数和位置
+    $beforeQuantity = $package['pieces'];
+    
     if ($transactionType === 'check_in') {
-        $newPieces = $package['pieces'] + $quantity;
+        $afterQuantity = $beforeQuantity + $quantity;
         $message = '盘盈入库操作成功完成！新增片数：' . $quantity;
     } else {
-        $newPieces = $package['pieces'] - $quantity;
+        $afterQuantity = $beforeQuantity - $quantity;
         $message = '盘亏出库操作成功完成！减少片数：' . $quantity;
     }
 
+    // 插入盘点操作记录
+    $sql = "INSERT INTO inventory_operation_records (
+                record_no, operation_type, package_id, glass_type_id, base_id,
+                operation_quantity, before_quantity, after_quantity, 
+                from_rack_id, to_rack_id, unit_area, total_area,
+                operator_id, operation_date, operation_time, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    query($sql, [
+        $recordNo,
+        $transactionType,
+        $package['id'],
+        $package['glass_type_id'],
+        $targetRack['base_id'],
+        $quantity,
+        $beforeQuantity,
+        $afterQuantity,
+        $package['current_rack_id'],
+        $targetRack['id'],
+        $unitArea,
+        $totalArea,
+        $currentUser['id'],
+        date('Y-m-d'),
+        date('H:i:s'),
+        $notes
+    ]);
+
+    // 更新包的片数和位置
     $sql = "UPDATE glass_packages SET current_rack_id = ?, pieces = ?, updated_at = ? WHERE id = ?";
-    query($sql, [$targetRack['id'], $newPieces, date('Y-m-d H:i:s'), $package['id']]);
+    query($sql, [$targetRack['id'], $afterQuantity, date('Y-m-d H:i:s'), $package['id']]);
     
     // 盘点操作位置号处理：只有盘盈入库（check_in）才需要调整位置号
     if ($transactionType === 'check_in') {
@@ -723,29 +815,30 @@ function reorderPackagePositions($rackId) {
  * 为包分配新的位置顺序号
  * @param int $packageId 包ID
  * @param int $rackId 库位架ID
- * @param bool $reorder 是否重新整理所有包的顺序
- * @return int 分配的位置顺序号
+ * @param bool $isRearrange 是否重新整理现有包的顺序（默认true）
+ * @return bool 操作是否成功
  */
-function assignPackagePosition($packageId, $rackId, $reorder = false) {
-    if ($reorder) {
-        // 先重新整理现有包的顺序
+function assignPackagePosition($packageId, $rackId, $isRearrange = true) {
+    if (empty($packageId) || empty($rackId)) {
+        return false;
+    }
+    
+    // 更新包的位置顺序号为1（放在最外面）
+    $sql = "UPDATE glass_packages SET position_order = 1, updated_at = ? WHERE id = ?";
+    query($sql, [date('Y-m-d H:i:s'), $packageId]);
+    
+    // 重新整理库位中所有包的顺序号
+    if ($isRearrange) {
         reorderPackagePositions($rackId);
     }
     
-    // 获取下一个可用位置
-    $positionOrder = getNextPositionOrder($rackId);
-    
-    // 更新包的位置顺序号
-    $sql = "UPDATE glass_packages SET position_order = ?, updated_at = ? WHERE id = ?";
-    query($sql, [$positionOrder, date('Y-m-d H:i:s'), $packageId]);
-    
-    return $positionOrder;
+    return true;
 }
 
 /**
- * 放入库位操作：新包放在最外面（位置1），现有包位置号全部+1
+ * 将包添加到指定库位架（新包放在最外面，现有包位置号递增）
  * @param int $packageId 包ID
- * @param int $rackId 目标库位架ID
+ * @param int $rackId 库位架ID
  * @return bool 操作是否成功
  */
 function addToRack($packageId, $rackId) {
@@ -753,22 +846,13 @@ function addToRack($packageId, $rackId) {
         return false;
     }
     
-    // 先将目标库位中所有现有包的位置号加1（向里移动）
-    $sql = "UPDATE glass_packages SET position_order = position_order + 1, updated_at = ? 
-            WHERE current_rack_id = ? AND id != ?";
-    query($sql, [date('Y-m-d H:i:s'), $rackId, $packageId]);
-    
-    // 将新包设置为位置1（最外面）
-    $sql = "UPDATE glass_packages SET position_order = 1, updated_at = ? WHERE id = ?";
-    query($sql, [date('Y-m-d H:i:s'), $packageId]);
-    
-    return true;
+    return assignPackagePosition($packageId, $rackId, true);
 }
 
 /**
- * 离开库位操作：移除包后重新整理位置顺序号（消除空隙，连续排列）
+ * 将包从指定库位架移除（重新整理位置顺序号）
  * @param int $rackId 库位架ID
- * @param int $packageId 离开的包ID（可选，如果不提供则重新整理整个库位）
+ * @param int $packageId 要移除的包ID（可选）
  * @return bool 操作是否成功
  */
 function removeFromRack($rackId, $packageId = null) {
@@ -776,91 +860,122 @@ function removeFromRack($rackId, $packageId = null) {
         return false;
     }
     
-    // 如果指定了包ID，先将其位置号设为NULL
     if ($packageId) {
-        $sql = "UPDATE glass_packages SET position_order = NULL WHERE id = ?";
-        query($sql, [$packageId]);
+        // 移除指定包
+        $sql = "UPDATE glass_packages SET position_order = 0, updated_at = ? 
+                WHERE id = ? AND current_rack_id = ?";
+        query($sql, [date('Y-m-d H:i:s'), $packageId, $rackId]);
     }
     
-    // 重新整理剩余包的位置顺序（1,2,3...连续排列，无空隙）
-    $sql = "SELECT id FROM glass_packages 
-            WHERE current_rack_id = ? 
-            AND status NOT IN ('used_up', 'scrapped') 
-            AND position_order IS NOT NULL
-            ORDER BY position_order ASC, created_at ASC";
-    $packages = fetchAll($sql, [$rackId]);
-    
-    // 重新分配连续的位置号
-    $position = 1;
-    foreach ($packages as $package) {
-        $updateSql = "UPDATE glass_packages SET position_order = ?, updated_at = ? WHERE id = ?";
-        query($updateSql, [$position, date('Y-m-d H:i:s'), $package['id']]);
-        $position++;
-    }
+    // 重新整理库位中剩余包的顺序号
+    reorderPackagePositions($rackId);
     
     return true;
 }
 
-
-
 /**
- * 验证基地权限
+ * 验证用户对指定基地的操作权限
  * @param array $currentUser 当前用户信息
  * @param array $package 包信息
- * @param array|null $fromRack 来源库位信息
- * @param array $targetRack 目标库位信息
+ * @param array $fromRack 源库位信息
+ * @param array $toRack 目标库位信息
  * @param string $transactionType 交易类型
- * @throws Exception 权限不足时抛出异常
+ * @param bool $allowCrossBase 是否允许跨基地操作
+ * @throws Exception 如果权限不足则抛出异常
  */
-function validateBasePermissions($currentUser, $package, $fromRack, $targetRack, $transactionType) {
-    $userRole = $currentUser['role'];
-    $userBaseId = $currentUser['base_id'];
-    
-    // 管理员拥有所有权限，跳过检查
-    if ($userRole === 'admin') {
+function validateBasePermissions($currentUser, $package, $fromRack, $toRack, $transactionType, $allowCrossBase = false) {
+    if ($currentUser['role'] === 'admin') {
         return;
     }
     
-    // 获取包当前所在基地ID
-    $packageCurrentBaseId = $package['current_base_id'];
-    $targetBaseId = $targetRack['base_id'];
+    $userBaseId = $currentUser['base_id'];
+    $userBaseName = $currentUser['base_name'] ?? '';
     
-    // 检查用户是否有权限操作当前包
-    if ($packageCurrentBaseId && $packageCurrentBaseId != $userBaseId) {
-        throw new Exception('权限不足：您只能操作本基地内的原片包');
+    // 检查用户是否有基地权限
+    if (empty($userBaseId) || $userBaseId === 0) {
+        throw new Exception('当前用户没有分配基地权限，请联系管理员');
     }
     
-    // 检查目标库位权限
-    if ($userRole === 'operator' || $userRole === 'viewer') {
-        // 操作员和查看者只能在本基地内操作
-        if ($targetBaseId != $userBaseId) {
-            throw new Exception('权限不足：您只能将原片包转移到本基地内的库位');
-        }
-    } else if ($userRole === 'manager') {
-        // 库管可以进行跨基地转移，但只能转移到其他基地的临时区
-        if ($targetBaseId != $userBaseId) {
-            // 跨基地操作，检查目标是否为临时区
-            if ($targetRack['area_type'] !== 'temporary') {
-                throw new Exception('权限不足：跨基地转移只能将原片包转移到目标基地的临时区');
+    // 获取包所在基地ID
+    $packageBaseId = null;
+    if ($fromRack && $fromRack['base_id']) {
+        $packageBaseId = $fromRack['base_id'];
+    } else if ($package['current_rack_id']) {
+        $sql = "SELECT base_id FROM storage_racks WHERE id = ?";
+        $result = fetchRow($sql, [$package['current_rack_id']]);
+        $packageBaseId = $result['base_id'] ?? null;
+    }
+    
+    // 获取目标基地ID
+    $targetBaseId = $toRack['base_id'] ?? null;
+    
+    // 权限验证逻辑
+    switch ($transactionType) {
+        case 'purchase_in':
+            // 采购入库：只能在当前用户基地内操作
+            if ($targetBaseId !== $userBaseId) {
+                throw new Exception('采购入库操作只能在您所属的基地（' . $userBaseName . '）内进行');
             }
+            break;
             
-            // 检查是否为支持的跨基地操作类型
-            $allowedCrossBaseTypes = ['location_adjust', 'purchase_in'];
-            if (!in_array($transactionType, $allowedCrossBaseTypes)) {
-                throw new Exception('权限不足：不支持的跨基地操作类型');
+        case 'usage_out':
+            // 领用出库：包必须在当前用户基地内
+            if ($packageBaseId !== $userBaseId) {
+                throw new Exception('只能从您所属的基地（' . $userBaseName . '）领用玻璃包');
             }
-        }
-    }
-    
-    // 特殊检查：从临时区转移到库存区只能由目标基地的库管执行
-    if ($fromRack && $fromRack['area_type'] === 'temporary' && 
-        $targetRack['area_type'] === 'storage' && 
-        $targetBaseId != $userBaseId) {
-        throw new Exception('权限不足：只有目标基地的库管才能将临时区的原片包转移到库存区');
+            if ($targetBaseId !== $userBaseId) {
+                throw new Exception('领用的目标库位必须在您所属的基地（' . $userBaseName . '）内');
+            }
+            break;
+            
+        case 'return_in':
+            // 归还入库：只能在当前用户基地内操作
+            if ($packageBaseId !== $userBaseId) {
+                throw new Exception('只能归还到您所属的基地（' . $userBaseName . '）');
+            }
+            if ($targetBaseId !== $userBaseId) {
+                throw new Exception('归还的目标库位必须在您所属的基地（' . $userBaseName . '）内');
+            }
+            break;
+            
+        case 'scrap':
+            // 报废操作：包必须在当前用户基地内
+            if ($packageBaseId !== $userBaseId) {
+                throw new Exception('只能报废您所属的基地（' . $userBaseName . '）内的玻璃包');
+            }
+            if ($targetBaseId !== $userBaseId) {
+                throw new Exception('报废的目标库位必须在您所属的基地（' . $userBaseName . '）内');
+            }
+            break;
+            
+        case 'location_adjust':
+            // 库位调整：默认要求包和目标库位都必须在当前用户基地内
+            // 如果允许跨基地操作，则跳过基地限制
+            if (!$allowCrossBase) {
+                if ($packageBaseId !== $userBaseId) {
+                    throw new Exception('只能调整您所属的基地（' . $userBaseName . '）内包的位置');
+                }
+                if ($targetBaseId !== $userBaseId) {
+                    throw new Exception('目标库位必须在您所属的基地（' . $userBaseName . '）内');
+                }
+            }
+            break;
+            
+        case 'check_in':
+        case 'check_out':
+            // 盘点操作：包和目标库位都必须在当前用户基地内
+            if ($packageBaseId !== $userBaseId) {
+                throw new Exception('只能盘点您所属的基地（' . $userBaseName . '）内的玻璃包');
+            }
+            if ($targetBaseId !== $userBaseId) {
+                throw new Exception('盘点操作的目标库位必须在您所属的基地（' . $userBaseName . '）内');
+            }
+            break;
+            
+        default:
+            throw new Exception('未知的交易类型：' . $transactionType);
     }
 }
-
-// ==================== 通用工具函数 ====================
 
 /**
  * 获取盘点类型文本
@@ -925,3 +1040,125 @@ function getNextCheckSequence($type) {
     $result = fetchRow($sql, [$operationType]);
     return ($result ? $result['count'] : 0) + 1;
 }
+/**
+ * 获取操作记录（分页查询）
+ * @param array $currentUser 当前用户信息
+ * @param array $params 查询参数
+ * @return array 查询结果
+ */
+function getOperationHistory($currentUser, $params) {
+    // 构建查询条件
+    $conditions = [];
+    $queryParams = [];
+    
+    // 日期范围条件
+    if ($params['start_date']) {
+        $conditions[] = "ior.operation_date >= ?";
+        $queryParams[] = $params['start_date'];
+    }
+    
+    if ($params['end_date']) {
+        $conditions[] = "ior.operation_date <= ?";
+        $queryParams[] = $params['end_date'];
+    }
+    
+    // 包号条件
+    if ($params['package_code']) {
+        $conditions[] = "gp.package_code LIKE ?";
+        $queryParams[] = '%' . $params['package_code'] . '%';
+    }
+    
+    // 操作类型条件
+    if ($params['operation_type']) {
+        $conditions[] = "ior.operation_type = ?";
+        $queryParams[] = $params['operation_type'];
+    }
+    
+    // 基地权限控制
+    if ($currentUser['role'] !== 'admin') {
+        // 非管理员根据用户的base_id来查询
+        if (!empty($currentUser['base_id'])) {
+            // 如果用户有base_id，则只查询该base_id的记录
+            $conditions[] = "ior.base_id = ?";
+            $queryParams[] = $currentUser['base_id'];
+        }
+        // 如果用户没有base_id，则查询全部记录（不添加base_id条件）
+    } elseif ($params['base_id']) {
+        $conditions[] = "ior.base_id = ?";
+        $queryParams[] = $params['base_id'];
+    }
+    
+    // 分页参数
+    $page = max(1, intval($params['page'] ?? 1));
+    $pageSize = max(1, min(100, intval($params['page_size'] ?? 20))); // 限制每页最多100条
+    $offset = ($page - 1) * $pageSize;
+    
+    // 获取总记录数
+    $countSql = "
+        SELECT COUNT(*) as total
+        FROM inventory_operation_records ior
+        LEFT JOIN glass_packages gp ON ior.package_id = gp.id
+    ";
+    
+    if (!empty($conditions)) {
+        $countSql .= " WHERE " . implode(' AND ', $conditions);
+    }
+    
+    $totalResult = fetchRow($countSql, $queryParams);
+    $totalRecords = $totalResult['total'] ?? 0;
+    $totalPages = ceil($totalRecords / $pageSize);
+    
+    // 查询记录
+    $sql = "
+        SELECT 
+            ior.id, ior.record_no, ior.operation_type, ior.package_id,
+            ior.glass_type_id, ior.base_id, ior.operation_quantity,
+            ior.before_quantity, ior.after_quantity, ior.from_rack_id,
+            ior.to_rack_id, ior.unit_area, ior.total_area, ior.operator_id,
+            ior.operation_date, ior.operation_time, ior.status,
+            ior.scrap_reason, ior.notes, ior.related_record_id,
+            ior.created_at, ior.updated_at,
+            gp.package_code, gt.name as glass_name, gt.thickness,
+            gt.color, gt.brand, b.name as base_name, u.real_name as operator_name,
+            fr.code as from_rack_code, tr.code as to_rack_code
+        FROM inventory_operation_records ior
+        LEFT JOIN glass_packages gp ON ior.package_id = gp.id
+        LEFT JOIN glass_types gt ON ior.glass_type_id = gt.id
+        LEFT JOIN bases b ON ior.base_id = b.id
+        LEFT JOIN users u ON ior.operator_id = u.id
+        LEFT JOIN storage_racks fr ON ior.from_rack_id = fr.id
+        LEFT JOIN storage_racks tr ON ior.to_rack_id = tr.id
+    ";
+    
+    if (!empty($conditions)) {
+        $sql .= " WHERE " . implode(' AND ', $conditions);
+    }
+    
+    $sql .= " ORDER BY ior.operation_date DESC, ior.operation_time DESC LIMIT ? OFFSET ?";
+    $queryParams[] = $pageSize;
+    $queryParams[] = $offset;
+    
+    $result = query($sql, $queryParams);
+    $records = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $records[] = $row;
+        }
+    }
+    
+    return [
+        'records' => $records,
+        'pagination' => [
+            'current_page' => $page,
+            'total_pages' => $totalPages,
+            'total_records' => $totalRecords,
+            'page_size' => $pageSize
+        ],
+        'time_range' => [
+            'start_date' => $params['start_date'],
+            'end_date' => $params['end_date']
+        ]
+    ];
+}
+
+?>

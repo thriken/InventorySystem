@@ -28,6 +28,25 @@ Authorization: Bearer your-token-here
 | action | string | 是 | 操作类型，固定为"get_package_info" | "get_package_info" |
 | package_code | string | 是 | 包编号 | "YP20240001" |
 
+**响应数据字段说明**:
+
+| 字段名 | 类型 | 描述 |
+|--------|------|------|
+| id | integer | 包ID |
+| package_code | string | 包编号 |
+| glass_name | string | 玻璃类型名称 |
+| short_name | string | 玻璃类型简称 |
+| pieces | integer | 实际片数 |
+| quantity | integer | 默认包装数量 |
+| specification | string | 规格（宽×高） |
+| entry_date | string | 入库日期 |
+| current_rack_code | string | 当前库位编码 |
+| current_rack_id | integer | 当前库位ID |
+| current_area_type | string | 当前区域类型 |
+| base_id | integer | 基地ID |
+| base_name | string | 基地名称 |
+| status | string | 包状态 |
+
 #### 请求示例
 
 ```http
@@ -43,15 +62,20 @@ GET /api/scan.php?action=get_package_info&package_code=YP20240001
     "message": "获取成功",
     "timestamp": 1698765432,
     "data": {
-        "package": {
-            "id": 1,
-            "package_code": "YP20240001",
-            "glass_type": "浮法玻璃",
-            "dimensions": "1200×2400mm",
-            "quantity": 100,
-            "current_rack": "A区货架",
-            "status": "库存中"
-        }
+        "id": 1,
+        "package_code": "YP20240001",
+        "glass_name": "4mm台玻白玻",
+        "short_name": "4白",
+        "pieces": 30,
+        "quantity": 0,
+        "specification": "1200×2400mm",
+        "entry_date": "2025-12-28",
+        "current_rack_code": "XF-N-8A",
+        "current_rack_id": 140,
+        "current_area_type": "storage",
+        "base_id": 2,
+        "base_name": "新丰基地",
+        "status": "库存中"
     }
 }
 ```
@@ -104,7 +128,7 @@ GET /api/scan.php?action=get_target_info&target_rack_code=R001&current_area_type
 }
 ```
 
-### 3. POST /api/scan.php - 执行库存流转操作
+### 4. POST /api/scan.php - 执行库存流转操作
 
 执行库存流转操作，支持入库、出库、转移、报废等操作。
 
@@ -134,6 +158,7 @@ Content-Type: application/json
 - `transfer`: 库内转移
 - `scrap`: 报废
 - `return`: 退库
+- `location_adjust`: 跨基地转移
 
 #### 请求示例
 
@@ -208,6 +233,164 @@ Authorization: Bearer your-token-here
 | `scrap` | 报废操作 | 原片报废 |
 | `return_in` | 退库操作 | 加工剩余退库 |
 | `location_adjust` | 库区转移 | 库区调整 |
+
+### 5. GET /api/scan.php?action=get_bases - 获取基地列表
+
+获取基地列表，根据用户权限自动过滤。
+
+#### 请求参数
+
+**请求头**:
+```http
+Authorization: Bearer your-token-here
+```
+
+**查询参数**:
+
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+|--------|------|------|------|------|
+| action | string | 是 | 固定值：get_bases | "get_bases" |
+
+#### 请求示例
+
+```http
+GET /api/scan.php?action=get_bases
+```
+
+#### 响应示例
+
+**成功响应 (200)**:
+```json
+{
+    "code": 200,
+    "message": "获取成功",
+    "timestamp": 1698765432,
+    "data": [
+        {
+            "id": 1,
+            "name": "总部基地",
+            "location": "总部"
+        },
+        {
+            "id": 2,
+            "name": "新丰基地",
+            "location": "新丰"
+        },
+        {
+            "id": 3,
+            "name": "金鱼基地",
+            "location": "金鱼"
+        }
+    ]
+}
+```
+
+**权限控制**:
+- **管理员**: 可查看所有基地
+- **普通用户**: 只能查看所属基地
+
+### 6. POST /api/scan.php?action=location_adjust - 跨基地转移
+
+将玻璃包从一个基地转移到另一个基地的临时库位，系统自动获取目标库位。
+
+#### 请求参数
+
+**请求头**:
+```http
+Authorization: Bearer your-token-here
+Content-Type: application/json
+```
+
+**请求体 (JSON)**:
+
+| 参数名 | 类型 | 必填 | 描述 | 示例 |
+|--------|------|------|------|------|
+| package_code | string | 是 | 包号 | "NT251226001" |
+| target_base_id | integer | 是 | 目标基地ID | 3 |
+
+> **注意**: 系统会自动获取目标基地的第一个可用临时库位，无需手动指定库位编码。
+
+#### 请求示例
+
+```bash
+curl -X POST 'http://your-domain/api/scan.php?action=location_adjust' \
+     -H 'Authorization: Bearer your-token' \
+     -H 'Content-Type: application/json' \
+     -d '{
+         "package_code": "NT251226001",
+         "target_base_id": 3
+     }'
+```
+
+```javascript
+const response = await fetch('/api/scan.php?action=location_adjust', {
+    method: 'POST',
+    headers: {
+        'Authorization': 'Bearer your-token',
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        package_code: 'NT251226001',
+        target_base_id: 3
+    })
+});
+
+const result = await response.json();
+if (result.code === 200) {
+    console.log('转移成功:', result.message);
+} else {
+    console.error('转移失败:', result.message);
+}
+```
+
+#### 响应示例
+
+**成功响应**:
+```json
+{
+    "code": 200,
+    "message": "库位调整操作成功完成！",
+    "timestamp": 1735276800,
+    "data": {
+        "package_code": "NT251226001",
+        "current_pieces": 35,
+        "from_base": {
+            "id": 2,
+            "name": "新丰基地"
+        },
+        "to_base": {
+            "id": 3,
+            "name": "金鱼基地"
+        },
+        "target_temp_rack": {
+            "id": 5,
+            "code": "JY-T-临时区",
+            "name": "临时区"
+        },
+        "transaction_type": "location_adjust",
+        "operator": "管理员"
+    }
+}
+```
+
+#### 业务规则
+
+1. **权限验证**: 只有库管可以执行跨基地转移
+2. **跨基地限制**: 目标基地必须与当前基地不同
+3. **自动库位**: 系统自动获取目标基地的第一个可用临时库位(`area_type = 'temporary'`)
+4. **转移数量**: 自动使用包的当前片数
+5. **备注生成**: 自动生成格式为"从{源基地名}转来"的备注
+6. **顺序号调整**: 源库位和目标库位的包顺序号都会自动重新整理
+
+#### 错误响应
+
+| 错误码 | 错误信息 | 描述 |
+|--------|----------|------|
+| 400 | 参数错误 | 请求参数格式或值不正确 |
+| 401 | 认证失败 | Token无效或已过期 |
+| 403 | 权限不足 | 非管理员用户尝试操作 |
+| 404 | 资源不存在 | 包、基地或临时库位不存在 |
+| 500 | 服务器错误 | 内部服务器错误 |
 
 
 
@@ -433,5 +616,5 @@ function handleScanResult(scanData) {
 
 ---
 
-*最后更新: 2025-11-01*  
+*最后更新: 2025-12-28*  
 *版本: 2.0*

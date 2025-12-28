@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($daysToKeep < 1) $daysToKeep = 30;
                 
                 $cutoffDate = date('Y-m-d', strtotime("-{$daysToKeep} days"));
-                $deletedCount = query("DELETE FROM inventory_transactions WHERE DATE(transaction_time) < ?", [$cutoffDate]);
+                $deletedCount = query("DELETE FROM inventory_operation_records WHERE DATE(operation_date) < ?", [$cutoffDate]);
                 
                 $message = "已清理 {$daysToKeep} 天前的日志，共删除 {$deletedCount} 条记录";
                 break;
@@ -180,7 +180,7 @@ if (file_exists('../backups')) {
 $stats = [
     'total_users' => fetchOne("SELECT COUNT(*) FROM users") ?: 0,
     'total_packages' => fetchOne("SELECT COUNT(*) FROM glass_packages") ?: 0,
-    'total_transactions' => fetchOne("SELECT COUNT(*) FROM inventory_transactions") ?: 0,
+    'total_transactions' => fetchOne("SELECT COUNT(*) FROM inventory_operation_records") ?: 0,
     'database_size' => fetchOne("SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) FROM information_schema.tables WHERE table_schema = '" . DB_NAME . "'") ?: 0,
     'active_users' => fetchOne("SELECT COUNT(*) FROM users WHERE status = 1") ?: 0,
     'storage_packages' => fetchOne("SELECT COUNT(*) FROM glass_packages WHERE status = 'in_storage'") ?: 0,

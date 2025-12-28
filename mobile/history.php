@@ -37,17 +37,17 @@ if (!empty($search)) {
 }
 
 if (!empty($dateFrom)) {
-    $whereConditions[] = "DATE(it.transaction_time) >= ?";
+    $whereConditions[] = "DATE(it.operation_date) >= ?";
     $params[] = $dateFrom;
 }
 
 if (!empty($dateTo)) {
-    $whereConditions[] = "DATE(it.transaction_time) <= ?";
+    $whereConditions[] = "DATE(it.operation_date) <= ?";
     $params[] = $dateTo;
 }
 
 if (!empty($transactionType)) {
-    $whereConditions[] = "it.transaction_type = ?";
+    $whereConditions[] = "it.operation_type = ?";
     $params[] = $transactionType;
 }
 
@@ -55,7 +55,7 @@ $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereCond
 
 // 获取总记录数
 $countSql = "SELECT COUNT(*) as total 
-             FROM inventory_transactions it 
+             FROM inventory_operation_records it 
              LEFT JOIN glass_packages gp ON it.package_id = gp.id 
              LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id 
              $whereClause";
@@ -69,7 +69,7 @@ $sql = "SELECT it.*, gp.package_code, gt.name as glass_name, gt.color, gt.thickn
                sr_to.code as to_rack_code, sr_to.area_type as to_area_type,
                b_from.name as from_base_name, b_to.name as to_base_name,
                u.real_name as operator_name
-        FROM inventory_transactions it 
+        FROM inventory_operation_records it 
         LEFT JOIN glass_packages gp ON it.package_id = gp.id 
         LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id 
         LEFT JOIN storage_racks sr_from ON it.from_rack_id = sr_from.id 
@@ -78,7 +78,7 @@ $sql = "SELECT it.*, gp.package_code, gt.name as glass_name, gt.color, gt.thickn
         LEFT JOIN bases b_to ON sr_to.base_id = b_to.id 
         LEFT JOIN users u ON it.operator_id = u.id 
         $whereClause 
-        ORDER BY it.transaction_time DESC 
+        ORDER BY it.created_at DESC 
         LIMIT $limit OFFSET $offset";
 
 $transactions = fetchAll($sql, $params);
@@ -416,11 +416,11 @@ $areaTypes = [
                 <?php foreach ($transactions as $transaction): ?>
                     <div class="transaction-item">
                         <div class="transaction-header">
-                            <span class="transaction-type type-<?php echo $transaction['transaction_type']; ?>">
-                                <?php echo $transactionTypes[$transaction['transaction_type']] ?? $transaction['transaction_type']; ?>
+                            <span class="transaction-type type-<?php echo $transaction['operation_type']; ?>">
+                                <?php echo $transactionTypes[$transaction['operation_type']] ?? $transaction['operation_type']; ?>
                             </span>
                             <span class="transaction-time">
-                                <?php echo date('Y-m-d H:i:s', strtotime($transaction['transaction_time'])); ?>
+                                <?php echo date('Y-m-d H:i:s', strtotime($transaction['created_at'])); ?>
                             </span>
                         </div>
 
@@ -451,7 +451,7 @@ $areaTypes = [
                             </div>
 
                             <div class="quantity-info">
-                                数量: <?php echo $transaction['quantity']; ?> 片
+                                数量: <?php echo $transaction['operation_quantity']; ?> 片
                                 <?php if ($transaction['operator_name']): ?>
                                     | 操作员: <?php echo htmlspecialchars($transaction['operator_name']); ?>
                                 <?php endif; ?>

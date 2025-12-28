@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // 检查是否有关联的交易记录
-            $transactions = fetchRow("SELECT COUNT(*) as count FROM inventory_transactions WHERE operator_id = ?", [$id]);
+            $transactions = fetchRow("SELECT COUNT(*) as count FROM inventory_operation_records WHERE operator_id = ?", [$id]);
             if ($transactions['count'] > 0) {
                 throw new Exception('该用户有交易记录，无法删除');
             }

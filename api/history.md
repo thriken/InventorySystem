@@ -47,15 +47,15 @@ Authorization: Bearer {token}
 
 | 角色 | 时间限制 | 默认范围 | 可查所有基地 | 基地限制 |
 |------|----------|----------|-------------|----------|
-| admin | 无限制 | 最近30天 | ✅ | 无限制 |
-| manager | 本月1日开始 | 当月1日至今 | ❌ | 只能查询所属基地 |
+| admin | 无限制 | 最近7天 | ✅ | 无限制 |
+| manager | 最多365天 | 最近7天 | ❌ | 只能查询所属基地 |
 | viewer | 最多7天 | 最近7天 | ❌ | 只能查询所属基地 |
 | operator | 最多7天 | 最近7天 | ❌ | 只能查询所属基地 |
 
 ### 权限说明
 
-- **超管(admin)**: 可查询所有基地的所有记录，时间无限制
-- **库管(manager)**: 可查询本月开始的本基地记录
+- **管理员(admin)**: 可查询所有基地的所有记录，时间无限制，可指定基地筛选
+- **库管(manager)**: 可查询最多365天内的本基地记录
 - **查看者(viewer)**: 最多查询7天内的本基地记录
 - **操作员(operator)**: 最多查询7天内的本基地记录
 
@@ -72,35 +72,36 @@ Authorization: Bearer {token}
     "records": [
       {
         "id": 1,
-        "record_no": "IN202412270001",
+        "record_no": "CG202412270001",
         "operation_type": "purchase_in",
-        "operation_type_name": "采购入库",
-        "operation_quantity": 50,
-        "operation_date": "2024-12-27",
-        "operation_time": "09:30:00",
-        "notes": "新批次入库",
-        "created_at": "2024-12-27 09:30:00",
-        "package_info": {
-          "package_code": "GP20241227001",
-          "glass_name": "浮法玻璃",
-          "glass_thickness": 5.0,
-          "glass_color": "透明"
-        },
-        "location_info": {
-          "from_rack": null,
-          "to_rack": {
-            "code": "S-A01",
-            "name": "库存A区1号架"
-          }
-        },
-        "base_name": "总部基地",
-        "operator_name": "张三",
-        "quantity_info": {
-          "before_quantity": 0,
-          "after_quantity": 50,
-          "unit_area": 2.4,
-          "total_area": 120.0
-        }
+        "package_id": 160,
+        "glass_type_id": 67,
+        "base_id": 2,
+        "operation_quantity": 35,
+        "before_quantity": 35,
+        "after_quantity": 35,
+        "from_rack_id": null,
+        "to_rack_id": 140,
+        "unit_area": 8.93,
+        "total_area": 312.56,
+        "operator_id": 5,
+        "operation_date": "2025-12-28",
+        "operation_time": "09:58:53",
+        "status": "completed",
+        "scrap_reason": null,
+        "notes": null,
+        "related_record_id": null,
+        "created_at": "2025-12-28 09:58:53",
+        "updated_at": "2025-12-28 09:58:53",
+        "package_code": "NT251226001",
+        "glass_name": "4mm台玻白玻",
+        "thickness": 4.00,
+        "color": "白玻",
+        "brand": "台玻",
+        "base_name": "新丰基地",
+        "operator_name": "新丰库管",
+        "from_rack_code": null,
+        "to_rack_code": "XF-N-8A"
       }
     ],
     "pagination": {
@@ -156,45 +157,34 @@ Authorization: Bearer {token}
 | id | integer | 记录唯一标识 |
 | record_no | string | 记录单号 |
 | operation_type | string | 操作类型代码 |
-| operation_type_name | string | 操作类型中文名称 |
+| package_id | integer | 包ID |
+| glass_type_id | integer | 玻璃类型ID |
+| base_id | integer | 基地ID |
 | operation_quantity | integer | 操作数量 |
-| operation_date | string | 操作日期(YYYY-MM-DD) |
-| operation_time | string | 操作时间(HH:mm:ss) |
-| notes | string | 备注信息 |
-| created_at | string | 创建时间 |
-
-### 包信息对象(package_info)
-
-| 字段名 | 类型 | 描述 |
-|--------|------|------|
-| package_code | string | 包号 |
-| glass_name | string | 玻璃名称 |
-| glass_thickness | float | 厚度(mm) |
-| glass_color | string | 颜色 |
-
-### 位置信息对象(location_info)
-
-| 字段名 | 类型 | 描述 |
-|--------|------|------|
-| from_rack | object | 来源库位信息 |
-| to_rack | object | 目标库位信息 |
-
-库位信息结构：
-```json
-{
-  "code": "S-A01",
-  "name": "库存A区1号架"
-}
-```
-
-### 数量信息对象(quantity_info)
-
-| 字段名 | 类型 | 描述 |
-|--------|------|------|
 | before_quantity | integer | 操作前数量 |
 | after_quantity | integer | 操作后数量 |
+| from_rack_id | integer | 来源库位ID |
+| to_rack_id | integer | 目标库位ID |
 | unit_area | float | 单片面积(平方米) |
 | total_area | float | 总面积(平方米) |
+| operator_id | integer | 操作员ID |
+| operation_date | string | 操作日期(YYYY-MM-DD) |
+| operation_time | string | 操作时间(HH:mm:ss) |
+| status | string | 操作状态 |
+| scrap_reason | string | 报废原因 |
+| notes | string | 备注信息 |
+| related_record_id | integer | 关联记录ID |
+| created_at | string | 创建时间 |
+| updated_at | string | 更新时间 |
+| package_code | string | 包号 |
+| glass_name | string | 玻璃名称 |
+| thickness | float | 厚度(mm) |
+| color | string | 颜色 |
+| brand | string | 品牌 |
+| base_name | string | 基地名称 |
+| operator_name | string | 操作员姓名 |
+| from_rack_code | string | 来源库位编码 |
+| to_rack_code | string | 目标库位编码 |
 
 ## 使用示例
 
