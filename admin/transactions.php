@@ -139,26 +139,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // 构建查询条件
 $params = [];
 
-// 获取交易记录 - 移除areas相关的JOIN和字段
-$sql = "SELECT t.*, gp.package_code, gt.name as glass_name, gt.thickness, gt.color,
-               u.real_name as operator_name, u.username as operator_username,
-               fr.code as from_rack_code,
-               tr.code as to_rack_code , t.notes as notes
-        FROM inventory_transactions t
-        LEFT JOIN glass_packages gp ON t.package_id = gp.id
-        LEFT JOIN glass_types gt ON gp.glass_type_id = gt.id
-        LEFT JOIN users u ON t.operator_id = u.id
-        LEFT JOIN storage_racks fr ON t.from_rack_id = fr.id
-        LEFT JOIN storage_racks tr ON t.to_rack_id = tr.id
-        ORDER BY t.transaction_time DESC";
+// 使用新的操作记录表查询
+$sql = "SELECT 
+            ior.id,
+            ior.record_no,
+            ior.operation_type,
+            ior.operation_quantity,
+            ior.operation_date,
+            ior.operation_time,
+            ior.notes,
+            ior.created_at,
+            
+            gp.package_code, 
+            gt.name as glass_name, 
+            gt.thickness, 
+            gt.color,
+            gt.thickness as glass_thickness,
+            gt.color as glass_color,
+            
+            u.real_name as operator_name, 
+            u.username as operator_username,
+            
+            from_rack.code as from_rack_code,
+            from_rack.name as from_rack_name,
+            to_rack.code as to_rack_code,
+            to_rack.name as to_rack_name,
+            
+            b.name as base_name,
+            
+            ior.before_quantity,
+            ior.after_quantity,
+            ior.unit_area,
+            ior.total_area
+        FROM inventory_operation_records ior
+        LEFT JOIN glass_packages gp ON ior.package_id = gp.id
+        LEFT JOIN glass_types gt ON ior.glass_type_id = gt.id
+        LEFT JOIN users u ON ior.operator_id = u.id
+        LEFT JOIN storage_racks from_rack ON ior.from_rack_id = from_rack.id
+        LEFT JOIN storage_racks to_rack ON ior.to_rack_id = to_rack.id
+        LEFT JOIN bases b ON ior.base_id = b.id
+        ORDER BY ior.operation_date DESC, ior.operation_time DESC";
 $transactions = fetchAll($sql, $params);
 
-// 获取统计数据 - 修正表名
+// 获取统计数据 - 使用新的操作记录表
 $stats = [
-    'today_transactions' => fetchOne("SELECT COUNT(*) FROM inventory_transactions WHERE DATE(transaction_time) = CURDATE()"),
-    'total_transactions' => fetchOne("SELECT COUNT(*) FROM inventory_transactions"),
-    'purchase_in_today' => fetchOne("SELECT COUNT(*) FROM inventory_transactions WHERE transaction_type = 'purchase_in' AND DATE(transaction_time) = CURDATE()"),
-    'usage_out_today' => fetchOne("SELECT COUNT(*) FROM inventory_transactions WHERE transaction_type = 'usage_out' AND DATE(transaction_time) = CURDATE()")
+    'today_transactions' => fetchOne("SELECT COUNT(*) FROM inventory_operation_records WHERE DATE(created_at) = CURDATE()"),
+    'total_transactions' => fetchOne("SELECT COUNT(*) FROM inventory_operation_records"),
+    'purchase_in_today' => fetchOne("SELECT COUNT(*) FROM inventory_operation_records WHERE operation_type = 'purchase_in' AND DATE(created_at) = CURDATE()"),
+    'usage_out_today' => fetchOne("SELECT COUNT(*) FROM inventory_operation_records WHERE operation_type = 'usage_out' AND DATE(created_at) = CURDATE()")
 ];
 ob_start();
 ?>
@@ -210,15 +238,27 @@ ob_start();
             <?php else: ?>
                 <?php foreach ($transactions as $transaction): ?>
                     <tr>
-                        <td><?php echo date('Y-m-d H:i:s', strtotime($transaction['transaction_time'])); ?></td>
+                        <td><?php echo $transaction['operation_date'] . ' ' . $transaction['operation_time']; ?></td>
                         <td><?php echo htmlspecialchars($transaction['package_code']); ?></td>
                         <td>
                             <?php echo htmlspecialchars($transaction['glass_name']); ?><br>
-                            <small><?php echo htmlspecialchars($transaction['thickness'] . 'mm ' . $transaction['color']); ?></small>
+                            <small><?php echo htmlspecialchars($transaction['glass_thickness'] . 'mm ' . $transaction['glass_color']); ?></small>
                         </td>
                         <td>
-                            <span class="status-badge status-<?php echo $transaction['transaction_type']; ?>">
-                                <?php echo htmlspecialchars($transactionTypes[$transaction['transaction_type']]); ?>
+                            <span class="status-badge status-<?php echo $transaction['operation_type']; ?>">
+                                <?php 
+                                $operationTypeNames = [
+                                    'purchase_in' => '采购入库',
+                                    'usage_out' => '领用出库', 
+                                    'partial_usage' => '部分领用',
+                                    'return_in' => '归还入库',
+                                    'scrap' => '报废',
+                                    'check_in' => '盘盈',
+                                    'check_out' => '盘亏',
+                                    'location_adjust' => '库位调整',
+                                ];
+                                echo htmlspecialchars($operationTypeNames[$transaction['operation_type']] ?? $transaction['operation_type']); 
+                                ?>
                             </span>
                         </td>
                         <td>
@@ -229,12 +269,10 @@ ob_start();
                             <?php endif; ?>
                         </td>
                         <td><?php echo htmlspecialchars($transaction['to_rack_code']); ?></td>
-                        <td><?php echo $transaction['quantity']; ?></td>
+                        <td><?php echo $transaction['operation_quantity']; ?></td>
                         <td><?php echo htmlspecialchars($transaction['operator_name'] ?: $transaction['operator_username']); ?></td>
                         <td>
-                            <?php if ($transaction['scrap_reason']): ?>
-                                <strong>报废原因:</strong> <?php echo htmlspecialchars($transaction['scrap_reason']); ?>
-                            <?php elseif ($transaction['notes']): ?>
+                            <?php if ($transaction['notes']): ?>
                                 <span><?php echo htmlspecialchars($transaction['notes']); ?></span>
                             <?php else: ?>
                                 <span style="color: #999;">-</span>

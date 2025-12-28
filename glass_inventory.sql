@@ -128,7 +128,7 @@ PRIMARY KEY (`id`)) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE utf8mb4_unic
 -- glass_inventory.inventory_operation_records DDL
 CREATE TABLE `glass_inventory`.`inventory_operation_records` (`id` INT(11) NOT NULL AUTO_INCREMENT,
 `record_no` VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL Comment "记录单号（自动生成）",
-`operation_type` ENUM("purchase_in","usage_out","partial_usage","return_in","scrap","check_in","check_out") CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL Comment "操作类型",
+`operation_type` ENUM("purchase_in","usage_out","return_in","scrap","partial_usage","location_adjust","check_in","check_out") CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL Comment "操作类型",
 `package_id` INT(11) NOT NULL Comment "原片包ID",
 `glass_type_id` INT(11) NOT NULL Comment "原片类型ID",
 `base_id` INT(11) NOT NULL Comment "操作基地ID",
