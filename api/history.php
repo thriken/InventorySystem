@@ -118,7 +118,7 @@ function validateHistoryParams($params, $currentUser) {
     
     // 验证操作类型
     if ($params['operation_type']) {
-        $validTypes = ['purchase_in', 'usage_out', 'partial_usage', 'return_in', 'scrap', 'check_in', 'check_out'];
+        $validTypes = ['purchase_in', 'usage_out', 'partial_usage', 'return_in', 'scrap', 'check_in', 'check_out', 'location_adjust'];
         if (!in_array($params['operation_type'], $validTypes)) {
             throw new Exception('无效的操作类型');
         }
@@ -170,7 +170,8 @@ function getAvailableOperationTypes() {
         ['value' => 'return_in', 'label' => '归还入库'],
         ['value' => 'scrap', 'label' => '报废'],
         ['value' => 'check_in', 'label' => '盘盈'],
-        ['value' => 'check_out', 'label' => '盘亏']
+        ['value' => 'check_out', 'label' => '盘亏'],
+        ['value' => 'location_adjust', 'label' => '库位转移']
     ];
 }
 

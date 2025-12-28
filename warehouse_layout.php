@@ -287,7 +287,7 @@ function renderJinyuBaseLayout( $rackInventory, $highlightRacks) {
                 <!-- 上方 A+B 区域 -->
                 <div class="top-racks" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px;">
                     <!-- 第一行: 24-21 -->
-                    <div style="display: flex; gap: 20px; justify-content: center;">
+                    <div style="display: flex; gap: 20px; justify-content: flex-start;">
                         <?php
                         for ($i = 20; $i <= 22; $i++) {
                              echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
@@ -357,7 +357,7 @@ function renderJinyuBaseLayout( $rackInventory, $highlightRacks) {
                         ?>
                     </div>
                     <!-- 第三组: 9-7 -->
-                    <div style="display: flex; gap: 20px; justify-content: center;">
+                    <div style="display: flex; gap: 20px; justify-content: flex-end;">
                          <?php
                         for ($i = 7; $i >= 5; $i--) {
                              echo '<div class="rack-pair" style="display: flex; gap: 2px;">';
@@ -376,8 +376,10 @@ function renderJinyuBaseLayout( $rackInventory, $highlightRacks) {
                 <!-- 垂直通道箭头 -->
                  <div style="width: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
                     <div style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 20px solid #666;"></div>
-                    <div style="width: 2px; height: 100%; background: #666;"></div>
-                    <div style="background: #fff; padding: 10px 0; z-index: 1; writing-mode: vertical-rl; font-weight: bold; font-size: 18px;">通道</div>
+                    <div style="width: 40px; height: 100%; background: #fff;border:1px solid;margin:20px 0">
+                        <div style="padding-top:25vh;margin-left:7px; writing-mode: vertical-rl; font-weight: bold; font-size: 18px;">通道</div>
+                    </div>
+                    
                     <div style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 20px solid #666;"></div>
                  </div>
 
@@ -389,6 +391,17 @@ function renderJinyuBaseLayout( $rackInventory, $highlightRacks) {
                         echo renderVerticalRackPair($code . 'A', $code . 'B', $rackInventory, $highlightRacks);
                     }
                     ?>
+                    <div>
+                        <br/><br/><br/><br/>
+                    </div>
+                    <div class="vertical-rack-group">
+                    <?php
+                    for ($i = 31; $i < 35; $i++) {
+                         $code = ($i < 10) ? '0' . $i : $i;
+                        echo renderVerticalRackPair($code . 'A', $code . 'B', $rackInventory, $highlightRacks);
+                    }
+                    ?>
+                 </div>
                  </div>
                  <div class="vertical-rack-group">
                     <?php
@@ -397,7 +410,17 @@ function renderJinyuBaseLayout( $rackInventory, $highlightRacks) {
                         echo renderVerticalRackPair($code . 'A', $code . 'B', $rackInventory, $highlightRacks);
                     }
                     ?>
+                    <div class="vertical-rack-group">
+                    <?php
+                    for ($i = 35; $i <= 38; $i++) {
+                         $code = ($i < 10) ? '0' . $i : $i;
+                        echo renderVerticalRackPair($code . 'A', $code . 'B', $rackInventory, $highlightRacks);
+                    }
+                    ?>
                  </div>
+                 </div>
+                 
+                 
             </div>
 
         </div>

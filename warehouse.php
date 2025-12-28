@@ -252,6 +252,7 @@ ob_start();
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
+            min-width: 1900px;
         }
         
         .header {
@@ -412,7 +413,7 @@ ob_start();
         
         
         .rack {
-            width: 45px;
+            width: 40px;
             height: 55px;
             border: 2px solid #ddd;
             border-radius: 6px;
@@ -524,7 +525,7 @@ ob_start();
         .middle-area {
             display: flex;
             justify-content: space-between;
-            width: 1600px;
+            width: 1440px;
             align-items: center;
         }
         
@@ -562,7 +563,7 @@ ob_start();
             display: flex;
             justify-content: space-between;
             width: 100%;
-            max-width: 1600px;
+            max-width: 1440px;
             align-items: flex-start;
         }
         
