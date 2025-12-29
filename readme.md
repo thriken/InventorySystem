@@ -3,14 +3,13 @@
 ## 项目概述
 
 **系统名称**: 原片实时库存系统  
-**版本**: 2.0.0  
+**版本**: 1.1 Final
 **开发语言**: PHP 7.4+ + MySQL 5.7+ + HTML5/CSS3/JavaScript  
 **适用场景**: 玻璃制造企业的原片库存管理  
 **支持设备**: PC端管理 + 移动端操作 + API接口  
 
 ## 配套应用
-- **移动端APK**: v1.0.22 [https://github.com/thriken/StockApp/releases/tag/v1.0.22](https://github.com/thriken/StockApp/releases/tag/v1.0.22)
--                v1.1.32 [https://github.com/thriken/StockApp/releases/tag/v1.1.32](https://github.com/thriken/StockApp/releases/tag/v1.1.32)
+- **移动端APK**: v1.1.32 [https://github.com/thriken/StockApp/releases/tag/v1.1.32](https://github.com/thriken/StockApp/releases/tag/v1.1.32)
 - **API文档**: 支持RESTful接口，便于第三方系统集成
 
 ## 系统特点
