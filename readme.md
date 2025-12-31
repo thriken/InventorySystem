@@ -3,7 +3,7 @@
 ## 项目概述
 
 **系统名称**: 原片实时库存系统  
-**版本**: 1.1 Final
+**版本**: 1.1 Final 
 **开发语言**: PHP 7.4+ + MySQL 5.7+ + HTML5/CSS3/JavaScript  
 **适用场景**: 玻璃制造企业的原片库存管理  
 **支持设备**: PC端管理 + 移动端操作 + API接口  
@@ -203,8 +203,24 @@
 2. 创建MySQL数据库并导入glass_inventory.sql
 3. 导入盘点功能表：导入inventory_check_tables.sql
 4. 修改config/database.php中的数据库连接信息
-5. 设置temp/和backups/目录的写入权限
+5. **设置以下目录的写入权限**：
+   - `temp/` - 临时文件目录
+   - `backups/` - 备份文件目录
+   - `api/` - API日志目录（如需使用调试功能）
 6. 访问系统进行初始化配置
+
+### 目录权限设置
+```bash
+# Linux/MacOS
+chmod 755 temp
+chmod 755 backups
+chmod 755 api
+
+# 确保Web服务器用户有写入权限
+chown -R www-data:www-data temp backups api  # Apache
+# 或
+chown -R nginx:nginx temp backups api      # Nginx
+```
 
 ### 默认账号
 - 用户名：admin

@@ -8,7 +8,8 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 function debug_log($message) {
     $logFile = __DIR__ . '/debug_inventory.log';
     $timestamp = date('Y-m-d H:i:s');
-    file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND | LOCK_EX);
+    // 使用 @ 抑制错误，如果文件无法写入则静默失败
+    @file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND | LOCK_EX);
 }
 
 // 处理OPTIONS请求
@@ -137,15 +138,19 @@ function handleGetTask() {
     }
     
     // 获取待盘点包列表
-    $sql = "SELECT c.id as cache_id, c.package_code, c.package_id, c.system_quantity, 
+    $sql = "SELECT c.id as cache_id, c.package_code, c.package_id, c.system_quantity,
                    c.check_quantity, c.check_time, p.glass_type_id, g.name as glass_name,
-                   p.pieces, r.name as rack_name
+                   p.pieces, r.name as rack_name, r.area_type as rack_area_type,
+                   CAST(r.name AS UNSIGNED) as rack_name_numeric
             FROM inventory_check_cache c
             JOIN glass_packages p ON c.package_id = p.id
             JOIN glass_types g ON p.glass_type_id = g.id
             LEFT JOIN storage_racks r ON p.current_rack_id = r.id
             WHERE c.task_id = ? AND c.check_quantity = 0
-            ORDER BY c.package_code";
+            ORDER BY
+                r.area_type ASC,
+                CAST(r.name AS UNSIGNED) ASC,
+                c.package_code ASC";
     
     $packages = fetchAll($sql, [$taskId]);
     

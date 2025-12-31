@@ -375,9 +375,11 @@ function showTaskDetails() {
         }
     }
     
-    // 获取盘点明细 - 未盘点的包排在前面，已盘点的按时间倒序
-    $sql = "SELECT c.*, g.name AS glass_name, 
-                   r.code AS rack_code, r_current.code AS current_rack_code,
+    // 获取盘点明细 - 按盘点状态、库位类型、库位编号排序
+    $sql = "SELECT c.*, g.name AS glass_name,
+                   r.code AS rack_code, r.area_type AS rack_area_type,
+                   CAST(r.name AS UNSIGNED) AS rack_name_numeric,
+                   r_current.code AS current_rack_code,
                    u.real_name AS operator_name
             FROM inventory_check_cache c
             LEFT JOIN glass_packages p ON c.package_id = p.id
@@ -386,14 +388,22 @@ function showTaskDetails() {
             LEFT JOIN storage_racks r_current ON p.current_rack_id = r_current.id
             LEFT JOIN users u ON c.operator_id = u.id
             WHERE c.task_id = ?
-            ORDER BY 
-                CASE 
-                    WHEN c.check_quantity = 0 THEN 0 
-                    ELSE 1 
+            ORDER BY
+                CASE
+                    WHEN c.check_quantity = 0 THEN 0
+                    ELSE 1
                 END ASC,
-                CASE 
+                CASE
+                    WHEN c.check_quantity = 0 THEN 1
+                    ELSE r.area_type
+                END ASC,
+                CASE
+                    WHEN c.check_quantity = 0 THEN 1
+                    ELSE CAST(r.name AS UNSIGNED)
+                END ASC,
+                CASE
                     WHEN c.check_quantity = 0 THEN c.package_code
-                    ELSE c.check_time 
+                    ELSE c.check_time
                 END DESC";
     
     $details = fetchAll($sql, [$taskId]);
