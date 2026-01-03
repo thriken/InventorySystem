@@ -439,7 +439,7 @@ ob_start();
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
                     
                     // 添加玻璃名称（支持换行）
-                    const glassNamePreview<?php echo $package['id']; ?> = "<?php echo addslashes($package['glass_short_name'] ?: $package['glass_name']); ?>";
+                    const glassNamePreview<?php echo $package['id']; ?> = "<?php echo addslashes( $package['glass_name']); ?>";
                     // 长名称处理：如果超过10个字符则分成两行
                     let displayNamePreview<?php echo $package['id']; ?> = glassNamePreview<?php echo $package['id']; ?>;
                     if (glassNamePreview<?php echo $package['id']; ?>.length > 10) {

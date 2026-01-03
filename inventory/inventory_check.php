@@ -494,14 +494,14 @@ function handleManualInput() {
             $rackId = intval($rackIds[$index] ?? 0);
             $syncRack = ($syncRacks[$index] ?? 0) == 1;
             $note = $notes[$index] ?? '';
-            
+
             // 获取系统数量
-            $systemQty = fetchRow("SELECT system_quantity FROM inventory_check_cache 
+            $systemQty = fetchRow("SELECT system_quantity FROM inventory_check_cache
                                   WHERE task_id = ? AND package_code = ?", [$taskId, $packageCode]);
-            
+
             if ($systemQty) {
                 $difference = $checkQuantity - $systemQty['system_quantity'];
-                
+
                 // 更新盘点数据
                 $updateData = [
                     'check_quantity' => $checkQuantity,
@@ -512,26 +512,38 @@ function handleManualInput() {
                     'operator_id' => $userId,
                     'notes' => $note
                 ];
-                
+
+                // 如果盘点数量为0，将包状态更新为 used_up（已用完）
+                if ($checkQuantity === 0) {
+                    $packageUpdate = update('glass_packages',
+                        ['status' => 'used_up'],
+                        'package_code = ?',
+                        [$packageCode]);
+
+                    if ($packageUpdate > 0) {
+                        $updateData['notes'] = ($note ? $note . "\n" : '') . "盘点发现已用完，状态更新为：已用完";
+                    }
+                }
+
                 if ($rackId && $syncRack) {
                     // 如果选择了同步库位，在备注中记录
                     $rackInfo = fetchRow("SELECT code FROM storage_racks WHERE id = ?", [$rackId]);
-                    $updateData['notes'] = ($note ? $note . "\n" : '') . "盘点时同步更新库位到：" . $rackInfo['code'];
-                    
+                    $updateData['notes'] = ($updateData['notes'] ? $updateData['notes'] . "\n" : '') . "盘点时同步更新库位到：" . $rackInfo['code'];
+
                     // 同步更新包的实际库位
-                    $packageUpdate = update('glass_packages', 
-                        ['current_rack_id' => $rackId], 
-                        'package_code = ?', 
+                    $packageUpdate = update('glass_packages',
+                        ['current_rack_id' => $rackId],
+                        'package_code = ?',
                         [$packageCode]);
-                    
+
                     if ($packageUpdate > 0) {
                         $rackUpdateCount++;
                     }
                 }
-                
-                update('inventory_check_cache', $updateData, 
+
+                update('inventory_check_cache', $updateData,
                        'task_id = ? AND package_code = ?', [$taskId, $packageCode]);
-                
+
                 $updatedCount++;
             }
         }
@@ -786,50 +798,91 @@ function getCompletionPreview($taskId) {
  */
 function processRackAdjustments($taskId) {
     $adjustmentCount = 0;
-    
+
+    // 获取当前用户
+    $currentUser = [
+        'id' => $_SESSION['user_id'] ?? 1,
+        'role' => $_SESSION['role'] ?? 'admin'
+    ];
+
     // 获取需要调整库位的包
     $adjustments = fetchAll("
-        SELECT 
+        SELECT
             c.package_code,
             c.rack_id as new_rack_id,
-            p.current_rack_id as original_rack_id
+            p.current_rack_id as original_rack_id,
+            p.id as package_id,
+            p.glass_type_id,
+            p.pieces
         FROM inventory_check_cache c
         LEFT JOIN glass_packages p ON c.package_id = p.id
-        WHERE c.task_id = ? AND c.rack_id IS NOT NULL 
+        WHERE c.task_id = ? AND c.rack_id IS NOT NULL
         AND p.current_rack_id != c.rack_id
     ", [$taskId]);
-    
+
     foreach ($adjustments as $adjustment) {
         // 在更新前，将原始库位信息保存到notes字段
-        $existingNote = fetchOne("SELECT notes FROM inventory_check_cache 
-                               WHERE task_id = ? AND package_code = ?", 
+        $existingNote = fetchOne("SELECT notes FROM inventory_check_cache
+                               WHERE task_id = ? AND package_code = ?",
                                [$taskId, $adjustment['package_code']]);
-        
-        $originalRack = fetchOne("SELECT code FROM storage_racks WHERE id = ?", 
+
+        $originalRack = fetchRow("SELECT code, base_id FROM storage_racks WHERE id = ?",
                               [$adjustment['original_rack_id']]);
-        
-        $newNote = "库位调整: 从 {$originalRack} 调整到新库位";
+
+        $newRack = fetchRow("SELECT code, base_id FROM storage_racks WHERE id = ?",
+                           [$adjustment['new_rack_id']]);
+
+        // 检查库位是否存在
+        if (!$originalRack || !$newRack) {
+            error_log("库位信息不完整: original={$adjustment['original_rack_id']}, new={$adjustment['new_rack_id']}");
+            continue;
+        }
+
+        $newNote = "盘点调整: 从 {$originalRack['code']} 调整到 {$newRack['code']}";
         if ($existingNote) {
             $newNote = $existingNote . "\n" . $newNote;
         }
-        
+
         // 更新缓存记录，保存库位调整信息
-        update('inventory_check_cache', 
-            ['notes' => $newNote], 
-            'task_id = ? AND package_code = ?', 
+        update('inventory_check_cache',
+            ['notes' => $newNote],
+            'task_id = ? AND package_code = ?',
             [$taskId, $adjustment['package_code']]);
-        
+
+        // 生成库位调整流转记录
+        $recordNo = generateOperationRecordNo('location_adjust');
+        $transactionData = [
+            'record_no' => $recordNo,
+            'operation_type' => 'location_adjust',
+            'package_id' => $adjustment['package_id'],
+            'glass_type_id' => $adjustment['glass_type_id'],
+            'base_id' => $newRack['base_id'],
+            'operation_quantity' => $adjustment['pieces'],
+            'before_quantity' => $adjustment['pieces'],
+            'after_quantity' => $adjustment['pieces'],
+            'from_rack_id' => $adjustment['original_rack_id'],
+            'to_rack_id' => $adjustment['new_rack_id'],
+            'unit_area' => 0,
+            'total_area' => 0,
+            'operator_id' => $currentUser['id'],
+            'operation_date' => date('Y-m-d'),
+            'operation_time' => date('H:i:s'),
+            'status' => 'completed',
+            'notes' => "盘点：库位调整，任务ID：{$taskId}"
+        ];
+        insert('inventory_operation_records', $transactionData);
+
         // 更新包的库位
-        $updateResult = update('glass_packages', 
-            ['current_rack_id' => $adjustment['new_rack_id']], 
-            'package_code = ?', 
+        $updateResult = update('glass_packages',
+            ['current_rack_id' => $adjustment['new_rack_id']],
+            'package_code = ?',
             [$adjustment['package_code']]);
-        
+
         if ($updateResult > 0) {
             $adjustmentCount++;
         }
     }
-    
+
     return $adjustmentCount;
 }
 
@@ -886,52 +939,80 @@ function processProfitLossAdjustments($taskId) {
 }
 
 /**
- * 生成库存流转记录（可选）
+ * 生成库存流转记录（可选）并实际更新库存
  */
 function generateInventoryTransactions($taskId) {
-    // 获取差异记录，需要关联获取glass_type_id
-    $differences = fetchAll("SELECT c.*, p.glass_type_id 
-                             FROM inventory_check_cache c 
+    require_once __DIR__ . '/../includes/inventory_operations.php';
+
+    // 获取当前用户
+    $currentUser = [
+        'id' => $_SESSION['user_id'] ?? 1,
+        'role' => $_SESSION['role'] ?? 'admin'
+    ];
+
+    // 获取差异记录
+    $differences = fetchAll("SELECT c.*, p.glass_type_id, p.current_rack_id, p.package_code, p.pieces
+                             FROM inventory_check_cache c
                              LEFT JOIN glass_packages p ON c.package_id = p.id
                              WHERE c.task_id = ? AND c.difference != 0", [$taskId]);
-    
+
     foreach ($differences as $diff) {
-        if ($diff['difference'] > 0) {
-            // 盘盈：生成入库记录
-            $transactionData = [
-                'record_no' => generateCheckRecordNo('IN'),
-                'operation_type' => 'check_in',
-                'package_id' => $diff['package_id'],
+        try {
+            // 构建包信息
+            $package = [
+                'id' => $diff['package_id'],
+                'package_code' => $diff['package_code'],
+                'pieces' => $diff['pieces'],
                 'glass_type_id' => $diff['glass_type_id'],
-                'base_id' => getTaskBaseId($taskId),
-                'operation_quantity' => $diff['difference'],
-                'before_quantity' => $diff['system_quantity'],
-                'after_quantity' => $diff['check_quantity'],
-                'operator_id' => $diff['operator_id'],
-                'operation_date' => date('Y-m-d'),
-                'operation_time' => date('H:i:s'),
-                'status' => 'completed',
-                'notes' => "盘点盈余+{$diff['difference']}，任务ID：{$taskId}"
+                'current_rack_id' => $diff['current_rack_id']
             ];
-            insert('inventory_operation_records', $transactionData);
-        } elseif ($diff['difference'] < 0) {
-            // 盘亏：生成出库记录
-            $transactionData = [
-                'record_no' => generateCheckRecordNo('OUT'),
-                'operation_type' => 'check_out',
-                'package_id' => $diff['package_id'],
-                'glass_type_id' => $diff['glass_type_id'],
-                'base_id' => getTaskBaseId($taskId),
-                'operation_quantity' => abs($diff['difference']),
-                'before_quantity' => $diff['system_quantity'],
-                'after_quantity' => $diff['check_quantity'],
-                'operator_id' => $diff['operator_id'],
-                'operation_date' => date('Y-m-d'),
-                'operation_time' => date('H:i:s'),
-                'status' => 'completed',
-                'notes' => "盘点亏损{$diff['difference']}，任务ID：{$taskId}"
-            ];
-            insert('inventory_operation_records', $transactionData);
+
+            if (!$package['current_rack_id']) {
+                error_log("包未分配库位: package_id={$diff['package_id']}");
+                continue;
+            }
+
+            // 获取目标库位信息
+            $targetRack = fetchRow("SELECT * FROM storage_racks WHERE id = ?", [$package['current_rack_id']]);
+
+            if (!$targetRack) {
+                error_log("库位不存在: rack_id={$package['current_rack_id']}");
+                continue;
+            }
+
+            if ($diff['difference'] > 0) {
+                // 盘盈：生成入库记录并更新库存
+                $recordNo = generateCheckRecordNo('IN');
+
+                processInventoryCheck(
+                    'check_in',
+                    $package,
+                    $targetRack,
+                    $diff['difference'],
+                    $recordNo,
+                    0,
+                    0,
+                    "盘点盈余+{$diff['difference']}，任务ID：{$taskId}",
+                    $currentUser
+                );
+            } elseif ($diff['difference'] < 0) {
+                // 盘亏：生成出库记录并更新库存
+                $recordNo = generateCheckRecordNo('OUT');
+
+                processInventoryCheck(
+                    'check_out',
+                    $package,
+                    $targetRack,
+                    abs($diff['difference']),
+                    $recordNo,
+                    0,
+                    0,
+                    "盘点亏损" . abs($diff['difference']) . "，任务ID：{$taskId}",
+                    $currentUser
+                );
+            }
+        } catch (Exception $e) {
+            error_log("生成库存流转记录失败: " . $e->getMessage());
         }
     }
 }

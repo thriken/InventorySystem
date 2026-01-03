@@ -129,29 +129,28 @@
     </div>
     
     <!-- 额外统计 -->
-    <?php 
-    // 获取库位调整明细数据（提前获取用于统计）
-    // 优先从notes字段提取库位调整信息，然后比较当前库位和盘点库位
+    <?php
+    // 获取库位调整明细数据（从 inventory_operation_records 表查询）
     $rackAdjustments = fetchAll("
-        SELECT 
-            c.package_code,
-            COALESCE(r_current.code, '未分配') as original_rack_code,
-            COALESCE(r_new.code, '未分配') as new_rack_code,
-            c.check_time,
+        SELECT
+            ior.record_no,
+            p.package_code,
+            r_from.code as original_rack_code,
+            r_to.code as new_rack_code,
+            ior.operation_date,
+            ior.operation_time,
             u.real_name as operator_name,
-            c.notes,
-            CASE WHEN c.notes LIKE '%库位调整:%' THEN 1 
-                 WHEN p.current_rack_id != c.rack_id THEN 1
-                 ELSE 0 END as has_adjustment
-        FROM inventory_check_cache c
-        LEFT JOIN glass_packages p ON c.package_id = p.id
-        LEFT JOIN storage_racks r_current ON p.current_rack_id = r_current.id
-        LEFT JOIN storage_racks r_new ON c.rack_id = r_new.id
-        LEFT JOIN users u ON c.operator_id = u.id
-        WHERE c.task_id = ? AND c.check_method = 'manual_input'
-        AND c.check_quantity > 0  -- 只显示已盘点的包
-        ORDER BY has_adjustment DESC, c.check_time DESC
-    ", [$task['id']]);
+            ior.notes
+        FROM inventory_operation_records ior
+        INNER JOIN glass_packages p ON ior.package_id = p.id
+        LEFT JOIN storage_racks r_from ON ior.from_rack_id = r_from.id
+        LEFT JOIN storage_racks r_to ON ior.to_rack_id = r_to.id
+        LEFT JOIN users u ON ior.operator_id = u.id
+        WHERE ior.operation_type = 'location_adjust'
+        AND ior.notes LIKE '%任务ID：{$task['id']}%'
+        AND ior.status = 'completed'
+        ORDER BY ior.operation_date DESC, ior.operation_time DESC
+    ");
     ?>
     <div class="row">
         <div class="col-md-6">
@@ -160,17 +159,7 @@
                     <h4>库位调整</h4>
                 </div>
                 <div class="panel-body text-center">
-                    <h2><?php 
-                        // 只统计真正有库位调整的记录数量
-                        $actualCount = 0;
-                        foreach ($rackAdjustments as $adj) {
-                            if ($adj['has_adjustment'] == 1 || 
-                                ($adj['notes'] && strpos($adj['notes'], '库位调整:') !== false)) {
-                                $actualCount++;
-                            }
-                        }
-                        echo $actualCount;
-                    ?></h2>
+                    <h2><?php echo count($rackAdjustments); ?></h2>
                     <small>包位置已更新</small>
                 </div>
             </div>
@@ -199,7 +188,7 @@
     </div>
 
     <!-- 库位调整明细 -->
-    
+
     <?php if (!empty($rackAdjustments)): ?>
     <div class="panel panel-info">
         <div class="panel-heading">
@@ -210,6 +199,7 @@
                 <table class="table table-striped table-bordered table-hover">
                     <thead>
                         <tr>
+                            <th>记录单号</th>
                             <th>包号</th>
                             <th>原库位</th>
                             <th>新库位</th>
@@ -218,28 +208,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php 
-                        // 只显示真正有库位调整的记录
-                        $actualAdjustments = array_filter($rackAdjustments, function($adj) {
-                            return $adj['has_adjustment'] == 1 || 
-                                   ($adj['notes'] && strpos($adj['notes'], '库位调整:') !== false);
-                        });
-                        
-                        foreach ($actualAdjustments as $adjustment): 
-                            // 从notes中提取原始库位信息
-                            $originalRack = $adjustment['original_rack_code'];
-                            if ($adjustment['notes'] && strpos($adjustment['notes'], '库位调整:') !== false) {
-                                // 解析: "库位调整: 从 XF-N-10B 调整到新库位"
-                                if (preg_match('/库位调整:\s+从\s+(\S+)\s+调整到/', $adjustment['notes'], $matches)) {
-                                    $originalRack = $matches[1];
-                                }
-                            }
-                        ?>
+                        <?php foreach ($rackAdjustments as $adjustment): ?>
                         <tr>
+                            <td><code><?php echo htmlspecialchars($adjustment['record_no']); ?></code></td>
                             <td><code><?php echo htmlspecialchars($adjustment['package_code']); ?></code></td>
                             <td>
-                                <?php if ($originalRack): ?>
-                                    <span class="badge badge-default"><?php echo htmlspecialchars($originalRack); ?></span>
+                                <?php if ($adjustment['original_rack_code']): ?>
+                                    <span class="badge badge-default"><?php echo htmlspecialchars($adjustment['original_rack_code']); ?></span>
                                 <?php else: ?>
                                     <span class="text-muted">未分配</span>
                                 <?php endif; ?>
@@ -251,8 +226,8 @@
                                     <span class="text-muted">未分配</span>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo htmlspecialchars($adjustment['operator_name']); ?></td>
-                            <td><?php echo date('m-d H:i', strtotime($adjustment['check_time'])); ?></td>
+                            <td><?php echo htmlspecialchars($adjustment['operator_name'] ?? '-'); ?></td>
+                            <td><?php echo date('m-d H:i', strtotime($adjustment['operation_date'] . ' ' . $adjustment['operation_time'])); ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
