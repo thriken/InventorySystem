@@ -242,7 +242,7 @@ ob_start();
     <?php endforeach; ?>
 
     <!-- 引入C-LODOP打印控件 -->
-    <script src="http://localhost:8000/CLodopfuncs.js"></script>
+    <script src="http://localhost:8000/CLodopfuncs.js?v=<?php echo time(); ?>"></script>
     
     <script>
         // 页面加载完成后生成二维码
@@ -324,33 +324,54 @@ ob_start();
             try {
                 // 设置打印机
                 LODOP.PRINT_INIT("玻璃包标签打印");
-                
-                // 设置纸张尺寸 80mm x 40mm
-                LODOP.SET_PRINT_PAGESIZE(1, 800, 400, "Label80x40");
-                
-                // 设置打印方向为横向
-                LODOP.SET_PRINT_MODE("PRINT_DEGREE", 90);
-                
+
+                // 设置纸张尺寸 80mm x 65mm
+                // 根据官方工具：80mm ≈ 304px, 65mm ≈ 247px
+                LODOP.SET_PRINT_PAGESIZE(1, 800, 650, "Label80x65");
+
                 <?php foreach ($packages as $index => $package): ?>
                     <?php if ($index > 0): ?>
                         LODOP.NEWPAGE();
                     <?php endif; ?>
-                    
+
                     // 获取二维码数据
                     const qrData<?php echo $package['id']; ?> = qrCodeData[<?php echo $package['id']; ?>];
-                    
-                    // 添加二维码（左侧）
+
+                    // === 上方25mm区域（0-95px）===
+                    // 左侧：包号二维码 20x20mm → 76x76px
                     if (qrData<?php echo $package['id']; ?>) {
-                        LODOP.ADD_PRINT_IMAGE(15, 10, 80, 80, qrData<?php echo $package['id']; ?>);
+                        LODOP.ADD_PRINT_IMAGE(8, 8, 76, 76, qrData<?php echo $package['id']; ?>);
+                        LODOP.SET_PRINT_STYLEA(0, "Border", 1);
                     }
 
-                    // 添加包编码
-                    LODOP.ADD_PRINT_TEXT(8, 100, 200, 20, "包号：<?php echo addslashes($package['package_code']); ?>");
+                    // 右侧第1行：原片名称 (Top=12px, Left=88px)
+                    LODOP.ADD_PRINT_TEXT(12, 88, 210, 38, "原片：<?php echo addslashes($package['glass_name']); ?>");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 14);
+                    LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+                    LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
+
+                    // 右侧第2行：规格 (Top=50px)
+                    LODOP.ADD_PRINT_TEXT(50, 88, 210, 38, "规格: <?php echo addslashes($package['specification']); ?>");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 16);
+                    LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
+
+                    // === 下方40mm区域（从95px开始，即25mm）===
+                    // 添加二维码（左侧）20x20mm → 76x76px
+                    if (qrData<?php echo $package['id']; ?>) {
+                        LODOP.ADD_PRINT_IMAGE(103, 8, 76, 76, qrData<?php echo $package['id']; ?>);
+                        LODOP.SET_PRINT_STYLEA(0, "Border", 1);
+                    }
+
+                    // 添加包编码 (Top=103px, Left=93px)
+                    LODOP.ADD_PRINT_TEXT(103, 93, 210, 38, "包号：<?php echo addslashes($package['package_code']); ?>");
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
 
-                    // 添加玻璃名称（支持换行）
+                    // 添加玻璃名称（支持换行, Top=125px）
                     const glassName<?php echo $package['id']; ?> = "<?php echo addslashes( $package['glass_name']) ?>";
                     // 长名称处理：如果超过16个字符则分成两行
                     let displayName<?php echo $package['id']; ?> = glassName<?php echo $package['id']; ?>;
@@ -358,30 +379,40 @@ ob_start();
                         const mid = Math.ceil(glassName<?php echo $package['id']; ?>.length / 2);
                         displayName<?php echo $package['id']; ?> = glassName<?php echo $package['id']; ?>.substring(0, mid) + "\n" + glassName<?php echo $package['id']; ?>.substring(mid);
                     }
-                    LODOP.ADD_PRINT_TEXT(32, 100, 200, 30, "名称：" + displayName<?php echo $package['id']; ?>);
+                    LODOP.ADD_PRINT_TEXT(125, 93, 64, 44, "名称：");
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
 
-                    // 添加品牌
-                    LODOP.ADD_PRINT_TEXT(68, 100, 200, 18, "品牌: <?php echo addslashes($package['glass_brand'] ?: '-'); ?>");
+                    LODOP.ADD_PRINT_TEXT(125, 141, 170, 44, displayName<?php echo $package['id']; ?>);
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
 
-                    // 添加规格
-                    LODOP.ADD_PRINT_TEXT(90, 100, 200, 18, "规格: <?php echo addslashes($package['specification']); ?>");
+                    // 添加品牌 (Top=167px)
+                    LODOP.ADD_PRINT_TEXT(167, 93, 210, 35, "品牌: <?php echo addslashes($package['glass_brand'] ?: '-'); ?>");
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
 
-                    // 添加入库日期
-                    LODOP.ADD_PRINT_TEXT(112, 100, 200, 18, "入库: <?php echo $package['entry_date']; ?>");
+                    // 添加规格 (Top=195px)
+                    LODOP.ADD_PRINT_TEXT(195, 93, 210, 35, "规格: <?php echo addslashes($package['specification']); ?>");
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
 
-                    // 添加打印时间（在二维码下方居中）
-                    LODOP.ADD_PRINT_TEXT(110, 5, 80, 10, "<?php echo date('Y-m-d H:i'); ?>");
-                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 8);
+                    // 添加入库日期 (Top=220px)
+                    LODOP.ADD_PRINT_TEXT(220, 93, 210, 35, "入库: <?php echo $package['entry_date']; ?>");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
+                    LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
+
+                    // 添加打印时间（在二维码下方居中, Top=190px）
+                    LODOP.ADD_PRINT_TEXT(190, 4, 88, 60, "打印：<?php echo date('m-d'); ?>");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
                     LODOP.SET_PRINT_STYLEA(0, "FontColor", "#666666");
                     LODOP.SET_PRINT_STYLEA(0, "Alignment", 2); // 居中对齐
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
                 <?php endforeach; ?>
                 
                 // 直接打印
@@ -419,26 +450,50 @@ ob_start();
             try {
                 // 使用与打印相同的设置
                 LODOP.PRINT_INIT("玻璃包标签打印");
-                LODOP.SET_PRINT_PAGESIZE(1, 800, 400, "Label80x40");
-                LODOP.SET_PRINT_MODE("PRINT_DEGREE", 90);
-                
+                LODOP.SET_PRINT_PAGESIZE(1, 800, 650, "Label80x65");
+
                 <?php foreach ($packages as $index => $package): ?>
                     <?php if ($index > 0): ?>
                         LODOP.NEWPAGE();
                     <?php endif; ?>
-                    
+
                     const qrData<?php echo $package['id']; ?> = qrCodeData[<?php echo $package['id']; ?>];
 
+                    // === 上方25mm区域（0-95px）===
+                    // 左侧：包号二维码 20x20mm → 76x76px
                     if (qrData<?php echo $package['id']; ?>) {
-                        LODOP.ADD_PRINT_IMAGE(15, 10, 80, 80, qrData<?php echo $package['id']; ?>);
+                        LODOP.ADD_PRINT_IMAGE(8, 8, 76, 76, qrData<?php echo $package['id']; ?>);
+                        LODOP.SET_PRINT_STYLEA(0, "Border", 1);
                     }
 
-                    LODOP.ADD_PRINT_TEXT(8, 100, 200, 20, "包号：<?php echo addslashes($package['package_code']); ?>");
+                    // 右侧第1行：原片名称 (Top=12px, Left=88px)
+                    LODOP.ADD_PRINT_TEXT(12, 88, 210, 38, "原片：<?php echo addslashes($package['glass_name']); ?>");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 14);
+                    LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+                    LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
+
+                    // 右侧第2行：规格 (Top=50px)
+                    LODOP.ADD_PRINT_TEXT(50, 88, 210, 38, "规格: <?php echo addslashes($package['specification']); ?>");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 16);
+                    LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
+
+                    // === 下方40mm区域（从95px开始，即25mm）===
+                    // 添加二维码（左侧）20x20mm → 76x76px
+                    if (qrData<?php echo $package['id']; ?>) {
+                        LODOP.ADD_PRINT_IMAGE(103, 8, 76, 76, qrData<?php echo $package['id']; ?>);
+                        LODOP.SET_PRINT_STYLEA(0, "Border", 1);
+                    }
+
+                    // 添加包编码 (Top=103px, Left=88px)
+                    LODOP.ADD_PRINT_TEXT(103, 93, 210, 38, "包号：<?php echo addslashes($package['package_code']); ?>");
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
 
-                    // 添加玻璃名称（支持换行）
+                    // 添加玻璃名称（支持换行, Top=140px）
                     const glassNamePreview<?php echo $package['id']; ?> = "<?php echo addslashes( $package['glass_name']); ?>";
                     // 长名称处理：如果超过16个字符则分成两行
                     let displayNamePreview<?php echo $package['id']; ?> = glassNamePreview<?php echo $package['id']; ?>;
@@ -446,27 +501,38 @@ ob_start();
                         const mid = Math.ceil(glassNamePreview<?php echo $package['id']; ?>.length / 2);
                         displayNamePreview<?php echo $package['id']; ?> = glassNamePreview<?php echo $package['id']; ?>.substring(0, mid) + "\n" + glassNamePreview<?php echo $package['id']; ?>.substring(mid);
                     }
-                    LODOP.ADD_PRINT_TEXT(32, 100, 200, 30, "名称：" + displayNamePreview<?php echo $package['id']; ?>);
+                    LODOP.ADD_PRINT_TEXT(125, 93, 64, 44, "名称：");
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
 
-                    LODOP.ADD_PRINT_TEXT(68, 100, 200, 18, "品牌: <?php echo addslashes($package['glass_brand'] ?: '-'); ?>");
+                    LODOP.ADD_PRINT_TEXT(125, 141, 170, 44, displayNamePreview<?php echo $package['id']; ?>);
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
 
-                    LODOP.ADD_PRINT_TEXT(90, 100, 200, 18, "规格: <?php echo addslashes($package['specification']); ?>");
+                    // 添加品牌 (Top=187px)
+                    LODOP.ADD_PRINT_TEXT(167, 93, 210, 35, "品牌: <?php echo addslashes($package['glass_brand'] ?: '-'); ?>");
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
-
-                    LODOP.ADD_PRINT_TEXT(112, 100, 200, 18, "入库: <?php echo $package['entry_date']; ?>");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
+                    // 添加规格
+                    LODOP.ADD_PRINT_TEXT(195, 93, 210, 35, "规格: <?php echo addslashes($package['specification']); ?>");
                     LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
                     LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
+                    // 添加入库日期 (Top=220px)
+                    LODOP.ADD_PRINT_TEXT(220, 93, 210, 35, "入库: <?php echo $package['entry_date']; ?>");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 13);
+                    LODOP.SET_PRINT_STYLEA(0, "FontName", "幼圆");
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
 
-                    // 添加打印时间（在二维码下方居中）
-                    LODOP.ADD_PRINT_TEXT(110, 5, 80, 10, "<?php echo date('Y-m-d H:i'); ?>");
-                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 8);
+                    // 添加打印时间（在二维码下方居中, Top=183px）
+                    LODOP.ADD_PRINT_TEXT(190, 4, 88, 60, "打印：<?php echo date('m-d'); ?>");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
                     LODOP.SET_PRINT_STYLEA(0, "FontColor", "#666666");
                     LODOP.SET_PRINT_STYLEA(0, "Alignment", 2); // 居中对齐
+                    LODOP.SET_PRINT_STYLEA(0, "Border", 1);
                 <?php endforeach; ?>
                 
                 // 预览

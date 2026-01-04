@@ -249,7 +249,8 @@ ob_start();
 ?>
 <div>
     <button type="button" class="btn btn-success" onclick="showAddForm()">添加包</button>
-    <button type="button" class="btn btn-info" onclick="printSelectedLabels()">打印选中标签</button>
+    <button type="button" class="btn btn-info" onclick="printSelectedLabels(8040)">打印选中标签80*40</button>
+    <button type="button" class="btn btn-info" onclick="printSelectedLabels(8065)">打印标签80*65</button>
     <button type="button" class="btn btn-primary" onclick="exportToExcel('packagesTable', '包列表')">导出Excel</button>
     <button type="button" class="btn btn-warning" onclick="exportToPDF('packagesTable', '包列表')">导出PDF</button>
 </div>
@@ -566,7 +567,7 @@ ob_start();
     }
 
     // 打印选中的标签
-    function printSelectedLabels() {
+    function printSelectedLabels(xy) {
         const selectedIds = [];
         const checkboxes = document.querySelectorAll('.package-checkbox:checked');
         
@@ -578,14 +579,22 @@ ob_start();
         checkboxes.forEach(checkbox => {
             selectedIds.push(checkbox.value);
         });
-        
-        const url = `print_label.php?package_ids=${selectedIds.join(',')}`;
+        let url = null;
+        if(xy=='8065') {
+            url = `print_label2.php?package_ids=${selectedIds.join(',')}`; // 特殊处理逻辑
+        }else{
+            url = `print_label.php?package_ids=${selectedIds.join(',')}`;
+        }
         window.open(url, '_blank');
     }
 
     // 打印单个标签
     function printSingleLabel(packageId) {
         const url = `print_label.php?package_ids=${packageId}`;
+        window.open(url, '_blank');
+    }
+    function printSingleLabel8065(packageId) {
+        const url = `print_label2.php?package_ids=${packageId}`;
         window.open(url, '_blank');
     }
     // 多条件筛选功能
