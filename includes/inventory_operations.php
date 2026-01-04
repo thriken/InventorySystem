@@ -458,22 +458,25 @@ function processPurchaseIn($package, $targetRack, $quantity, $recordNo, $unitAre
 
 function processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $scrapReason, $notes, $currentUser)
 {
+    $isCompleteUsage = false; // 标记是否完全使用
+
     if ($quantity == 0) {
         $quantity = $package['pieces']; // 完全使用
+        $isCompleteUsage = true;
     }
-    
+
     if ($quantity == $package['pieces']) {
         // 整包领用出库
         $afterQuantity = 0;
-        
+
         // 插入操作记录
         $sql = "INSERT INTO inventory_operation_records (
                     record_no, operation_type, package_id, glass_type_id, base_id,
-                    operation_quantity, before_quantity, after_quantity, 
+                    operation_quantity, before_quantity, after_quantity,
                     from_rack_id, to_rack_id, unit_area, total_area,
                     operator_id, operation_date, operation_time, notes, scrap_reason
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
+
         query($sql, [
             $recordNo,
             'usage_out',
@@ -494,11 +497,11 @@ function processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea,
             $scrapReason
         ]);
 
-        // 更新包状态
-        $newStatus = $targetRack['area_type'] === 'scrap' ? 'used_up' : 'in_processing';
+        // 更新包状态：如果明确标记为完全使用或目标是报废区，则设置为used_up
+        $newStatus = ($isCompleteUsage || $targetRack['area_type'] === 'scrap') ? 'used_up' : 'in_processing';
         $sql = "UPDATE glass_packages SET current_rack_id = ?, status = ?, pieces = ?, updated_at = ? WHERE id = ?";
         query($sql, [$targetRack['id'], $newStatus, $afterQuantity, date('Y-m-d H:i:s'), $package['id']]);
-        
+
         // 离开库存区：重新整理原库位位置号
         removeFromRack($package['current_rack_id'], $package['id']);
 
