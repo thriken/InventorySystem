@@ -365,16 +365,41 @@ function generateOperationRecordNo($operationType) {
         'check_out' => 'PK',
         'location_adjust' => 'KW'
     ];
-    
+
     $prefix = $prefixes[$operationType] ?? 'OP';
-    
+    $prefixPattern = $prefix . $date . '%';
+
     // 获取当天该类型的最大序号
-    $sql = "SELECT COUNT(*) as count FROM inventory_operation_records 
-            WHERE operation_type = ? AND DATE(created_at) = CURDATE()";
-    $result = fetchRow($sql, [$operationType]);
-    $sequence = ($result ? $result['count'] : 0) + 1;
-    
-    return $prefix . $date . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+    $sql = "SELECT record_no FROM inventory_operation_records
+            WHERE record_no LIKE ? AND DATE(created_at) = CURDATE()
+            ORDER BY record_no DESC LIMIT 1";
+    $result = fetchRow($sql, [$prefixPattern]);
+
+    $sequence = 1;
+    if ($result && $result['record_no']) {
+        // 从现有单号中提取序号
+        $currentRecordNo = $result['record_no'];
+        $sequenceLength = 4; // 序号长度
+        $sequenceStr = substr($currentRecordNo, - $sequenceLength);
+        $sequence = intval($sequenceStr) + 1;
+    }
+
+    $newRecordNo = $prefix . $date . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+
+    // 防止重复：如果生成的单号已存在，继续递增
+    $maxRetries = 10;
+    $retryCount = 0;
+    while ($retryCount < $maxRetries) {
+        $exists = fetchOne("SELECT COUNT(*) FROM inventory_operation_records WHERE record_no = ?", [$newRecordNo]);
+        if (!$exists || $exists == 0) {
+            break;
+        }
+        $sequence++;
+        $newRecordNo = $prefix . $date . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        $retryCount++;
+    }
+
+    return $newRecordNo;
 }
 
 function validateTransactionType($transactionType, $package, $fromRack, $targetRack, $quantity)
