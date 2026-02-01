@@ -42,6 +42,28 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_package_info') {
     jsonResponse($result);
 }
 
+// 处理AJAX请求 - 撤销操作
+if (isset($_POST['action']) && $_POST['action'] === 'undo_transaction') {
+    try {
+        $recordId = intval($_POST['record_id']);
+        $result = undoOperation($recordId, $currentUser);
+        jsonResponse(['success' => true, 'message' => $result]);
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
+// 处理AJAX请求 - 检查是否可撤销
+if (isset($_GET['action']) && $_GET['action'] === 'can_undo') {
+    try {
+        $recordId = intval($_GET['record_id']);
+        $result = canUndoOperation($recordId, $currentUser);
+        jsonResponse($result);
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'message' => $e->getMessage()]);
+    }
+}
+
 // 获取交易类型 - 根据用户角色过滤
 $allTransactionTypes = [
     'purchase_in' => '采购入库',   //操作员、库管、管理员可见
@@ -228,12 +250,15 @@ ob_start();
                 <th>数量</th>
                 <th>操作员</th>
                 <th>备注</th>
+                <?php if ($currentUser['role'] === 'admin'): ?>
+                    <th>操作</th>
+                <?php endif; ?>
             </tr>
         </thead>
         <tbody>
             <?php if (empty($transactions)): ?>
                 <tr>
-                    <td colspan="10" style="text-align: center; color: #666;">暂无记录</td>
+                    <td colspan="<?php echo $currentUser['role'] === 'admin' ? 11 : 10; ?>" style="text-align: center; color: #666;">暂无记录</td>
                 </tr>
             <?php else: ?>
                 <?php foreach ($transactions as $transaction): ?>
@@ -246,10 +271,10 @@ ob_start();
                         </td>
                         <td>
                             <span class="status-badge status-<?php echo $transaction['operation_type']; ?>">
-                                <?php 
+                                <?php
                                 $operationTypeNames = [
                                     'purchase_in' => '采购入库',
-                                    'usage_out' => '领用出库', 
+                                    'usage_out' => '领用出库',
                                     'partial_usage' => '部分领用',
                                     'return_in' => '归还入库',
                                     'scrap' => '报废',
@@ -257,7 +282,7 @@ ob_start();
                                     'check_out' => '盘亏',
                                     'location_adjust' => '库位调整',
                                 ];
-                                echo htmlspecialchars($operationTypeNames[$transaction['operation_type']] ?? $transaction['operation_type']); 
+                                echo htmlspecialchars($operationTypeNames[$transaction['operation_type']] ?? $transaction['operation_type']);
                                 ?>
                             </span>
                         </td>
@@ -276,6 +301,15 @@ ob_start();
                                 <span><?php echo htmlspecialchars($transaction['notes']); ?></span>
                             <?php else: ?>
                                 <span style="color: #999;">-</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($currentUser['role'] === 'admin'): ?>
+                                <button type="button" class="btn btn-sm btn-warning"
+                                        onclick="checkAndUndo(<?php echo $transaction['id']; ?>, '<?php echo htmlspecialchars($transaction['package_code']); ?>')"
+                                        style="padding: 5px 10px; font-size: 12px;">
+                                    撤销
+                                </button>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -513,6 +547,62 @@ ob_start();
         };
         return statuses[status] || status || '未知';
     }
+
+    // 检查并撤销操作
+    function checkAndUndo(recordId, packageCode) {
+        // 先检查是否可以撤销
+        fetch(`transactions.php?action=can_undo&record_id=${recordId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 可以撤销，显示确认对话框
+                    const confirmMessage = `确认撤销以下操作吗？\n\n` +
+                        `包号：${packageCode}\n` +
+                        `操作类型：${data.data.operation_type}\n` +
+                        `操作数量：${data.data.operation_quantity}\n` +
+                        `操作时间：${data.data.operation_date} ${data.data.operation_time}\n\n` +
+                        `注意：只能撤销该包的最后一次操作。`;
+
+                    if (confirm(confirmMessage)) {
+                        performUndo(recordId);
+                    }
+                } else {
+                    // 不能撤销，显示原因
+                    alert('无法撤销操作：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('检查撤销权限失败:', error);
+                alert('检查撤销权限失败，请重试');
+            });
+    }
+
+    // 执行撤销操作
+    function performUndo(recordId) {
+        const formData = new FormData();
+        formData.append('action', 'undo_transaction');
+        formData.append('record_id', recordId);
+
+        fetch('transactions.php', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    // 刷新页面以显示更新后的数据
+                    location.reload();
+                } else {
+                    alert('撤销失败：' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('撤销操作失败:', error);
+                alert('撤销操作失败，请重试');
+            });
+    }
+
     // 页面加载时检查是否需要显示模态框
     document.addEventListener('DOMContentLoaded', function() {
                 <?php if (isset($showModal) && $showModal): ?>

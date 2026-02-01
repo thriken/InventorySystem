@@ -1190,4 +1190,363 @@ function getOperationHistory($currentUser, $params) {
     ];
 }
 
+/**
+ * 检查是否可以撤销指定的操作记录
+ * @param int $recordId 操作记录ID
+ * @param array $currentUser 当前用户信息
+ * @return array 包含success和data/message的数组
+ */
+function canUndoOperation($recordId, $currentUser) {
+    // 只有管理员可以撤销
+    if ($currentUser['role'] !== 'admin') {
+        return ['success' => false, 'message' => '只有管理员可以撤销操作'];
+    }
+
+    // 查询操作记录
+    $sql = "SELECT ior.*, gp.package_code
+            FROM inventory_operation_records ior
+            LEFT JOIN glass_packages gp ON ior.package_id = gp.id
+            WHERE ior.id = ?";
+    $record = fetchRow($sql, [$recordId]);
+
+    if (!$record) {
+        return ['success' => false, 'message' => '未找到该操作记录'];
+    }
+
+    // 检查是否是该包的最后一次操作
+    $sql = "SELECT COUNT(*) as count
+            FROM inventory_operation_records
+            WHERE package_id = ?
+            AND (operation_date > ? OR (operation_date = ? AND operation_time > ?))
+            AND id != ?";
+    $laterCount = fetchOne($sql, [
+        $record['package_id'],
+        $record['operation_date'],
+        $record['operation_date'],
+        $record['operation_time'],
+        $recordId
+    ]);
+
+    if ($laterCount > 0) {
+        return ['success' => false, 'message' => '只能撤销该包的最后一次操作'];
+    }
+
+    // 某些操作类型不允许撤销
+    $nonUndoableTypes = ['purchase_in', 'check_in', 'check_out'];
+    if (in_array($record['operation_type'], $nonUndoableTypes)) {
+        return ['success' => false, 'message' => '该操作类型不允许撤销'];
+    }
+
+    return ['success' => true, 'data' => $record];
+}
+
+/**
+ * 撤销操作记录
+ * @param int $recordId 操作记录ID
+ * @param array $currentUser 当前用户信息
+ * @return string 操作结果消息
+ */
+function undoOperation($recordId, $currentUser) {
+    // 先检查是否可以撤销
+    $checkResult = canUndoOperation($recordId, $currentUser);
+    if (!$checkResult['success']) {
+        throw new Exception($checkResult['message']);
+    }
+
+    $record = $checkResult['data'];
+
+    return executeInTransaction(function () use ($record, $currentUser, $recordId) {
+        // 根据操作类型执行相应的逆操作
+        switch ($record['operation_type']) {
+            case 'usage_out':
+                return undoUsageOut($record, $currentUser, $recordId);
+
+            case 'return_in':
+                return undoReturnIn($record, $currentUser, $recordId);
+
+            case 'scrap':
+                return undoScrap($record, $currentUser, $recordId);
+
+            case 'location_adjust':
+                return undoLocationAdjust($record, $currentUser, $recordId);
+
+            case 'partial_usage':
+                return undoPartialUsage($record, $currentUser, $recordId);
+
+            default:
+                throw new Exception('不支持撤销该操作类型：' . $record['operation_type']);
+        }
+    });
+}
+
+/**
+ * 撤销领用出库
+ * 将包从加工区/报废区移回库存区
+ */
+function undoUsageOut($record, $currentUser, $recordId) {
+    // 获取包的当前状态
+    $package = fetchRow("SELECT * FROM glass_packages WHERE id = ?", [$record['package_id']]);
+
+    // 获取来源库位信息
+    $fromRack = fetchRow("SELECT * FROM storage_racks WHERE id = ?", [$record['from_rack_id']]);
+
+    // 计算恢复后的数量
+    $restoredPieces = $record['before_quantity'];
+
+    // 插入撤销操作记录
+    $undoRecordNo = generateOperationRecordNo('return_in');
+    $sql = "INSERT INTO inventory_operation_records (
+                record_no, operation_type, package_id, glass_type_id, base_id,
+                operation_quantity, before_quantity, after_quantity,
+                from_rack_id, to_rack_id, unit_area, total_area,
+                operator_id, operation_date, operation_time, notes, related_record_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    query($sql, [
+        $undoRecordNo,
+        'return_in',
+        $record['package_id'],
+        $record['glass_type_id'],
+        $currentUser['base_id'],
+        $restoredPieces, // 归还数量
+        $package['pieces'], // 操作前数量
+        $restoredPieces, // 操作后数量
+        $record['to_rack_id'], // 从当前库位归还
+        $record['from_rack_id'], // 回到原库位
+        $record['unit_area'],
+        $record['total_area'],
+        $currentUser['id'],
+        date('Y-m-d'),
+        date('H:i:s'),
+        '撤销操作 - 原单号：' . $record['record_no'],
+        $recordId
+    ]);
+
+    // 更新包状态和数量
+    $newStatus = 'in_storage';
+    $sql = "UPDATE glass_packages SET current_rack_id = ?, status = ?, pieces = ?, updated_at = ? WHERE id = ?";
+    query($sql, [
+        $record['from_rack_id'],
+        $newStatus,
+        $restoredPieces,
+        date('Y-m-d H:i:s'),
+        $record['package_id']
+    ]);
+
+    // 重新整理库位位置
+    addToRack($record['package_id'], $record['from_rack_id']);
+    removeFromRack($record['to_rack_id'], $record['package_id']);
+
+    return '撤销领用出库成功！包已归还到 ' . $fromRack['code'];
+}
+
+/**
+ * 撤销归还入库
+ * 将包从库存区移回加工区
+ */
+function undoReturnIn($record, $currentUser, $recordId) {
+    $toRack = fetchRow("SELECT * FROM storage_racks WHERE id = ?", [$record['to_rack_id']]);
+
+    // 插入撤销操作记录
+    $undoRecordNo = generateOperationRecordNo('usage_out');
+    $sql = "INSERT INTO inventory_operation_records (
+                record_no, operation_type, package_id, glass_type_id, base_id,
+                operation_quantity, before_quantity, after_quantity,
+                from_rack_id, to_rack_id, unit_area, total_area,
+                operator_id, operation_date, operation_time, notes, related_record_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    query($sql, [
+        $undoRecordNo,
+        'usage_out',
+        $record['package_id'],
+        $record['glass_type_id'],
+        $toRack['base_id'],
+        $record['operation_quantity'],
+        $record['before_quantity'],
+        $record['after_quantity'],
+        $record['to_rack_id'], // 从库存区
+        $record['from_rack_id'], // 回到加工区
+        $record['unit_area'],
+        $record['total_area'],
+        $currentUser['id'],
+        date('Y-m-d'),
+        date('H:i:s'),
+        '撤销操作 - 原单号：' . $record['record_no'],
+        $recordId
+    ]);
+
+    // 更新包状态
+    $newStatus = 'in_processing';
+    $sql = "UPDATE glass_packages SET current_rack_id = ?, status = ?, pieces = ?, updated_at = ? WHERE id = ?";
+    query($sql, [
+        $record['from_rack_id'],
+        $newStatus,
+        $record['before_quantity'],
+        date('Y-m-d H:i:s'),
+        $record['package_id']
+    ]);
+
+    // 重新整理库位位置
+    addToRack($record['package_id'], $record['from_rack_id']);
+    removeFromRack($record['to_rack_id'], $record['package_id']);
+
+    return '撤销归还入库成功！';
+}
+
+/**
+ * 撤销报废操作
+ * 将包从报废区移回库存区
+ */
+function undoScrap($record, $currentUser, $recordId) {
+    $package = fetchRow("SELECT * FROM glass_packages WHERE id = ?", [$record['package_id']]);
+    $fromRack = fetchRow("SELECT * FROM storage_racks WHERE id = ?", [$record['from_rack_id']]);
+
+    $restoredPieces = $record['before_quantity'];
+
+    // 插入撤销操作记录
+    $undoRecordNo = generateOperationRecordNo('return_in');
+    $sql = "INSERT INTO inventory_operation_records (
+                record_no, operation_type, package_id, glass_type_id, base_id,
+                operation_quantity, before_quantity, after_quantity,
+                from_rack_id, to_rack_id, unit_area, total_area,
+                operator_id, operation_date, operation_time, notes, scrap_reason, related_record_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    query($sql, [
+        $undoRecordNo,
+        'return_in',
+        $record['package_id'],
+        $record['glass_type_id'],
+        $fromRack['base_id'],
+        $restoredPieces,
+        $package['pieces'],
+        $restoredPieces,
+        $record['to_rack_id'],
+        $record['from_rack_id'],
+        $record['unit_area'],
+        $record['total_area'],
+        $currentUser['id'],
+        date('Y-m-d'),
+        date('H:i:s'),
+        '撤销操作 - 原单号：' . $record['record_no'],
+        '撤销报废：' . $record['scrap_reason'],
+        $recordId
+    ]);
+
+    // 更新包状态和数量
+    $newStatus = 'in_storage';
+    $sql = "UPDATE glass_packages SET current_rack_id = ?, status = ?, pieces = ?, updated_at = ? WHERE id = ?";
+    query($sql, [
+        $record['from_rack_id'],
+        $newStatus,
+        $restoredPieces,
+        date('Y-m-d H:i:s'),
+        $record['package_id']
+    ]);
+
+    // 重新整理库位位置
+    addToRack($record['package_id'], $record['from_rack_id']);
+    removeFromRack($record['to_rack_id'], $record['package_id']);
+
+    return '撤销报废成功！包已恢复到 ' . $fromRack['code'];
+}
+
+/**
+ * 撤销库位调整
+ * 将包移回原库位
+ */
+function undoLocationAdjust($record, $currentUser, $recordId) {
+    $fromRack = fetchRow("SELECT * FROM storage_racks WHERE id = ?", [$record['from_rack_id']]);
+
+    // 插入撤销操作记录
+    $undoRecordNo = generateOperationRecordNo('location_adjust');
+    $sql = "INSERT INTO inventory_operation_records (
+                record_no, operation_type, package_id, glass_type_id, base_id,
+                operation_quantity, before_quantity, after_quantity,
+                from_rack_id, to_rack_id, unit_area, total_area,
+                operator_id, operation_date, operation_time, notes, related_record_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    query($sql, [
+        $undoRecordNo,
+        'location_adjust',
+        $record['package_id'],
+        $record['glass_type_id'],
+        $fromRack['base_id'],
+        $record['operation_quantity'],
+        $record['before_quantity'],
+        $record['after_quantity'],
+        $record['to_rack_id'],
+        $record['from_rack_id'],
+        $record['unit_area'],
+        $record['total_area'],
+        $currentUser['id'],
+        date('Y-m-d'),
+        date('H:i:s'),
+        '撤销操作 - 原单号：' . $record['record_no'],
+        $recordId
+    ]);
+
+    // 更新包的库位
+    $sql = "UPDATE glass_packages SET current_rack_id = ?, updated_at = ? WHERE id = ?";
+    query($sql, [
+        $record['from_rack_id'],
+        date('Y-m-d H:i:s'),
+        $record['package_id']
+    ]);
+
+    // 重新整理库位位置
+    addToRack($record['package_id'], $record['from_rack_id']);
+    removeFromRack($record['to_rack_id'], $record['package_id']);
+
+    return '撤销库位调整成功！包已移回 ' . $fromRack['code'];
+}
+
+/**
+ * 撤销部分领用
+ * 恢复部分数量到包中
+ */
+function undoPartialUsage($record, $currentUser, $recordId) {
+    $package = fetchRow("SELECT * FROM glass_packages WHERE id = ?", [$record['package_id']]);
+
+    $restoredPieces = $record['operation_quantity'];
+    $newPieces = $package['pieces'] + $restoredPieces;
+
+    // 插入撤销操作记录
+    $undoRecordNo = generateOperationRecordNo('check_in');
+    $sql = "INSERT INTO inventory_operation_records (
+                record_no, operation_type, package_id, glass_type_id, base_id,
+                operation_quantity, before_quantity, after_quantity,
+                from_rack_id, to_rack_id, unit_area, total_area,
+                operator_id, operation_date, operation_time, notes, related_record_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    query($sql, [
+        $undoRecordNo,
+        'check_in',
+        $record['package_id'],
+        $record['glass_type_id'],
+        $package['current_rack_id'] ? fetchOne("SELECT base_id FROM storage_racks WHERE id = ?", [$package['current_rack_id']]) : $currentUser['base_id'],
+        $restoredPieces,
+        $package['pieces'],
+        $newPieces,
+        $record['to_rack_id'],
+        $record['from_rack_id'],
+        $record['unit_area'],
+        $record['total_area'],
+        $currentUser['id'],
+        date('Y-m-d'),
+        date('H:i:s'),
+        '撤销操作 - 原单号：' . $record['record_no'],
+        $recordId
+    ]);
+
+    // 更新包的片数
+    $sql = "UPDATE glass_packages SET pieces = ?, updated_at = ? WHERE id = ?";
+    query($sql, [$newPieces, date('Y-m-d H:i:s'), $record['package_id']]);
+
+    return '撤销部分领用成功！已恢复 ' . $restoredPieces . ' 片';
+}
+
 ?>
