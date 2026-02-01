@@ -1293,6 +1293,9 @@ function undoUsageOut($record, $currentUser, $recordId) {
     // 计算恢复后的数量
     $restoredPieces = $record['before_quantity'];
 
+    // base_id 从原记录获取，保持基地信息一致
+    $baseId = $record['base_id'];
+
     // 插入撤销操作记录
     $undoRecordNo = generateOperationRecordNo('return_in');
     $sql = "INSERT INTO inventory_operation_records (
@@ -1307,7 +1310,7 @@ function undoUsageOut($record, $currentUser, $recordId) {
         'return_in',
         $record['package_id'],
         $record['glass_type_id'],
-        $currentUser['base_id'],
+        $baseId,
         $restoredPieces, // 归还数量
         $package['pieces'], // 操作前数量
         $restoredPieces, // 操作后数量
@@ -1345,7 +1348,8 @@ function undoUsageOut($record, $currentUser, $recordId) {
  * 将包从库存区移回加工区
  */
 function undoReturnIn($record, $currentUser, $recordId) {
-    $toRack = fetchRow("SELECT * FROM storage_racks WHERE id = ?", [$record['to_rack_id']]);
+    // base_id 从原记录获取，保持基地信息一致
+    $baseId = $record['base_id'];
 
     // 插入撤销操作记录
     $undoRecordNo = generateOperationRecordNo('usage_out');
@@ -1361,7 +1365,7 @@ function undoReturnIn($record, $currentUser, $recordId) {
         'usage_out',
         $record['package_id'],
         $record['glass_type_id'],
-        $toRack['base_id'],
+        $baseId,
         $record['operation_quantity'],
         $record['before_quantity'],
         $record['after_quantity'],
@@ -1404,6 +1408,9 @@ function undoScrap($record, $currentUser, $recordId) {
 
     $restoredPieces = $record['before_quantity'];
 
+    // base_id 从原记录获取，保持基地信息一致
+    $baseId = $record['base_id'];
+
     // 插入撤销操作记录
     $undoRecordNo = generateOperationRecordNo('return_in');
     $sql = "INSERT INTO inventory_operation_records (
@@ -1418,7 +1425,7 @@ function undoScrap($record, $currentUser, $recordId) {
         'return_in',
         $record['package_id'],
         $record['glass_type_id'],
-        $fromRack['base_id'],
+        $baseId,
         $restoredPieces,
         $package['pieces'],
         $restoredPieces,
@@ -1457,7 +1464,8 @@ function undoScrap($record, $currentUser, $recordId) {
  * 将包移回原库位
  */
 function undoLocationAdjust($record, $currentUser, $recordId) {
-    $fromRack = fetchRow("SELECT * FROM storage_racks WHERE id = ?", [$record['from_rack_id']]);
+    // base_id 从原记录获取，保持基地信息一致
+    $baseId = $record['base_id'];
 
     // 插入撤销操作记录
     $undoRecordNo = generateOperationRecordNo('location_adjust');
@@ -1473,7 +1481,7 @@ function undoLocationAdjust($record, $currentUser, $recordId) {
         'location_adjust',
         $record['package_id'],
         $record['glass_type_id'],
-        $fromRack['base_id'],
+        $baseId,
         $record['operation_quantity'],
         $record['before_quantity'],
         $record['after_quantity'],
@@ -1500,7 +1508,9 @@ function undoLocationAdjust($record, $currentUser, $recordId) {
     addToRack($record['package_id'], $record['from_rack_id']);
     removeFromRack($record['to_rack_id'], $record['package_id']);
 
-    return '撤销库位调整成功！包已移回 ' . $fromRack['code'];
+    // 获取原库位信息用于返回消息
+    $fromRack = fetchRow("SELECT code FROM storage_racks WHERE id = ?", [$record['from_rack_id']]);
+    return '撤销库位调整成功！包已移回 ' . ($fromRack['code'] ?? $record['from_rack_id']);
 }
 
 /**
@@ -1512,6 +1522,9 @@ function undoPartialUsage($record, $currentUser, $recordId) {
 
     $restoredPieces = $record['operation_quantity'];
     $newPieces = $package['pieces'] + $restoredPieces;
+
+    // base_id 从原记录获取，保持基地信息一致
+    $baseId = $record['base_id'];
 
     // 插入撤销操作记录
     $undoRecordNo = generateOperationRecordNo('check_in');
@@ -1527,7 +1540,7 @@ function undoPartialUsage($record, $currentUser, $recordId) {
         'check_in',
         $record['package_id'],
         $record['glass_type_id'],
-        $package['current_rack_id'] ? fetchOne("SELECT base_id FROM storage_racks WHERE id = ?", [$package['current_rack_id']]) : $currentUser['base_id'],
+        $baseId,
         $restoredPieces,
         $package['pieces'],
         $newPieces,
