@@ -221,9 +221,10 @@ function determineTransactionType($fromAreaType, $toAreaType) {
  * @param string $scrapReason 报废原因（可选）
  * @param string $notes 备注（可选）
  * @param bool $allowCrossBase 是否允许跨基地操作（可选，默认false）
+ * @param bool $allUse 是否全部用完（可选，默认false）
  * @return string 操作结果消息
  */
-function executeInventoryTransaction($packageCode, $targetRackCode, $quantity, $transactionType, $currentUser, $scrapReason = '', $notes = '', $allowCrossBase = false) {
+function executeInventoryTransaction($packageCode, $targetRackCode, $quantity, $transactionType, $currentUser, $scrapReason = '', $notes = '', $allowCrossBase = false, $allUse = false) {
     return executeInTransaction(function () use (
         $packageCode,
         $targetRackCode,
@@ -232,7 +233,8 @@ function executeInventoryTransaction($packageCode, $targetRackCode, $quantity, $
         $scrapReason,
         $notes,
         $currentUser,
-        $allowCrossBase
+        $allowCrossBase,
+        $allUse
     ) {
         return processTransaction(
             $packageCode,
@@ -242,7 +244,8 @@ function executeInventoryTransaction($packageCode, $targetRackCode, $quantity, $
             $scrapReason,
             $notes,
             $currentUser,
-            $allowCrossBase
+            $allowCrossBase,
+            $allUse
         );
     });
 }
@@ -257,9 +260,10 @@ function executeInventoryTransaction($packageCode, $targetRackCode, $quantity, $
  * @param string $notes 备注
  * @param array $currentUser 当前用户信息
  * @param bool $allowCrossBase 是否允许跨基地操作
+ * @param bool $allUse 是否全部用完（仅用于usage_out）
  * @return string 操作结果消息
  */
-function processTransaction($packageCode, $targetRackCode, $quantity, $transactionType, $scrapReason, $notes, $currentUser, $allowCrossBase = false)
+function processTransaction($packageCode, $targetRackCode, $quantity, $transactionType, $scrapReason, $notes, $currentUser, $allowCrossBase = false, $allUse = false)
 {
     // 查询包信息
     $sql = "SELECT gp.*, gt.name as glass_name, gt.thickness, gt.color, gt.brand, gt.manufacturer,
@@ -333,7 +337,7 @@ function processTransaction($packageCode, $targetRackCode, $quantity, $transacti
         case 'purchase_in':
             return processPurchaseIn($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser);
         case 'usage_out':
-            return processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $scrapReason, $notes, $currentUser);
+            return processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $scrapReason, $notes, $currentUser, $allUse);
         case 'return_in':
             return processReturnIn($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $notes, $currentUser);
         case 'scrap':
@@ -481,18 +485,24 @@ function processPurchaseIn($package, $targetRack, $quantity, $recordNo, $unitAre
     return '采购入库操作成功完成！';
 }
 
-function processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $scrapReason, $notes, $currentUser)
+function processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea, $totalArea, $scrapReason, $notes, $currentUser, $allUse = false)
 {
-    $isCompleteUsage = false; // 标记是否完全使用
+    $isCompleteUsage = $allUse; // 标记是否完全使用
 
+    if ($allUse) {
+        // 全部用完：数量为0，状态为used_up
+        $quantity = 0;
+    }
+
+    // 如果数量为0，则表示全部用完
     if ($quantity == 0) {
-        $quantity = $package['pieces']; // 完全使用
+        $quantity = $package['pieces'];
         $isCompleteUsage = true;
     }
 
     if ($quantity == $package['pieces']) {
         // 整包领用出库
-        $afterQuantity = 0;
+        $afterQuantity = $isCompleteUsage ? 0 : $package['pieces']; // 根据all_use决定是否设置为0
 
         // 插入操作记录
         $sql = "INSERT INTO inventory_operation_records (
@@ -522,10 +532,18 @@ function processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea,
             $scrapReason
         ]);
 
-        // 更新包状态：如果明确标记为完全使用或目标是报废区，则设置为used_up
-        $newStatus = ($isCompleteUsage || $targetRack['area_type'] === 'scrap') ? 'used_up' : 'in_processing';
-        $sql = "UPDATE glass_packages SET current_rack_id = ?, status = ?, pieces = ?, updated_at = ? WHERE id = ?";
-        query($sql, [$targetRack['id'], $newStatus, $afterQuantity, date('Y-m-d H:i:s'), $package['id']]);
+        // 更新包状态和数量
+        if ($isCompleteUsage || $targetRack['area_type'] === 'scrap') {
+            // 完全使用或报废：设置为used_up，pieces=0
+            $newStatus = 'used_up';
+            $sql = "UPDATE glass_packages SET current_rack_id = ?, status = ?, pieces = ?, updated_at = ? WHERE id = ?";
+            query($sql, [$targetRack['id'], $newStatus, $afterQuantity, date('Y-m-d H:i:s'), $package['id']]);
+        } else {
+            // 领用到加工区：状态为in_processing，pieces不变
+            $newStatus = 'in_processing';
+            $sql = "UPDATE glass_packages SET current_rack_id = ?, status = ?, updated_at = ? WHERE id = ?";
+            query($sql, [$targetRack['id'], $newStatus, date('Y-m-d H:i:s'), $package['id']]);
+        }
 
         // 离开库存区：重新整理原库位位置号
         removeFromRack($package['current_rack_id'], $package['id']);
@@ -534,21 +552,21 @@ function processUsageOut($package, $targetRack, $quantity, $recordNo, $unitArea,
     } else {
         // 部分领用出库
         $currentPieces = fetchOne("SELECT pieces FROM glass_packages WHERE id = ?", [$package['id']]);
-        
+
         if ($currentPieces < $quantity) {
             throw new Exception('当前包的片数不足，无法完成领用操作');
         }
 
         $afterQuantity = $currentPieces - $quantity;
-        
+
         // 插入操作记录
         $sql = "INSERT INTO inventory_operation_records (
                     record_no, operation_type, package_id, glass_type_id, base_id,
-                    operation_quantity, before_quantity, after_quantity, 
+                    operation_quantity, before_quantity, after_quantity,
                     from_rack_id, to_rack_id, unit_area, total_area,
                     operator_id, operation_date, operation_time, notes
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        
+
         query($sql, [
             $recordNo,
             'partial_usage',

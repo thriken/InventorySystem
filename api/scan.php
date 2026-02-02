@@ -136,7 +136,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_GET['action']) || $_GET['
             $transactionType,
             $currentUser,
             $scrapReason,
-            $notes
+            $notes,
+            false, // allowCrossBase
+            $allUse // allUse
         );
         
         ApiCommon::sendResponse(200, $result, [
