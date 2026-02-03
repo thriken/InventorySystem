@@ -313,32 +313,54 @@ function exportToExcel(tableId, filename) {
     const data = [];
     const headers = [];
     
-    // 获取表头（排除操作列）
+    // 获取导出列配置（从data-export-columns属性）
+    const exportColumnsAttr = $(tableId).data('export-columns');
+    let exportColumns = null;
+    
+    if (exportColumnsAttr) {
+        // 如果指定了导出列，解析列索引（0-based）
+        exportColumns = exportColumnsAttr.toString().split(',').map(Number);
+    }
+    
+    // 获取表头
     $(tableId + ' thead th').each(function(index) {
-        const headerText = $(this).text().trim();
-        if (headerText && headerText !== '操作') {
-            headers.push(headerText);
+        // 如果指定了导出列，只获取指定列的表头
+        if (!exportColumns || exportColumns.includes(index)) {
+            const headerText = $(this).text().trim();
+            if (headerText && headerText !== '操作') {
+                headers.push({ index: index, text: headerText });
+            }
         }
     });
     
     // 添加表头到数据数组
-    data.push(headers);
+    data.push(headers.map(h => h.text));
     
     // 获取当前显示的数据行
     table.rows({ search: 'applied' }).every(function(rowIdx, tableLoop, rowLoop) {
         const row = [];
         const rowNode = this.node();
+        const cells = $(rowNode).find('td');
         
-        // 遍历每个单元格，但排除最后一列（操作列）
-        $(rowNode).find('td').each(function(cellIndex) {
-            // 只处理非操作列的数据
-            if (cellIndex < headers.length) {
-                let cellText = $(this).text().trim();
+        // 如果指定了导出列，只导出指定列的数据
+        if (exportColumns) {
+            headers.forEach(header => {
+                const cell = cells.eq(header.index);
+                let cellText = cell.text().trim();
                 // 清理多余的空白字符和换行符
                 cellText = cellText.replace(/\s+/g, ' ').replace(/\n/g, ' ');
                 row.push(cellText);
-            }
-        });
+            });
+        } else {
+            // 否则按原有逻辑排除操作列
+            cells.each(function(cellIndex) {
+                if (cellIndex < headers.length) {
+                    let cellText = $(this).text().trim();
+                    cellText = cellText.replace(/\s+/g, ' ').replace(/\n/g, ' ');
+                    row.push(cellText);
+                }
+            });
+        }
         
         // 确保行数据长度与表头一致
         if (row.length === headers.length) {
@@ -378,101 +400,192 @@ function exportToPDF(tableId, filename) {
     if (!tableId.startsWith('#')) {
         tableId = '#' + tableId;
     }
-    
+
+    // 检查jsPDF是否已加载
+    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+        alert('PDF导出库未加载，请刷新页面重试');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
     const table = $(tableId).DataTable();
-    
+
     // 检查表格是否存在且已初始化
     if (!table || !$.fn.DataTable.isDataTable(tableId)) {
         alert('表格未正确初始化');
         return;
     }
-    
+
     // 获取表格数据
     const headers = [];
     const rows = [];
-    
-    // 获取表头（排除操作列）
+
+    // 获取导出列配置（从data-export-columns属性）
+    const exportColumnsAttr = $(tableId).data('export-columns');
+    let exportColumns = null;
+
+    if (exportColumnsAttr) {
+        // 如果指定了导出列，解析列索引（0-based）
+        exportColumns = exportColumnsAttr.toString().split(',').map(Number);
+    }
+
+    // 获取表头
     $(tableId + ' thead th').each(function(index) {
-        const headerText = $(this).text().trim();
-        if (headerText && headerText !== '操作') {
-            headers.push(headerText);
+        // 如果指定了导出列，只获取指定列的表头
+        if (!exportColumns || exportColumns.includes(index)) {
+            const headerText = $(this).text().trim();
+            if (headerText && headerText !== '操作') {
+                headers.push({ index: index, text: headerText });
+            }
         }
     });
-    
+
+    // 如果没有表头，说明全部是操作列
+    if (headers.length === 0) {
+        alert('没有可导出的列');
+        return;
+    }
+
     // 获取当前显示的数据行
     table.rows({ search: 'applied' }).every(function(rowIdx, tableLoop, rowLoop) {
         const row = [];
         const rowNode = this.node();
-        
-        // 遍历每个单元格，但排除最后一列（操作列）
-        $(rowNode).find('td').each(function(cellIndex) {
-            // 只处理非操作列的数据
-            if (cellIndex < headers.length) {
-                let cellText = $(this).text().trim();
+        const cells = $(rowNode).find('td');
+
+        // 如果指定了导出列，只导出指定列的数据
+        if (exportColumns) {
+            headers.forEach(header => {
+                const cell = cells.eq(header.index);
+                let cellText = cell.text().trim();
                 // 清理多余的空白字符和换行符
                 cellText = cellText.replace(/\s+/g, ' ').replace(/\n/g, ' ');
                 row.push(cellText);
-            }
-        });
-        
+            });
+        } else {
+            // 否则按原有逻辑排除操作列
+            cells.each(function(cellIndex) {
+                if (cellIndex < headers.length) {
+                    let cellText = $(this).text().trim();
+                    cellText = cellText.replace(/\s+/g, ' ').replace(/\n/g, ' ');
+                    row.push(cellText);
+                }
+            });
+        }
+
         // 确保行数据长度与表头一致
         if (row.length === headers.length) {
             rows.push(row);
         }
     });
-    
+
     // 检查是否有数据
     if (rows.length === 0) {
         alert('没有可导出的数据');
         return;
     }
-    
-    // 创建HTML内容
-    let htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>${filename || 'export'}</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                table { border-collapse: collapse; width: 100%; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; font-weight: bold; }
-                tr:nth-child(even) { background-color: #f9f9f9; }
-            </style>
-        </head>
-        <body>
-            <h2>${filename || 'export'}</h2>
-            <table>
-                <thead>
-                    <tr>
-                        ${headers.map(header => `<th>${header}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows.map(row => 
-                        `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`
-                    ).join('')}
-                </tbody>
-            </table>
-        </body>
-        </html>
-    `;
-    
-    // 创建并下载文件
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', (filename || 'export') + '.html');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // 清理URL对象
-    URL.revokeObjectURL(url);
+
+    try {
+        // 创建PDF文档（横向布局，不使用默认字体）
+        const doc = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        // 使用浏览器内置的 PDF 生成功能：先创建 HTML，然后打印
+        const docTitle = filename || '表格数据';
+        const exportTime = new Date().toLocaleString('zh-CN');
+
+        // 创建 HTML 表格内容
+        let htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>${docTitle}</title>
+                <style>
+                    @page {
+                        size: landscape;
+                        margin: 10mm;
+                    }
+                    body {
+                        font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
+                        font-size: 10pt;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .title {
+                        text-align: center;
+                        font-size: 16pt;
+                        font-weight: bold;
+                        margin-bottom: 5mm;
+                    }
+                    .date {
+                        text-align: right;
+                        font-size: 9pt;
+                        margin-bottom: 5mm;
+                        color: #666;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        font-size: 9pt;
+                    }
+                    th, td {
+                        border: 1px solid #333;
+                        padding: 2mm 1mm;
+                        text-align: center;
+                    }
+                    th {
+                        background-color: #428bca;
+                        color: white;
+                        font-weight: bold;
+                    }
+                    tr:nth-child(even) {
+                        background-color: #f0f0f0;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="title">${docTitle}</div>
+                <div class="date">导出时间: ${exportTime}</div>
+                <table>
+                    <thead>
+                        <tr>
+                            ${headers.map(h => `<th>${h.text}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row =>
+                            `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`
+                        ).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        // 创建 Blob 并打开打印对话框
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank');
+
+        if (printWindow) {
+            // 等待页面加载完成后触发打印
+            printWindow.onload = function() {
+                setTimeout(function() {
+                    printWindow.print();
+                    URL.revokeObjectURL(url);
+                }, 250);
+            };
+        } else {
+            alert('无法打开打印窗口，请检查浏览器弹窗设置');
+            URL.revokeObjectURL(url);
+        }
+    } catch (error) {
+        console.error('PDF导出错误:', error);
+        alert('PDF导出失败: ' + error.message);
+    }
 }
 
 // 页面加载完成后的初始化

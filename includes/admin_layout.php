@@ -28,6 +28,8 @@ function renderAdminLayout($pageTitle, $content, $currentUser, $currentPage = ''
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
         <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+        <script src="https://unpkg.com/jspdf@4.1.0/dist/jspdf.umd.min.js"></script>
+        <script src="https://unpkg.com/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
         <script src="../assets/js/datatable-config.js"></script>
         <script src="../assets/js/back-to-top.js"></script>
         <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">

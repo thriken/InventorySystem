@@ -429,7 +429,7 @@ ob_start();
 
 <!-- 数据表格 -->
 <div class="table-container">
-    <table class="table table-striped table-bordered data-table" id="packagesTable" data-table="packages">
+    <table class="table table-striped table-bordered data-table" id="packagesTable" data-table="packages" data-export-columns="2,3,4,5,6,7,8,9,10,11,12">
         <thead>
             <tr>
                 <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
@@ -445,7 +445,6 @@ ob_start();
                 <th>起始库区</th>
                 <th>当前位置</th>
                 <th>状态</th>
-                
             </tr>
         </thead>
         <?php foreach ($packages as $package): ?>
