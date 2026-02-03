@@ -212,6 +212,16 @@ $stats = [
 ];
 ob_start();
 ?>
+<style>
+    /* 非管理员隐藏操作列 */
+    <?php if ($currentUser['role'] !== 'admin'): ?>
+    #transactions th:last-child,
+    #transactions td:last-child {
+        display: none;
+    }
+    <?php endif; ?>
+</style>
+
 <!-- 统计数据 -->
 <div class="stats-grid">
     <div class="stat-card">
@@ -250,15 +260,13 @@ ob_start();
                 <th>数量</th>
                 <th>操作员</th>
                 <th>备注</th>
-                <?php if ($currentUser['role'] === 'admin'): ?>
-                    <th>操作</th>
-                <?php endif; ?>
+                <th>操作</th>
             </tr>
         </thead>
         <tbody>
             <?php if (empty($transactions)): ?>
                 <tr>
-                    <td colspan="<?php echo $currentUser['role'] === 'admin' ? 11 : 10; ?>" style="text-align: center; color: #666;">暂无记录</td>
+                    <td colspan="10" style="text-align: center; color: #666;">暂无记录</td>
                 </tr>
             <?php else: ?>
                 <?php foreach ($transactions as $transaction): ?>
