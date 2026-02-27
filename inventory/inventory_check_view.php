@@ -256,15 +256,24 @@ include 'header.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php 
+                        <?php
                         $rowIndex = 0;
                         foreach ($details as $detail):
                             $rowIndex++;
                             $difference = $detail['check_quantity'] - $detail['system_quantity'];
-                            $status = $detail['check_quantity'] > 0 ? 'checked' : 'pending';
-                            if ($difference != 0) $status = 'difference';
+                            // 判断状态：未盘点、已盘点、有差异
+                            // 只有在已盘点的情况下(check_quantity > 0),差异≠0才标记为有差异
+                            if ($detail['check_quantity'] > 0) {
+                                if ($difference != 0) {
+                                    $status = 'difference';
+                                } else {
+                                    $status = 'checked';
+                                }
+                            } else {
+                                $status = 'pending';
+                            }
                         ?>
-                        <tr data-status="<?php echo $status; ?>" data-method="<?php echo $detail['check_method']; ?>" data-package="<?php echo htmlspecialchars($detail['package_code']); ?>">
+                        <tr data-status="<?php echo $status; ?>" data-method="<?php echo $detail['check_method']; ?>" data-package="<?php echo htmlspecialchars($detail['package_code']); ?>" class="<?php echo $status; ?>">
                             <td><?php echo $rowIndex; ?></td>
                             <td class="lead"><span class="label label-primary"><?php echo htmlspecialchars($detail['package_code']); ?></span></td>
                             <td><?php echo htmlspecialchars($detail['glass_name']); ?></td>
@@ -828,22 +837,44 @@ function applyFilter() {
     var methodFilter = $('#methodFilter').val();
     var searchInput = $('#searchInput').val().toLowerCase();
     
+    console.log('=== Apply Filter ===');
+    console.log('Status Filter:', statusFilter);
+    console.log('Method Filter:', methodFilter);
+    console.log('Search Input:', searchInput);
+    
+    var visibleCount = 0;
+    
     $('#detailsTable tbody tr').each(function() {
         var row = $(this);
         var show = true;
         
+        // 获取行数据属性，处理 null 或 undefined
+        var rowMethod = row.data('method') || '';
+        var rowPackage = String(row.data('package') || '').toLowerCase();
+        
+        console.log('Row:', rowPackage, 'Method:', rowMethod, 'Classes:', row.attr('class'));
+        
+        // 状态筛选
         if (statusFilter) {
             if (statusFilter === '0' && !row.hasClass('pending')) show = false;
             if (statusFilter === '1' && !row.hasClass('checked')) show = false;
             if (statusFilter === '2' && !row.hasClass('difference')) show = false;
         }
         
-        if (methodFilter && row.data('method') !== methodFilter) show = false;
+        // 方式筛选：只有当选择了具体方式时才进行筛选
+        // 当选择"所有方式"时，methodFilter 为空字符串，不应该筛选
+        if (methodFilter && rowMethod !== methodFilter) show = false;
         
-        if (searchInput && row.data('package').indexOf(searchInput) === -1) show = false;
+        // 包号搜索
+        if (searchInput && rowPackage.indexOf(searchInput) === -1) show = false;
         
+        console.log('Show:', show, 'for row:', rowPackage);
         row.toggle(show);
+        
+        if (show) visibleCount++;
     });
+    
+    console.log('=== Filter Applied, Visible Rows:', visibleCount, 'Total Rows:', $('#detailsTable tbody tr').length);
 }
 
 // 全局变量存储回滚计数

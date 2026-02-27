@@ -89,6 +89,48 @@ $monthlyColorConsumption = fetchAll("SELECT g.color,
                                    HAVING total_consumption > 0
                                    ORDER BY total_consumption DESC LIMIT 10", [$monthStart, $monthEnd]);
 
+// 1. 颜色库存统计总量和排行
+$colorInventoryStats = fetchAll("SELECT g.color,
+                                        SUM(p.pieces) as total_pieces,
+                                        COUNT(DISTINCT p.id) as package_count
+                                FROM glass_packages p
+                                LEFT JOIN glass_types g ON p.glass_type_id = g.id
+                                LEFT JOIN storage_racks sr ON p.current_rack_id = sr.id
+                                WHERE p.status = 'in_storage'
+                                AND g.color IS NOT NULL AND g.color != ''
+                                " . ($currentUser['role'] !== 'admin' ? "AND sr.base_id = {$currentUser['base_id']}" : "") . "
+                                GROUP BY g.color
+                                HAVING total_pieces > 0
+                                ORDER BY total_pieces DESC LIMIT 10");
+
+// 2. 单一原片总库存量（TOP10）
+$topGlassInventory = fetchAll("SELECT g.id, g.name as glass_name, g.thickness, g.color,
+                                      SUM(p.pieces) as total_pieces,
+                                      COUNT(DISTINCT p.id) as package_count
+                              FROM glass_packages p
+                              LEFT JOIN glass_types g ON p.glass_type_id = g.id
+                              LEFT JOIN storage_racks sr ON p.current_rack_id = sr.id
+                              WHERE p.status = 'in_storage'
+                              " . ($currentUser['role'] !== 'admin' ? "AND sr.base_id = {$currentUser['base_id']}" : "") . "
+                              GROUP BY g.id, g.name, g.thickness, g.color
+                              HAVING total_pieces > 0
+                              ORDER BY total_pieces DESC LIMIT 10");
+
+// 3. 不同厂家库存量
+$brandInventoryStats = fetchAll("SELECT g.brand,
+                                         SUM(p.pieces) as total_pieces,
+                                         COUNT(DISTINCT p.id) as package_count
+                                 FROM glass_packages p
+                                 LEFT JOIN glass_types g ON p.glass_type_id = g.id
+                                 LEFT JOIN storage_racks sr ON p.current_rack_id = sr.id
+                                 WHERE p.status = 'in_storage'
+                                 AND g.brand IS NOT NULL AND g.brand != ''
+                                 " . ($currentUser['role'] !== 'admin' ? "AND sr.base_id = {$currentUser['base_id']}" : "") . "
+                                 GROUP BY g.brand
+                                 HAVING total_pieces > 0
+                                 ORDER BY total_pieces DESC LIMIT 10");
+
+
 // 添加专用CSS文件
 $additionalCSS = ['../assets/css/admin/dashboard.css'];
 ob_start();
@@ -118,6 +160,104 @@ ob_start();
     </div>
 
     <div class="dashboard-grid">
+        <!-- 1. 颜色库存统计总量和排行 -->
+        <div class="dashboard-card">
+            <h3>🎨 颜色库存统计</h3>
+            <div class="table-container">
+                <table class="table table-striped table-hover" style="margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            <th>颜色</th>
+                            <th>库存量(片)</th>
+                            <th>包数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($colorInventoryStats)): ?>
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #7f8c8d; padding: 20px;">暂无数据</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($colorInventoryStats as $item): ?>
+                            <tr>
+                                <td><span class="label label-info"><?php echo htmlspecialchars($item['color']); ?></span></td>
+                                <td><?php echo number_format($item['total_pieces']); ?></td>
+                                <td><?php echo number_format($item['package_count']); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2. 单一原片总库存量（TOP10） -->
+        <div class="dashboard-card">
+            <h3>📦 原片库存TOP10</h3>
+            <div class="table-container">
+                <table class="table table-striped table-hover" style="margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            <th>原片名称</th>
+                            <th>规格</th>
+                            <th>库存量(片)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($topGlassInventory)): ?>
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #7f8c8d; padding: 20px;">暂无数据</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($topGlassInventory as $item): ?>
+                            <tr>
+                                <td>
+                                    <?php echo htmlspecialchars($item['glass_name']); ?>
+                                    <?php if ($item['color']): ?>
+                                        <span class="label label-default"><?php echo htmlspecialchars($item['color']); ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo $item['thickness']; ?>mm</td>
+                                <td><?php echo number_format($item['total_pieces']); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. 不同厂家库存量 -->
+        <div class="dashboard-card">
+            <h3>🏭 厂家库存统计</h3>
+            <div class="table-container">
+                <table class="table table-striped table-hover" style="margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            <th>厂家</th>
+                            <th>库存量(片)</th>
+                            <th>包数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($brandInventoryStats)): ?>
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #7f8c8d; padding: 20px;">暂无数据</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($brandInventoryStats as $item): ?>
+                            <tr>
+                                <td><span class="label label-success"><?php echo htmlspecialchars($item['brand']); ?></span></td>
+                                <td><?php echo number_format($item['total_pieces']); ?></td>
+                                <td><?php echo number_format($item['package_count']); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- 最近流转记录 -->
         <div class="dashboard-card">
             <h3>🔄 最近流转记录</h3>
@@ -129,7 +269,6 @@ ob_start();
                         <div class="recent-item">
                             <div class="item-info">
                                 <div class="item-title"><?php echo htmlspecialchars($transaction['glass_name']); ?></div>
-                                <div class="item-detail">
                                     <?php echo htmlspecialchars($transaction['package_code']); ?> | 
                                     <?php
                                     $typeLabels = [

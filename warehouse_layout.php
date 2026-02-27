@@ -169,7 +169,15 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
         <!-- 下方区域 -->
         <div class="bottom-area">
             <div style="display: flex; gap: 30px; justify-content: flex-end; align-items: flex-start;">
-                <div style="width: 500px;"></div> 
+                <div style="display: flex; width: 500px; gap: 10px; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
+                    <div class="rack-pair">
+                        <?php
+                            echo renderRack('26B', $rackInventory, $highlightRacks);
+                            echo renderRack('26A', $rackInventory, $highlightRacks);
+                        ?>
+                    </div>
+                    临时区
+                </div> 
                 <!-- 左侧加工区：A -->
                 <div class="processing-left" style="display: flex; flex-direction: column; gap: 10px;">
                     <div style="margin-right: 30px;margin-top: -30px;transform: rotate(90deg);">
@@ -190,6 +198,7 @@ function renderXinfengBaseLayout($rackInventory, $highlightRacks) {
                             echo renderRack('25A', $rackInventory, $highlightRacks);
                         ?>
                     </div>
+
                 </div>  
                     
                 <!-- 中间库存区：7B7A 到 5B5A -->
