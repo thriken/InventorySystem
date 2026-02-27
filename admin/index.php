@@ -28,15 +28,14 @@ if ($currentUser['role'] !== 'admin') {
     $sql_processing_packages .= " AND sr.base_id = {$currentUser['base_id']}";
     $sql_processing_area .= " AND sr.base_id = {$currentUser['base_id']}";
 } else {
-    
 }
 $systemStats = [
-        // 库存包数和面积
-        'storage_packages' => fetchOne($sql_storage_packages),
-        'storage_area' => fetchOne($sql_storage_area),
-        'processing_packages' => fetchOne($sql_processing_packages),
-        'processing_area' => fetchOne($sql_processing_area),
-    ];
+    // 库存包数和面积
+    'storage_packages' => fetchOne($sql_storage_packages),
+    'storage_area' => fetchOne($sql_storage_area),
+    'processing_packages' => fetchOne($sql_processing_packages),
+    'processing_area' => fetchOne($sql_processing_area),
+];
 // 获取最近流转记录（最近5条）
 $recentTransactions = fetchAll("SELECT t.*, p.package_code, u.username, g.name as glass_name,
                                       sr_from.code as from_rack_code, sr_to.code as to_rack_code
@@ -47,7 +46,7 @@ $recentTransactions = fetchAll("SELECT t.*, p.package_code, u.username, g.name a
                               LEFT JOIN storage_racks sr_from ON t.from_rack_id = sr_from.id
                               LEFT JOIN storage_racks sr_to ON t.to_rack_id = sr_to.id
                               WHERE t.operation_type NOT IN ('purchase_in')
-                              ORDER BY t.created_at DESC LIMIT 10");
+                              ORDER BY t.created_at DESC LIMIT 9");
 
 // 获取最近采购入库记录（最近5条）
 $recentPurchases = fetchAll("SELECT t.*, p.package_code, u.username, g.name as glass_name, g.color, g.thickness,
@@ -92,6 +91,7 @@ $monthlyColorConsumption = fetchAll("SELECT g.color,
 // 1. 颜色库存统计总量和排行
 $colorInventoryStats = fetchAll("SELECT g.color,
                                         SUM(p.pieces) as total_pieces,
+                                        SUM(p.width * p.height * p.pieces / 1000000) as total_area,
                                         COUNT(DISTINCT p.id) as package_count
                                 FROM glass_packages p
                                 LEFT JOIN glass_types g ON p.glass_type_id = g.id
@@ -101,11 +101,12 @@ $colorInventoryStats = fetchAll("SELECT g.color,
                                 " . ($currentUser['role'] !== 'admin' ? "AND sr.base_id = {$currentUser['base_id']}" : "") . "
                                 GROUP BY g.color
                                 HAVING total_pieces > 0
-                                ORDER BY total_pieces DESC LIMIT 10");
+                                ORDER BY total_pieces DESC LIMIT 6");
 
 // 2. 单一原片总库存量（TOP10）
 $topGlassInventory = fetchAll("SELECT g.id, g.name as glass_name, g.thickness, g.color,
                                       SUM(p.pieces) as total_pieces,
+                                      SUM(p.width * p.height * p.pieces / 1000000) as total_area,
                                       COUNT(DISTINCT p.id) as package_count
                               FROM glass_packages p
                               LEFT JOIN glass_types g ON p.glass_type_id = g.id
@@ -114,11 +115,12 @@ $topGlassInventory = fetchAll("SELECT g.id, g.name as glass_name, g.thickness, g
                               " . ($currentUser['role'] !== 'admin' ? "AND sr.base_id = {$currentUser['base_id']}" : "") . "
                               GROUP BY g.id, g.name, g.thickness, g.color
                               HAVING total_pieces > 0
-                              ORDER BY total_pieces DESC LIMIT 10");
+                              ORDER BY total_pieces DESC LIMIT 6");
 
 // 3. 不同厂家库存量
 $brandInventoryStats = fetchAll("SELECT g.brand,
                                          SUM(p.pieces) as total_pieces,
+                                         SUM(p.width * p.height * p.pieces / 1000000) as total_area,
                                          COUNT(DISTINCT p.id) as package_count
                                  FROM glass_packages p
                                  LEFT JOIN glass_types g ON p.glass_type_id = g.id
@@ -128,7 +130,7 @@ $brandInventoryStats = fetchAll("SELECT g.brand,
                                  " . ($currentUser['role'] !== 'admin' ? "AND sr.base_id = {$currentUser['base_id']}" : "") . "
                                  GROUP BY g.brand
                                  HAVING total_pieces > 0
-                                 ORDER BY total_pieces DESC LIMIT 10");
+                                 ORDER BY total_pieces DESC LIMIT 6");
 
 
 // 添加专用CSS文件
@@ -138,28 +140,28 @@ ob_start();
 <div class="dashboard-container">
     <!-- 系统状态概览 - 独占一行 -->
     <div class="dashboard-overview">
-            <h3>📊 系统状态概览</h3>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value"><?php echo number_format($systemStats['storage_packages']); ?></div>
-                    <div class="stat-label">库存包数</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value"><?php echo number_format($systemStats['storage_area'], 1); ?></div>
-                    <div class="stat-label">库存面积(㎡)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value"><?php echo number_format($systemStats['processing_packages']); ?></div>
-                    <div class="stat-label">加工中包数</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value"><?php echo number_format($systemStats['processing_area'], 1); ?></div>
-                    <div class="stat-label">加工中面积(㎡)</div>
-                </div>
+        <h3>📊 系统状态概览</h3>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value"><?php echo number_format($systemStats['storage_packages']); ?></div>
+                <div class="stat-label">库存包数</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-value"><?php echo number_format($systemStats['storage_area'], 1); ?></div>
+                <div class="stat-label">库存面积(㎡)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value"><?php echo number_format($systemStats['processing_packages']); ?></div>
+                <div class="stat-label">加工中包数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value"><?php echo number_format($systemStats['processing_area'], 1); ?></div>
+                <div class="stat-label">加工中面积(㎡)</div>
+            </div>
+        </div>
     </div>
 
-    <div class="dashboard-grid">
+    <div class="dashboard-grid one">
         <!-- 1. 颜色库存统计总量和排行 -->
         <div class="dashboard-card">
             <h3>🎨 颜色库存统计</h3>
@@ -169,21 +171,23 @@ ob_start();
                         <tr>
                             <th>颜色</th>
                             <th>库存量(片)</th>
+                            <th>面积(㎡)</th>
                             <th>包数</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($colorInventoryStats)): ?>
                             <tr>
-                                <td colspan="3" style="text-align: center; color: #7f8c8d; padding: 20px;">暂无数据</td>
+                                <td colspan="4" style="text-align: center; color: #7f8c8d; padding: 20px;">暂无数据</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($colorInventoryStats as $item): ?>
-                            <tr>
-                                <td><span class="label label-info"><?php echo htmlspecialchars($item['color']); ?></span></td>
-                                <td><?php echo number_format($item['total_pieces']); ?></td>
-                                <td><?php echo number_format($item['package_count']); ?></td>
-                            </tr>
+                                <tr>
+                                    <td><span class="label label-info"><?php echo htmlspecialchars($item['color']); ?></span></td>
+                                    <td><?php echo number_format($item['total_pieces']); ?></td>
+                                    <td><?php echo number_format($item['total_area'], 2); ?></td>
+                                    <td><?php echo number_format($item['package_count']); ?></td>
+                                </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
@@ -201,25 +205,27 @@ ob_start();
                             <th>原片名称</th>
                             <th>规格</th>
                             <th>库存量(片)</th>
+                            <th>面积(㎡)</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($topGlassInventory)): ?>
                             <tr>
-                                <td colspan="3" style="text-align: center; color: #7f8c8d; padding: 20px;">暂无数据</td>
+                                <td colspan="4" style="text-align: center; color: #7f8c8d; padding: 20px;">暂无数据</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($topGlassInventory as $item): ?>
-                            <tr>
-                                <td>
-                                    <?php echo htmlspecialchars($item['glass_name']); ?>
-                                    <?php if ($item['color']): ?>
-                                        <span class="label label-default"><?php echo htmlspecialchars($item['color']); ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?php echo $item['thickness']; ?>mm</td>
-                                <td><?php echo number_format($item['total_pieces']); ?></td>
-                            </tr>
+                                <tr>
+                                    <td>
+                                        <?php echo htmlspecialchars($item['glass_name']); ?>
+                                        <?php if ($item['color']): ?>
+                                            <span class="label label-info"><?php echo htmlspecialchars($item['color']); ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?php echo $item['thickness']; ?>mm</td>
+                                    <td><?php echo number_format($item['total_pieces']); ?></td>
+                                    <td><?php echo number_format($item['total_area'], 2); ?></td>
+                                </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
@@ -236,28 +242,31 @@ ob_start();
                         <tr>
                             <th>厂家</th>
                             <th>库存量(片)</th>
+                            <th>面积(㎡)</th>
                             <th>包数</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($brandInventoryStats)): ?>
                             <tr>
-                                <td colspan="3" style="text-align: center; color: #7f8c8d; padding: 20px;">暂无数据</td>
+                                <td colspan="4" style="text-align: center; color: #7f8c8d; padding: 20px;">暂无数据</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($brandInventoryStats as $item): ?>
-                            <tr>
-                                <td><span class="label label-success"><?php echo htmlspecialchars($item['brand']); ?></span></td>
-                                <td><?php echo number_format($item['total_pieces']); ?></td>
-                                <td><?php echo number_format($item['package_count']); ?></td>
-                            </tr>
+                                <tr>
+                                    <td><span class="label label-success"><?php echo htmlspecialchars($item['brand']); ?></span></td>
+                                    <td><?php echo number_format($item['total_pieces']); ?></td>
+                                    <td><?php echo number_format($item['total_area'], 2); ?></td>
+                                    <td><?php echo number_format($item['package_count']); ?></td>
+                                </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
-
+    </div>
+    <div class="dashboard-grid two">
         <!-- 最近流转记录 -->
         <div class="dashboard-card">
             <h3>🔄 最近流转记录</h3>
@@ -269,24 +278,23 @@ ob_start();
                         <div class="recent-item">
                             <div class="item-info">
                                 <div class="item-title"><?php echo htmlspecialchars($transaction['glass_name']); ?></div>
-                                    <?php echo htmlspecialchars($transaction['package_code']); ?> | 
-                                    <?php
-                                    $typeLabels = [
-                                        'usage_out' => '<span class="label label-warning">领用出库</span>',
-                                        'return_in' => '<span class="label label-info">归还入库</span>',
-                                        'scrap' => '<span class="label label-danger">报废出库</span>',
-                                        'partial_usage' => '<span class="label label-warning">部分领用</span>',
-                                        'check_in' => '<span class="label label-success">盘点入库</span>',
-                                        'check_out' => '<span class="label label-danger">盘点出库</span>',
-                                        'location_adjust' => '<span class="label label-info">位置调整</span>',
-                                    ];
-                                    echo $typeLabels[$transaction['operation_type']] ?? $transaction['operation_type'];
-                                    ?> | 
-                                    <?php echo $transaction['operation_quantity']; ?>片
-                                </div>
+                                <?php echo htmlspecialchars($transaction['package_code']); ?> |
+                                <?php
+                                $typeLabels = [
+                                    'usage_out' => '<span class="label label-warning">领用出库</span>',
+                                    'return_in' => '<span class="label label-info">归还入库</span>',
+                                    'scrap' => '<span class="label label-danger">报废出库</span>',
+                                    'partial_usage' => '<span class="label label-warning">部分领用</span>',
+                                    'check_in' => '<span class="label label-success">盘点入库</span>',
+                                    'check_out' => '<span class="label label-danger">盘点出库</span>',
+                                    'location_adjust' => '<span class="label label-info">位置调整</span>',
+                                ];
+                                echo $typeLabels[$transaction['operation_type']] ?? $transaction['operation_type'];
+                                ?> |
+                                <?php echo $transaction['operation_quantity']; ?>片
                             </div>
-                            <div class="item-time"><?php echo date('m-d H:i', strtotime($transaction['created_at'])); ?></div>
                         </div>
+                        <div class="item-time"><?php echo date('m-d H:i', strtotime($transaction['created_at'])); ?></div>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
@@ -294,6 +302,7 @@ ob_start();
                 <a href="transactions.php" class="btn btn-sm">查看全部记录</a>
             </div>
         </div>
+
 
         <!-- 最近采购入库 -->
         <div class="dashboard-card">
@@ -307,9 +316,9 @@ ob_start();
                             <div class="item-info">
                                 <div class="item-title"><?php echo htmlspecialchars($purchase['package_code']); ?></div>
                                 <div class="item-detail">
-                                    <?php echo htmlspecialchars($purchase['glass_name']); ?> | 
-                                    <?php echo $purchase['color']; ?> | 
-                                    <?php echo $purchase['thickness']; ?>mm | 
+                                    <?php echo htmlspecialchars($purchase['glass_name']); ?> |
+                                    <?php echo $purchase['color']; ?> |
+                                    <?php echo $purchase['thickness']; ?>mm |
                                     <?php echo $purchase['pieces']; ?>片
                                 </div>
                             </div>
@@ -341,7 +350,7 @@ ob_start();
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-            
+
             <div style="text-align: center; margin-top: 15px;">
                 <a href="reports.php" class="btn btn-sm">查看详细报表</a>
             </div>
@@ -365,7 +374,7 @@ ob_start();
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-            
+
             <div style="text-align: center; margin-top: 15px;">
                 <a href="reports.php" class="btn btn-sm">查看详细报表</a>
             </div>
@@ -375,5 +384,5 @@ ob_start();
 <?php
 $content = ob_get_clean();
 // 渲染页面
-echo renderAdminLayout('仪表盘', $content, $currentUser, 'index.php',$additionalCSS, [], $message ?? '', $messageType ?? 'info');
+echo renderAdminLayout('仪表盘', $content, $currentUser, 'index.php', $additionalCSS, [], $message ?? '', $messageType ?? 'info');
 ?>
