@@ -259,14 +259,27 @@ ob_start();
             <div id="treeSelector" class="tree-selector">
                 <h4>选择基地和区域类型</h4>
                 <div class="tree-container">
+                    <?php
+                    // 如果用户有base_id，只显示该基地；否则显示所有基地（admin）
+                    $userBaseId = $currentUser['base_id'] ?? null;
+                    $onlyOneBase = false;
+                    if ($userBaseId) {
+                        // 只显示用户所属的基地
+                        $userBases = array_filter($bases, function($base) use ($userBaseId) {
+                            return $base['id'] == $userBaseId;
+                        });
+                        $bases = array_values($userBases);
+                        $onlyOneBase = (count($bases) == 1);
+                    }
+                    ?>
                     <?php foreach ($bases as $base): ?>
-                        <div class="base-node" data-base-id="<?php echo $base['id']; ?>" data-base-name="<?php echo htmlspecialchars($base['name']); ?>" data-base-code="<?php echo htmlspecialchars($base['code']); ?>">
+                        <div class="base-node <?php echo $onlyOneBase ? 'active' : ''; ?>" data-base-id="<?php echo $base['id']; ?>" data-base-name="<?php echo htmlspecialchars($base['name']); ?>" data-base-code="<?php echo htmlspecialchars($base['code']); ?>">
                             <div class="tree-node">
-                                <span class="tree-toggle">▼</span>
+                                <span class="tree-toggle"><?php echo $onlyOneBase ? '▼' : '▶'; ?></span>
                                 <span class="base-name"><?php echo htmlspecialchars($base['name']); ?></span>
                                 <span class="base-code">(<?php echo htmlspecialchars($base['code']); ?>)</span>
                             </div>
-                            <div class="area-list">
+                            <div class="area-list <?php echo $onlyOneBase ? 'show' : ''; ?>">
                                 <?php foreach ($areaTypes as $areaType => $areaLabel): ?>
                                     <div class="area-node" data-area-type="<?php echo $areaType; ?>" data-area-label="<?php echo htmlspecialchars($areaLabel); ?>">
                                         <span class="area-name"><?php echo htmlspecialchars($areaLabel); ?></span>
@@ -531,21 +544,39 @@ ob_start();
         selectedBaseName = '';
         selectedBaseCode = '';
 
+        // 检查是否为单一基地模式（只有一个基地节点且该节点已active）
+        const baseNodes = document.querySelectorAll('.base-node');
+        const singleBaseMode = baseNodes.length === 1 && baseNodes[0].classList.contains('active');
+
         document.querySelectorAll('.base-node').forEach(node => {
-            node.classList.remove('active');
+            // 单一基地模式下，保持第一个节点的active状态
+            if (!singleBaseMode || !baseNodes[0].classList.contains('active') || node !== baseNodes[0]) {
+                node.classList.remove('active');
+            }
         });
 
         document.querySelectorAll('.area-list').forEach(list => {
-            list.classList.remove('show');
+            // 单一基地模式下，保持第一个区域列表的show状态
+            if (!singleBaseMode || list !== baseNodes[0].querySelector('.area-list')) {
+                list.classList.remove('show');
+            }
         });
 
         document.querySelectorAll('.area-node').forEach(node => {
             node.classList.remove('selected');
         });
 
-        document.querySelectorAll('.tree-toggle').forEach(toggle => {
-            toggle.textContent = '▼';
-        });
+        // 单一基地模式下，保持第一个toggle的展开状态
+        if (singleBaseMode) {
+            const firstToggle = baseNodes[0].querySelector('.tree-toggle');
+            if (firstToggle) {
+                firstToggle.textContent = '▲';
+            }
+        } else {
+            document.querySelectorAll('.tree-toggle').forEach(toggle => {
+                toggle.textContent = '▼';
+            });
+        }
 
         document.getElementById('selectedInfo').classList.remove('show');
         document.getElementById('codePreview').style.display = 'none';
