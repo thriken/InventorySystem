@@ -1,8 +1,7 @@
 /* 库位架页面特定样式 */
 .add-button-container {
-    position: absolute;
-    right: 100px;
-    margin-bottom: 0;
+    margin-bottom: 20px;
+    text-align: right;
 }
 
 .sortable-header {

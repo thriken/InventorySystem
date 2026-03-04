@@ -268,30 +268,9 @@ ob_start();
 <script>
 // 初始化DataTable
 $(document).ready(function() {
-    $('#reportsTable').DataTable({
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/2.3.5/i18n/zh.json",
-            "emptyTable": "暂无数据",
-            "loadingRecords": "加载中...",
-            "processing": "处理中...",
-            "search": "搜索:",
-            "lengthMenu": "显示 _MENU_ 条记录",
-            "info": "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
-            "infoEmpty": "显示第 0 至 0 项结果，共 0 项",
-            "infoFiltered": "(由 _MAX_ 项结果过滤)",
-            "paginate": {
-                "first": "首页",
-                "last": "末页",
-                "next": "下一页",
-                "previous": "上一页"
-            }
-        },
+    initDataTable('#reportsTable', null, {
         "pageLength": 25,
         "lengthMenu": [[15, 25, 50, 100, -1], [15, 25, 50, 100, "全部"]],
-        "responsive": true,
-        "autoWidth": false,
-        "processing": true,
-        "serverSide": false,
         "order": [[0, "desc"]],
         "columnDefs": [
             { "orderable": false, "targets": -1 } // 最后一列不排序
