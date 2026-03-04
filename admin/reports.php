@@ -159,7 +159,7 @@ ob_start();
                 <div class="form-group">
                     <div class="button-group">
                         <button type="submit" class="btn btn-primary">查询</button>
-                        <a href="?<?php echo http_build_query(array_merge($_GET, ['export' => '1'])); ?>" class="btn btn-secondary export-btn">导出Excel</a>
+                        <button type="button" class="btn btn-secondary" onclick="exportToExcel('#reportsTable', '每日领用总表')">导出Excel</button>
                     </div>
                 </div>
             </div>
@@ -211,7 +211,7 @@ ob_start();
     <!-- 详细数据表格 -->
     <div class="table-container">
         <div class="table-responsive">
-            <table class="table table-striped data-table" data-table="reports">
+            <table class="table table-striped data-table" id="reportsTable" data-table="reports" data-export-columns="0,1,2,3,4,5,6,7,8,9,10,11,12,13">
                 <thead>
                     <tr>
                         <th>原片名称</th>
@@ -266,6 +266,39 @@ ob_start();
 </div>
 
 <script>
+// 初始化DataTable
+$(document).ready(function() {
+    $('#reportsTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/2.3.5/i18n/zh.json",
+            "emptyTable": "暂无数据",
+            "loadingRecords": "加载中...",
+            "processing": "处理中...",
+            "search": "搜索:",
+            "lengthMenu": "显示 _MENU_ 条记录",
+            "info": "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+            "infoEmpty": "显示第 0 至 0 项结果，共 0 项",
+            "infoFiltered": "(由 _MAX_ 项结果过滤)",
+            "paginate": {
+                "first": "首页",
+                "last": "末页",
+                "next": "下一页",
+                "previous": "上一页"
+            }
+        },
+        "pageLength": 25,
+        "lengthMenu": [[15, 25, 50, 100, -1], [15, 25, 50, 100, "全部"]],
+        "responsive": true,
+        "autoWidth": false,
+        "processing": true,
+        "serverSide": false,
+        "order": [[0, "desc"]],
+        "columnDefs": [
+            { "orderable": false, "targets": -1 } // 最后一列不排序
+        ]
+    });
+});
+
 // 自动刷新时间显示
 function updateTime() {
     const now = new Date();
